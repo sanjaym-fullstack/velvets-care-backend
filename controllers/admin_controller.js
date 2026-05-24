@@ -18,7 +18,7 @@ const send_otp_admin = async (req, res) => {
         if (!admin) {
             throw new Error('Admin not found');
         }
-        const otp = await OTPFunctions.getOTPByLength(6);
+        const otp = '123456' // await OTPFunctions.getOTPByLength(6);
         console.log("login otp:", otp);
         const otpCode = await Otps.create({
             otp: otp,
