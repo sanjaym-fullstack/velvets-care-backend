@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 const { Brands, Files } = require('../models');
 const {
-    FileFunctions, JWTFunctions , 
+  FileFunctions, JWTFunctions,
 } = require('../helpers')
 const fs = require('fs')
 // Create Brand
@@ -16,16 +16,16 @@ const CreateBrand = async (req, res) => {
     if (existing) throw new Error('Brand already exists');
 
 
-let uploaded_files = null;
-if(brand_image) {
-    const uploadedImage = await FileFunctions.uploadToS3(brand_image.filename, 'uploads/brands', fs.readFileSync(brand_image.path));
-    uploaded_files = await Files.create({
-      files_url: uploadedImage.key,
-      extension: uploadedImage.key.split('.').pop(),
-      original_name: uploadedImage.key,
-      size: fs.statSync(brand_image.path).size
-    });
-  }
+    let uploaded_files = null;
+    if (brand_image) {
+      const uploadedImage = await FileFunctions.uploadToS3(brand_image.filename, 'uploads/brands', fs.readFileSync(brand_image.path));
+      uploaded_files = await Files.create({
+        files_url: uploadedImage.key,
+        extension: uploadedImage.key.split('.').pop(),
+        original_name: uploadedImage.key,
+        size: fs.statSync(brand_image.path).size
+      });
+    }
     const brand = await Brands.create({
       name,
       slug,
@@ -59,13 +59,13 @@ const UpdateBrand = async (req, res) => {
     let uploaded_files = null;
     if (brand_image) {
 
-     uploadedImage = await FileFunctions.uploadToS3(brand_image.filename, 'uploads/brands', fs.readFileSync(brand_image.path));
-    const uploaded_files = await Files.create({
-      files_url: uploadedImage.key,
-      extension: uploadedImage.key.split('.').pop(),
-      original_name: uploadedImage.key,
-      size: fs.statSync(brand_image.path).size
-            })
+      uploadedImage = await FileFunctions.uploadToS3(brand_image.filename, 'uploads/brands', fs.readFileSync(brand_image.path));
+      const uploaded_files = await Files.create({
+        files_url: uploadedImage.key,
+        extension: uploadedImage.key.split('.').pop(),
+        original_name: uploadedImage.key,
+        size: fs.statSync(brand_image.path).size
+      })
     }
 
     await brand.update({ name, slug, is_active, brand_image: uploaded_files ? uploaded_files.id : null, description },
@@ -125,31 +125,32 @@ const AdminBrands = async (req, res) => {
           model: Files,
         },
       ],
-      where, limit, offset });
+      where, limit, offset
+    });
 
-      const totalCount = await Brands.count({ where });
+    const totalCount = await Brands.count({ where });
 
-      const brand_mapped = brands.map(async (brand) => {
-        return {
-          id: brand.id,
-          name: brand.name,
-          slug: brand.slug,
-          brand_image: brand.Files[0].files_url ? await FileFunctions.getFromS3(brand.Files[0].files_url) : null,
-          description: brand.description,
-          is_active: brand.is_active,
-        };
-      });
+    const brand_mapped = brands.map(async (brand) => {
+      return {
+        id: brand.id,
+        name: brand.name,
+        slug: brand.slug,
+        brand_image: brand.Files?.[0]?.files_url ? await FileFunctions.getFromS3(brand.Files[0].files_url) : null,
+        description: brand.description,
+        is_active: brand.is_active,
+      };
+    });
 
-      return res.response({
-        success: true,
-        message: 'Brands fetched successfully',
-        data: await Promise.all(brand_mapped),
-        meta: {
-          totalCount,
-          page,
-          limit,
-        },
-      });
+    return res.response({
+      success: true,
+      message: 'Brands fetched successfully',
+      data: await Promise.all(brand_mapped),
+      meta: {
+        totalCount,
+        page,
+        limit,
+      },
+    });
   } catch (error) {
     console.error('Error fetching brands:', error);
     return res.response({ success: false, message: error.message });
@@ -160,23 +161,23 @@ const AdminBrands = async (req, res) => {
 const UserBrands = async (req, res) => {
   try {
     const brands = await Brands.findAll({
-       where: { is_active: true },
+      where: { is_active: true },
       include: [
         {
           model: Files,
         },
       ],
-      });
-  const brand_mapped = brands.map(async (brand) => {
-        return {
-          id: brand.id,
-          name: brand.name,
-          slug: brand.slug,
-          brand_image: brand.Files[0].files_url ? await FileFunctions.getFromS3(brand.Files[0].files_url) : null,
-          description: brand.description,
-          is_active: brand.is_active,
-        };
-      });
+    });
+    const brand_mapped = brands.map(async (brand) => {
+      return {
+        id: brand.id,
+        name: brand.name,
+        slug: brand.slug,
+        brand_image: brand.Files?.[0]?.files_url ? await FileFunctions.getFromS3(brand.Files[0].files_url) : null,
+        description: brand.description,
+        is_active: brand.is_active,
+      };
+    });
     return res.response({
       success: true,
       data: await Promise.all(brand_mapped),
@@ -201,7 +202,7 @@ const GetBrandById = async (req, res) => {
       id: brand.id,
       name: brand.name,
       slug: brand.slug,
-      brand_image: brand.File?.files_url ? await FileFunctions.getFromS3(brand.File.files_url) : null,
+      brand_image: brand.Files?.[0]?.files_url ? await FileFunctions.getFromS3(brand.Files[0].files_url) : null,
       description: brand.description,
       is_active: brand.is_active,
     };
