@@ -18,13 +18,14 @@ const Products = require('./product');
     file_url: DataTypes.STRING,
     extension: DataTypes.STRING,
     original_name: DataTypes.STRING,
-    size: DataTypes.STRING
+    size: DataTypes.INTEGER
   }, {
     sequelize,
     paranoid: true,
     modelName: ProductImages,
+    tableName: ProductImages,
   });
   
-  ProductImage.belongsTo(Products, { foreignKey: 'product_id' });
-  Products.hasMany(ProductImage, { foreignKey: 'product_id' });
+  ProductImage.belongsTo(Products, { foreignKey: 'product_id', onDelete: 'CASCADE' });
+  Products.hasMany(ProductImage, { foreignKey: 'product_id', onDelete: 'CASCADE' });
 module.exports = ProductImage;

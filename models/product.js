@@ -13,6 +13,7 @@ const {
 
 const Brands = require('./brand');
 const Categories = require('./category');
+const Subcategories = require('./subcategory');
 
   class Product extends Model {
   }
@@ -22,6 +23,7 @@ const Categories = require('./category');
     selling_price: DataTypes.DOUBLE,
     sku: DataTypes.STRING,
     category_id: DataTypes.INTEGER,
+    sub_category_id: DataTypes.INTEGER,
     brand_id: DataTypes.INTEGER,
     tags: DataTypes.TEXT,
     is_active: DataTypes.BOOLEAN,
@@ -33,24 +35,19 @@ const Categories = require('./category');
     sequelize,
     paranoid: true,
     modelName: Products,
+    tableName: Products,
   });
 
-  Product.belongsTo(Categories, { foreignKey: 'category_id' });
-  Categories.hasMany(Product, { foreignKey: 'category_id' });
+  Product.belongsTo(Categories, { foreignKey: 'category_id', onDelete: 'CASCADE' });
+  Categories.hasMany(Product, { foreignKey: 'category_id', onDelete: 'CASCADE' });
 
-  Product.belongsTo(Brands, { foreignKey: 'brand_id' });
-  Brands.hasMany(Product, { foreignKey: 'brand_id' });
+  Product.belongsTo(Brands, { foreignKey: 'brand_id', onDelete: 'CASCADE' });
+  Brands.hasMany(Product, { foreignKey: 'brand_id', onDelete: 'CASCADE' });
 
-
+  Product.belongsTo(Subcategories, { foreignKey: 'sub_category_id', onDelete: 'CASCADE' });
+  Subcategories.hasMany(Product, { foreignKey: 'sub_category_id', onDelete: 'CASCADE' });
 
   // Product.hasMany(Reviews, { foreignKey: 'product_id' });
   // Reviews.belongsTo(Product, { foreignKey: 'product_id' });
   
 module.exports = Product;
-
-
-// discount table === dicoiumnt DataTypes
-
-// discounted users -- useid-discountid and how many time suses can use discount
-
-// disxounted products -- productid-discountid and how many time suses can use discount 

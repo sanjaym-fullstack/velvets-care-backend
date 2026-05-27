@@ -24,6 +24,7 @@ const {
     createProductValidator,
     updateProductValidator,
     deleteProductValidator,
+    deleteProductImageValidator,
     uploadProductImagesValidator,
     fetchAdminProductValidator,
     fetchUserProductValidator,
@@ -140,7 +141,7 @@ module.exports = [
                 SessionValidator
             ],
             validate: {
-                params: deleteProductValidator,
+                params: deleteProductImageValidator,
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
@@ -178,11 +179,7 @@ module.exports = [
         options: {
             description: 'Fetch all products',
             tags,
-            pre: [
-                SessionValidator
-            ],
             validate: {
-                headers: HeaderValidator,
                 query: fetchUserProductValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
@@ -199,12 +196,8 @@ module.exports = [
         options: {
             description: 'Get images by product id',
             tags,
-            pre: [
-                SessionValidator
-            ],
             validate: {
                 params: fetchSingleProductValidator,
-                headers: HeaderValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
                     throw Boom.badRequest(errors.join(', '));
@@ -221,12 +214,8 @@ module.exports = [
         options: {
             description: 'Get product by id',
             tags,
-            pre: [
-                SessionValidator
-            ],
             validate: {
                 params: fetchSingleProductValidator,
-                headers: HeaderValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
                     throw Boom.badRequest(errors.join(', '));

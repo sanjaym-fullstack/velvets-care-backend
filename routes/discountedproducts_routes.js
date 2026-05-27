@@ -30,7 +30,6 @@ module.exports = [
     {
         method: 'POST',
         path: '/discountedproducts',
-       
         options: {
             description: 'Create a new discounted product',
             tags,
@@ -43,9 +42,9 @@ module.exports = [
                     throw Boom.badRequest(errors.join(', '));
                 }
             },
-             handler: CreateDiscountedProduct,
         },
-        },
+        handler: CreateDiscountedProduct,
+    },
     {
         method: 'PUT',
         path: '/discountedproducts/{id}',
@@ -62,8 +61,8 @@ module.exports = [
                     throw Boom.badRequest(errors.join(', '));
                 }
             },
-            handler: UpdateDiscountedProduct,
         },
+        handler: UpdateDiscountedProduct,
     },
     {
         method: 'DELETE',
