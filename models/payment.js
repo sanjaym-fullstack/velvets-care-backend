@@ -25,6 +25,7 @@ const Order = require('./order');
   }, {
     sequelize,
     modelName: Payments,
+    tableName: Payments,
     paranoid: true
   });
 

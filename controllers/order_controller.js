@@ -16,6 +16,10 @@ const fetchOrdersAdmin = async (req, res) => {
 
         const where = {};
         if (status) where.status = status;
+        if (search) {
+            const searchNum = parseInt(search);
+            if (!isNaN(searchNum)) where.id = searchNum;
+        }
         if (from_date && to_date) where.createdAt = { [Op.between]: [from_date, to_date] };
 
         const orders = await Orders.findAndCountAll({
@@ -146,13 +150,18 @@ const fetchPaymentsAdmin = async (req, res) => {
     }
 };
 
-// 5️⃣ Fetch order by order id and/or user id
+// 5️⃣ Fetch order by order id
 const fetchOrderById = async (req, res) => {
     try {
-        const { order_id, user_id } = req.query;
-        const where = {};
-        if (order_id) where.id = order_id;
-        if (user_id) where.user_id = user_id;
+        const session_user = req.headers.user;
+        if (!session_user) throw new Error('Unauthorized');
+
+        const { id } = req.params;
+
+        const where = { id };
+        if (!session_user.is_admin) {
+            where.user_id = session_user.user_id;
+        }
 
         const order = await Orders.findOne({
             where,

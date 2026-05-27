@@ -21,7 +21,8 @@ const {
     fetchUserOrdersValidator,
     updateOrderStatusValidator,
     fetchPaymentsAdminValidator,
-    fetchOrderByIdValidator
+    fetchOrderByIdValidator,
+    fetchOrderParamsValidator
     },
     HeaderValidator,
 } = require('../validators');
@@ -79,7 +80,7 @@ module.exports = [
             ],
             validate: {
                 payload: updateOrderStatusValidator,
-                params: fetchOrderByIdValidator,
+                params: fetchOrderParamsValidator,
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
@@ -135,7 +136,7 @@ module.exports = [
                 SessionValidator
             ],
             validate: {
-                params: fetchOrderByIdValidator,
+                params: fetchOrderParamsValidator,
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);

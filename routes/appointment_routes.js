@@ -207,13 +207,17 @@ module.exports = [
     },
 
     {
-        method: 'GET',
+        method: 'POST',
         path: '/razorpay',
         options: {
-            description: 'Get all appointments',
+            description: 'Create razorpay order',
             tags,
+            pre: [
+                SessionValidator
+            ],
             validate: {
-                query: Joi.object({
+                headers: HeaderValidator,
+                payload: Joi.object({
                     amount: Joi.number().required()
                 }),
                 failAction: (request, h, err) => {
@@ -223,7 +227,7 @@ module.exports = [
             },
         },
         handler: async (request, h) => {
-            const amount = request.query.amount;
+            const amount = request.payload.amount;
             const order = await createRazorpayOrder(amount);
             return h.response(order).code(200);
         }

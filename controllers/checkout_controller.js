@@ -2,7 +2,7 @@
 
 const { Orders, OrderItems, Users, Payments } = require('../models');
 const { Op } = require('sequelize');
-const { createRazorpayOrder, capturePayment } = require('../helpers/razorpayFunctions');
+const { createRazorpayOrder, capturePayment } = require('../helpers/razorpay');
 const { MailFunctions } = require('../helpers');
 
 // ================= Controller Functions =================

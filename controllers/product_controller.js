@@ -66,6 +66,20 @@ const CreateProduct = async (req, res) => {
             throw new Error('Product with this SKU already exists');
         }
 
+        // validate foreign keys exist
+        if (category_id) {
+            const category = await Categories.findByPk(category_id);
+            if (!category) throw new Error('Category not found');
+        }
+        if (sub_category_id) {
+            const subcategory = await Subcategories.findByPk(sub_category_id);
+            if (!subcategory) throw new Error('Subcategory not found');
+        }
+        if (brand_id) {
+            const brand = await Brands.findByPk(brand_id);
+            if (!brand) throw new Error('Brand not found');
+        }
+
         // create product
         const product = await Products.create({
             name,
@@ -209,6 +223,11 @@ const DeleteProduct = async (req, res) => {
 const GetProductById = async (req, res) => {
     try {
 
+        const session_user = req.headers.user;
+        if (!session_user) {
+            throw new Error('Session expired');
+        }
+
         const { id } = req.params;
 
         const product = await Products.findOne({
@@ -349,6 +368,11 @@ const AdminProducts = async (req, res) => {
 // ============================
 const UserProducts = async (req, res) => {
     try {
+
+        const session_user = req.headers.user;
+        if (!session_user) {
+            throw new Error('Session expired');
+        }
 
         const {
             page = 1,
@@ -539,6 +563,11 @@ const DeleteProductImage = async (req, res) => {
 // ============================
 const GetImagesByProduct = async (req, res) => {
     try {
+
+        const session_user = req.headers.user;
+        if (!session_user) {
+            throw new Error('Session expired');
+        }
 
         const productId = req.params.id;
 
