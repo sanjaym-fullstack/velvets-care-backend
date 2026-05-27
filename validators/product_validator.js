@@ -37,9 +37,6 @@ const createProductValidator = Joi.object({
 });
 
 const updateProductValidator = Joi.object({
-    id: Joi.number().integer().required().messages({
-        'any.required': 'Product ID is required',
-    }),
     name: Joi.string().optional(),
     mrp_price: Joi.number().optional(),
     selling_price: Joi.number().optional(),
@@ -61,19 +58,29 @@ const deleteProductValidator = Joi.object({
     }),
 });
 
+const deleteProductImageValidator = Joi.object({
+    id: Joi.number().integer().required().messages({
+        'any.required': 'Product ID is required',
+    }),
+    imageId: Joi.number().integer().required().messages({
+        'any.required': 'Image ID is required',
+    }),
+});
+
 const uploadProductImagesValidator = Joi.object({
     product_id: Joi.number().integer().required().messages({
         'any.required': 'Product ID is required',
     }),
     files: Joi.array().items(
         Joi.object({
-            file_url: Joi.string().required(),
-            extension: Joi.string().required(),
-            original_name: Joi.string().required(),
-            size: Joi.number().required(),
+            filename: Joi.string().required(),
+            path: Joi.string().required(),
+            headers: Joi.object().unknown(),
+            bytes: Joi.number().optional(),
         })
     ).min(1).required().messages({
         'any.required': 'At least one image is required',
+        'array.min': 'At least one image is required',
     }),
 });
 
@@ -81,14 +88,12 @@ const fetchAdminProductValidator = Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(10),
     search: Joi.string().allow('', null),
-    sort: Joi.string().valid('name', 'mrp_price', 'selling_price', 'created_at', 'updated_at').default('created_at'),
 });
 
 const fetchUserProductValidator = Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(10),
     search: Joi.string().allow('', null),
-    sort: Joi.string().valid('name', 'mrp_price', 'selling_price', 'created_at', 'updated_at').default('created_at'),
 });
 
 const fetchSingleProductValidator = Joi.object({
@@ -99,6 +104,7 @@ module.exports = {
     createProductValidator,
     updateProductValidator,
     deleteProductValidator,
+    deleteProductImageValidator,
     uploadProductImagesValidator,
     fetchAdminProductValidator,
     fetchUserProductValidator,

@@ -1,6 +1,8 @@
 'use strict';
 
+const fs = require('fs');
 const { Op } = require('sequelize');
+
 const {
     Products,
     ProductImages,
@@ -8,16 +10,22 @@ const {
     Subcategories,
     Brands,
 } = require('../models');
+
 const {
-    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions
+    FileFunctions,
 } = require('../helpers');
 
 
+// ============================
 // Create Product
+// ============================
 const CreateProduct = async (req, res) => {
     try {
+
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) {
+            throw new Error('Session expired');
+        }
 
         const {
             name,
@@ -35,23 +43,44 @@ const CreateProduct = async (req, res) => {
             description,
         } = req.payload;
 
-        const existing = await Products.findOne({ where: { sku } });
-        if (existing) throw new Error('Product with this SKU already exists');
+        // validations
+        if (!name) throw new Error('Product name is required');
+        if (mrp_price == null) throw new Error('MRP price is required');
+        if (selling_price == null) throw new Error('Selling price is required');
+        if (!sku) throw new Error('SKU is required');
 
+        if (mrp_price < 0 || selling_price < 0) {
+            throw new Error('Price cannot be negative');
+        }
+
+        if (stock < 0) {
+            throw new Error('Stock cannot be negative');
+        }
+
+        // check duplicate sku
+        const existing = await Products.findOne({
+            where: { sku }
+        });
+
+        if (existing) {
+            throw new Error('Product with this SKU already exists');
+        }
+
+        // create product
         const product = await Products.create({
             name,
             mrp_price,
             selling_price,
             sku,
-            category_id,
-            sub_category_id: sub_category_id || null,
-            brand_id,
-            tags: tags || null,
+            category_id: category_id ?? null,
+            sub_category_id: sub_category_id ?? null,
+            brand_id: brand_id ?? null,
+            tags: tags ?? null,
             is_active: is_active ?? true,
             is_featured: is_featured ?? false,
             is_new: is_new ?? false,
-            stock,
-            description: description || null,
+            stock: stock ?? 0,
+            description: description ?? null,
         });
 
         return res.response({
@@ -59,23 +88,59 @@ const CreateProduct = async (req, res) => {
             message: 'Product created successfully',
             data: product,
         }).code(201);
+
     } catch (error) {
+
         console.error('Error creating product:', error);
-        return res.response({ success: false, message: error.message });
+
+        return res.response({
+            success: false,
+            message: error.message
+        }).code(400);
     }
 };
 
+
+// ============================
 // Update Product
+// ============================
 const UpdateProduct = async (req, res) => {
     try {
+
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+
+        if (!session_user) {
+            throw new Error('Session expired');
+        }
 
         const { id } = req.params;
+
         const updates = req.payload;
 
-        const product = await Products.findOne({ where: { id } });
-        if (!product) throw new Error('Product not found');
+        const product = await Products.findOne({
+            where: { id }
+        });
+
+        if (!product) {
+            throw new Error('Product not found');
+        }
+
+        // check duplicate sku
+        if (updates.sku) {
+
+            const existing = await Products.findOne({
+                where: {
+                    sku: updates.sku,
+                    id: {
+                        [Op.ne]: id
+                    }
+                }
+            });
+
+            if (existing) {
+                throw new Error('SKU already exists');
+            }
+        }
 
         await product.update(updates);
 
@@ -84,22 +149,40 @@ const UpdateProduct = async (req, res) => {
             message: 'Product updated successfully',
             data: product,
         });
+
     } catch (error) {
+
         console.error('Error updating product:', error);
-        return res.response({ success: false, message: error.message });
+
+        return res.response({
+            success: false,
+            message: error.message
+        }).code(400);
     }
 };
 
+
+// ============================
 // Delete Product
+// ============================
 const DeleteProduct = async (req, res) => {
     try {
+
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+
+        if (!session_user) {
+            throw new Error('Session expired');
+        }
 
         const { id } = req.params;
 
-        const product = await Products.findOne({ where: { id } });
-        if (!product) throw new Error('Product not found');
+        const product = await Products.findOne({
+            where: { id }
+        });
+
+        if (!product) {
+            throw new Error('Product not found');
+        }
 
         await product.destroy();
 
@@ -107,197 +190,392 @@ const DeleteProduct = async (req, res) => {
             success: true,
             message: 'Product deleted successfully',
         });
+
     } catch (error) {
+
         console.error('Error deleting product:', error);
-        return res.response({ success: false, message: error.message });
+
+        return res.response({
+            success: false,
+            message: error.message
+        }).code(400);
     }
 };
 
-// Get Product By ID (Admin + User)
+
+// ============================
+// Get Product By ID
+// ============================
 const GetProductById = async (req, res) => {
-  try {
-    const { id } = req.params;
+    try {
 
-    const product = await Products.findOne({
-      where: { id },
-      include: [
-        { model: ProductImages },
-        { model: Brands },
-        { model: Categories },
-        { model: Subcategories },
-      ],
-    });
+        const { id } = req.params;
 
-    if (!product) throw new Error('Product not found');
+        const product = await Products.findOne({
+            where: { id },
 
-    const productJSON = product.toJSON();
+            include: [
+                {
+                    model: ProductImages,
+                },
+                {
+                    model: Brands,
+                },
+                {
+                    model: Categories,
+                },
+                {
+                    model: Subcategories,
+                },
+            ],
+        });
 
-    // Map S3 URLs for images
-    productJSON.ProductImages = await Promise.all(
-      productJSON.ProductImages.map(async (img) => ({
-        ...img,
-        file_url: img.file_url ? await FileFunctions.getFromS3(img.file_url) : null,
-      }))
-    );
+        if (!product) {
+            throw new Error('Product not found');
+        }
 
-    return res.response({ success: true, data: productJSON });
-  } catch (error) {
-    console.error('Error fetching product by id:', error);
-    return res.response({ success: false, message: error.message });
-  }
+        const productJSON = product.toJSON();
+
+        // image urls
+        productJSON.ProductImages = await Promise.all(
+            (productJSON.ProductImages || []).map(async (img) => ({
+                ...img,
+                file_url: img.file_url
+                    ? await FileFunctions.getFromS3(img.file_url)
+                    : null,
+            }))
+        );
+
+        return res.response({
+            success: true,
+            data: productJSON
+        });
+
+    } catch (error) {
+
+        console.error('Error fetching product:', error);
+
+        return res.response({
+            success: false,
+            message: error.message
+        }).code(400);
+    }
 };
 
 
-// Admin Fetch Products (with page, limit, search)
+// ============================
+// Admin Products
+// ============================
 const AdminProducts = async (req, res) => {
     try {
-        const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
 
-        const { page = 1, limit = 10, search = '' } = req.query;
-        const offset = (page - 1) * limit;
+        const session_user = req.headers.user;
+
+        if (!session_user) {
+            throw new Error('Session expired');
+        }
+
+        const {
+            page = 1,
+            limit = 10,
+            search = ''
+        } = req.query;
+
+        const pageNumber = parseInt(page);
+        const limitNumber = parseInt(limit);
+
+        const offset = (pageNumber - 1) * limitNumber;
 
         const where = {};
+
         if (search) {
+
             where[Op.or] = [
-                { name: { [Op.like]: `%${search}%` } },
-                { description: { [Op.like]: `%${search}%` } },
-                { sku: { [Op.like]: `%${search}%` } },
+                {
+                    name: {
+                        [Op.like]: `%${search}%`
+                    }
+                },
+                {
+                    description: {
+                        [Op.like]: `%${search}%`
+                    }
+                },
+                {
+                    sku: {
+                        [Op.like]: `%${search}%`
+                    }
+                },
             ];
         }
 
         const { rows, count } = await Products.findAndCountAll({
             where,
-            limit,
+            limit: limitNumber,
             offset,
-            include: [Brands, Categories, Subcategories],
+
+            include: [
+                Brands,
+                Categories,
+                Subcategories
+            ],
+
+            order: [['id', 'DESC']]
         });
 
         return res.response({
             success: true,
             message: 'Products fetched successfully',
             total: count,
-            page,
-            limit,
+            page: pageNumber,
+            limit: limitNumber,
             data: rows,
         });
+
     } catch (error) {
-        console.error('Error fetching admin products:', error);
-        return res.response({ success: false, message: error.message });
+
+        console.error('Error fetching products:', error);
+
+        return res.response({
+            success: false,
+            message: error.message
+        }).code(400);
     }
 };
 
-// User Fetch Products (with page, limit, search)
+
+// ============================
+// User Products
+// ============================
 const UserProducts = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search = '' } = req.query;
-        const offset = (page - 1) * limit;
 
-        const where = { is_active: true };
+        const {
+            page = 1,
+            limit = 10,
+            search = ''
+        } = req.query;
+
+        const pageNumber = parseInt(page);
+        const limitNumber = parseInt(limit);
+
+        const offset = (pageNumber - 1) * limitNumber;
+
+        const where = {
+            is_active: true
+        };
+
         if (search) {
+
             where[Op.or] = [
-                { name: { [Op.like]: `%${search}%` } },
-                { description: { [Op.like]: `%${search}%` } },
+                {
+                    name: {
+                        [Op.like]: `%${search}%`
+                    }
+                },
+                {
+                    description: {
+                        [Op.like]: `%${search}%`
+                    }
+                },
+                {
+                    sku: {
+                        [Op.like]: `%${search}%`
+                    }
+                },
             ];
         }
 
         const { rows, count } = await Products.findAndCountAll({
+
             where,
-            limit,
+
+            limit: limitNumber,
+
             offset,
-            include: [Brands, Categories, Subcategories],
+
+            include: [
+                Brands,
+                Categories,
+                Subcategories
+            ],
+
+            order: [['id', 'DESC']]
         });
 
         return res.response({
             success: true,
             message: 'Products fetched successfully',
             total: count,
-            page,
-            limit,
+            page: pageNumber,
+            limit: limitNumber,
             data: rows,
         });
+
     } catch (error) {
-        console.error('Error fetching user products:', error);
-        return res.response({ success: false, message: error.message });
+
+        console.error('Error fetching products:', error);
+
+        return res.response({
+            success: false,
+            message: error.message
+        }).code(400);
     }
 };
 
-// Upload Product Image
+
+// ============================
+// Upload Product Images
+// ============================
 const UploadProductImage = async (req, res) => {
-  try {
-    const session_user = req.headers.user;
-    if (!session_user) throw new Error('Session expired');
+    try {
 
-    const { product_id, files } = req.payload; // `files` is an array
+        const session_user = req.headers.user;
 
-    const uploadedFiles = await Promise.all(files.map(async (file) => {
-      const uploaded = await FileFunctions.uploadToS3(file.filename, 'uploads/products', fs.readFileSync(file.path));
-      return ProductImages.create({
-        product_id,
-        file_url: uploaded.key,
-        extension: uploaded.key.split('.').pop(),
-        original_name: uploaded.key,
-        size: fs.statSync(file.path).size,
-      });
-    }));
+        if (!session_user) {
+            throw new Error('Session expired');
+        }
 
-    return res.response({
-      success: true,
-      message: 'Product images uploaded successfully',
-      data: uploadedFiles,
-    }).code(201);
-  } catch (error) {
-    console.error('Error uploading product images:', error);
-    return res.response({ success: false, message: error.message });
-  }
+        const {
+            product_id,
+            files
+        } = req.payload;
+
+        if (!files || !files.length) {
+            throw new Error('Files are required');
+        }
+
+        // check product
+        const product = await Products.findByPk(product_id);
+
+        if (!product) {
+            throw new Error('Product not found');
+        }
+
+        const uploadedFiles = await Promise.all(
+
+            files.map(async (file) => {
+
+                const uploaded = await FileFunctions.uploadToS3(
+                    file.filename,
+                    'uploads/products',
+                    fs.readFileSync(file.path)
+                );
+
+                return ProductImages.create({
+                    product_id,
+                    file_url: uploaded.key,
+                    extension: uploaded.key.split('.').pop(),
+                    original_name: file.filename,
+                    size: fs.statSync(file.path).size,
+                });
+            })
+        );
+
+        return res.response({
+            success: true,
+            message: 'Product images uploaded successfully',
+            data: uploadedFiles,
+        }).code(201);
+
+    } catch (error) {
+
+        console.error('Error uploading images:', error);
+
+        return res.response({
+            success: false,
+            message: error.message
+        }).code(400);
+    }
 };
 
 
+// ============================
 // Delete Product Image
+// ============================
 const DeleteProductImage = async (req, res) => {
-  try {
-    const session_user = req.headers.user;
-    if (!session_user) throw new Error('Session expired');
+    try {
 
-    const imageId = req.params.id;
-    const image = await ProductImages.findByPk(imageId);
-    if (!image) throw new Error('Image not found');
+        const session_user = req.headers.user;
 
-    await image.destroy();
+        if (!session_user) {
+            throw new Error('Session expired');
+        }
 
-    return res.response({
-      success: true,
-      message: 'Product image deleted successfully',
-    });
-  } catch (error) {
-    console.error('Error deleting product image:', error);
-    return res.response({ success: false, message: error.message });
-  }
+        const imageId = req.params.imageId;
+
+        const image = await ProductImages.findByPk(imageId);
+
+        if (!image) {
+            throw new Error('Image not found');
+        }
+
+        // delete from s3
+        if (image.file_url) {
+            await FileFunctions.deleteFromS3(image.file_url);
+        }
+
+        await image.destroy();
+
+        return res.response({
+            success: true,
+            message: 'Product image deleted successfully',
+        });
+
+    } catch (error) {
+
+        console.error('Error deleting image:', error);
+
+        return res.response({
+            success: false,
+            message: error.message
+        }).code(400);
+    }
 };
 
-// Get Product Images by Product
+
+// ============================
+// Get Images By Product
+// ============================
 const GetImagesByProduct = async (req, res) => {
-  try {
-    const productId = req.params.productId;
+    try {
 
-    const images = await ProductImages.findAll({ where: { product_id: productId }, raw: true });
+        const productId = req.params.id;
 
-    const imagesWithUrl = await Promise.all(
-      images.map(async (img) => ({
-        ...img,
-        file_url: img.file_url ? await FileFunctions.getFromS3(img.file_url) : null
-      }))
-    );
+        const images = await ProductImages.findAll({
+            where: {
+                product_id: productId
+            },
+            raw: true
+        });
 
-    return res.response({
-      success: true,
-      data: imagesWithUrl,
-    });
-  } catch (error) {
-    console.error('Error fetching product images:', error);
-    return res.response({ success: false, message: error.message });
-  }
+        const imagesWithUrl = await Promise.all(
+
+            images.map(async (img) => ({
+                ...img,
+
+                file_url: img.file_url
+                    ? await FileFunctions.getFromS3(img.file_url)
+                    : null
+            }))
+        );
+
+        return res.response({
+            success: true,
+            data: imagesWithUrl,
+        });
+
+    } catch (error) {
+
+        console.error('Error fetching images:', error);
+
+        return res.response({
+            success: false,
+            message: error.message
+        }).code(400);
+    }
 };
+
 
 module.exports = {
     CreateProduct,

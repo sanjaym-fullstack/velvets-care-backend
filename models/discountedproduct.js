@@ -23,6 +23,7 @@ const Product = require('./product');
     sequelize,
     paranoid: true,
     modelName: DiscountedProducts,
+    tableName: DiscountedProducts,
   });
 
   DiscountedProduct.belongsTo(Discount, { foreignKey: 'discount_id' });
