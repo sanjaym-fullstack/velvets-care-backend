@@ -23,6 +23,7 @@ const Order = require('./order');
   }, {
     sequelize,
     modelName: OrderItems,
+    tableName: OrderItems,
     paranoid: true
   });
 

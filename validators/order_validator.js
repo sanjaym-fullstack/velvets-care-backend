@@ -34,16 +34,24 @@ const fetchPaymentsAdminValidator = Joi.object({
     user_id: Joi.number().allow(null)
 });
 
-// Fetch order by order_id / user_id
+// Fetch order by order_id / user_id (query)
 const fetchOrderByIdValidator = Joi.object({
     order_id: Joi.number().allow(null),
     user_id: Joi.number().allow(null)
-}).or('order_id', 'user_id'); // Require at least one
+}).or('order_id', 'user_id');
+
+// Fetch order by params id
+const fetchOrderParamsValidator = Joi.object({
+    id: Joi.number().integer().required().messages({
+        'any.required': 'Order ID is required',
+    }),
+});
 
 module.exports = {
     fetchOrdersAdminValidator,
     fetchUserOrdersValidator,
     updateOrderStatusValidator,
     fetchPaymentsAdminValidator,
-    fetchOrderByIdValidator
+    fetchOrderByIdValidator,
+    fetchOrderParamsValidator
 };

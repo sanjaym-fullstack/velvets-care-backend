@@ -30,10 +30,7 @@ module.exports = {
       reason: {
         type: Sequelize.STRING
       },
-      appointment_mode: {
-        type: Sequelize.STRING
-      },
-      payment_status: {
+payment_status: {
         type: Sequelize.STRING
       },
       payment_id: {
@@ -57,12 +54,12 @@ module.exports = {
       consultation_modes: {
         type: Sequelize.STRING
       },
-      cunsultation_fee: {
-        type: Sequelize.STRING
+      consultation_fee: {
+        type: Sequelize.FLOAT
       },
       createdAt: {
         allowNull: false,
-        type: Sequelize.STRING
+        type: Sequelize.DATE
       },
       updatedAt: {
         allowNull: false,

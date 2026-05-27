@@ -179,7 +179,11 @@ module.exports = [
         options: {
             description: 'Fetch all products',
             tags,
+            pre: [
+                SessionValidator
+            ],
             validate: {
+                headers: HeaderValidator,
                 query: fetchUserProductValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
@@ -196,7 +200,11 @@ module.exports = [
         options: {
             description: 'Get images by product id',
             tags,
+            pre: [
+                SessionValidator
+            ],
             validate: {
+                headers: HeaderValidator,
                 params: fetchSingleProductValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
@@ -214,7 +222,11 @@ module.exports = [
         options: {
             description: 'Get product by id',
             tags,
+            pre: [
+                SessionValidator
+            ],
             validate: {
+                headers: HeaderValidator,
                 params: fetchSingleProductValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);

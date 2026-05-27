@@ -25,7 +25,7 @@ const createRazorpayOrder = async (amount, currency = 'INR', receipt = `receipt_
 
 const capturePayment = async (amount, razorpayPaymentId) => {
   try {
-   const payment =  razorpayInstance.payments.capture(razorpayPaymentId, amount, "INR")
+   const payment = await razorpayInstance.payments.capture(razorpayPaymentId, amount, "INR")
     return payment;
   } catch (error) {
     throw new Error(`Razorpay payment capture failed: ${error.message}`);

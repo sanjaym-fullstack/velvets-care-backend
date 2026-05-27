@@ -24,6 +24,7 @@ const {
     sequelize,
     paranoid: true,
     modelName: Orders,
+    tableName: Orders,
   });
 
 module.exports = Order;

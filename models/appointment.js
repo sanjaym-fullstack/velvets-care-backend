@@ -27,11 +27,12 @@ const doctors  =require ('../models/doctors')
     cancel_reason: DataTypes.STRING,
     consultation_modes: DataTypes.STRING,
     cancel_by: DataTypes.STRING,
-    cunsultation_fee: DataTypes.FLOAT
+    consultation_fee: DataTypes.FLOAT
   }, {
     sequelize,
     paranoid: true,
     modelName: Appointments,
+    tableName: Appointments,
   });
   
 
