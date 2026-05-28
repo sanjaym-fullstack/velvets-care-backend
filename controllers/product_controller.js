@@ -144,6 +144,25 @@ const UpdateProduct = async (req, res) => {
             throw new Error('Product not found');
         }
 
+        // normalize falsy FK values to null
+        if (updates.category_id != null) updates.category_id = updates.category_id || null;
+        if (updates.sub_category_id != null) updates.sub_category_id = updates.sub_category_id || null;
+        if (updates.brand_id != null) updates.brand_id = updates.brand_id || null;
+
+        // validate foreign keys exist
+        if (updates.category_id) {
+            const category = await Categories.findByPk(updates.category_id);
+            if (!category) throw new Error('Category not found');
+        }
+        if (updates.sub_category_id) {
+            const subcategory = await Subcategories.findByPk(updates.sub_category_id);
+            if (!subcategory) throw new Error('Subcategory not found');
+        }
+        if (updates.brand_id) {
+            const brand = await Brands.findByPk(updates.brand_id);
+            if (!brand) throw new Error('Brand not found');
+        }
+
         // check duplicate sku
         if (updates.sku) {
 
