@@ -1,5 +1,5 @@
 'use strict';
-const { Wishlists, Users } = require('../models');
+const { Wishlists, Users, Products, ProductImages, Brands, Categories, Subcategories } = require('../models');
 const { sequelize } = require('../config');
 const { Op } = require('sequelize');
 
@@ -68,7 +68,11 @@ const GetWishlist = async (req, res) => {
         if (!session_user) throw new Error('Session expired');
 
         const wishlistItems = await Wishlists.findAll({
-            where: { user_id: session_user.user_id }
+            where: { user_id: session_user.user_id },
+            include: [{
+                model: Products,
+                include: [ProductImages, Brands, Categories, Subcategories]
+            }]
         });
 
         return res.response({

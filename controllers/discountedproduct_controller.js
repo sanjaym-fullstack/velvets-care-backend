@@ -1,5 +1,5 @@
 'use strict';
-const { DiscountedProducts: DiscountedProduct, Products, Discounts: Discount } = require('../models');
+const { DiscountedProducts: DiscountedProduct, Products, Discounts: Discount, ProductImages } = require('../models');
 
 // Create / Assign Discounted Product
 const CreateDiscountedProduct = async (req, res) => {
@@ -83,7 +83,7 @@ const GetDiscountedProducts = async (req, res) => {
         const offset = (page - 1) * limit;
 
         const { rows, count } = await DiscountedProduct.findAndCountAll({
-            include: [Products, Discount],
+            include: [{ model: Products, include: [ProductImages] }, Discount],
             limit,
             offset
         });

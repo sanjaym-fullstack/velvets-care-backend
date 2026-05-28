@@ -341,7 +341,8 @@ const AdminProducts = async (req, res) => {
             include: [
                 Brands,
                 Categories,
-                Subcategories
+                Subcategories,
+                ProductImages
             ],
 
             order: [['id', 'DESC']]
@@ -426,7 +427,8 @@ const UserProducts = async (req, res) => {
             include: [
                 Brands,
                 Categories,
-                Subcategories
+                Subcategories,
+                ProductImages
             ],
 
             order: [['id', 'DESC']]
