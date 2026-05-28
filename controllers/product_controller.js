@@ -66,17 +66,22 @@ const CreateProduct = async (req, res) => {
             throw new Error('Product with this SKU already exists');
         }
 
+        // normalize falsy FK values to null (0, '', etc.)
+        const resolvedCategoryId = category_id || null;
+        const resolvedSubCategoryId = sub_category_id || null;
+        const resolvedBrandId = brand_id || null;
+
         // validate foreign keys exist
-        if (category_id) {
-            const category = await Categories.findByPk(category_id);
+        if (resolvedCategoryId) {
+            const category = await Categories.findByPk(resolvedCategoryId);
             if (!category) throw new Error('Category not found');
         }
-        if (sub_category_id) {
-            const subcategory = await Subcategories.findByPk(sub_category_id);
+        if (resolvedSubCategoryId) {
+            const subcategory = await Subcategories.findByPk(resolvedSubCategoryId);
             if (!subcategory) throw new Error('Subcategory not found');
         }
-        if (brand_id) {
-            const brand = await Brands.findByPk(brand_id);
+        if (resolvedBrandId) {
+            const brand = await Brands.findByPk(resolvedBrandId);
             if (!brand) throw new Error('Brand not found');
         }
 
@@ -86,9 +91,9 @@ const CreateProduct = async (req, res) => {
             mrp_price,
             selling_price,
             sku,
-            category_id: category_id ?? null,
-            sub_category_id: sub_category_id ?? null,
-            brand_id: brand_id ?? null,
+            category_id: resolvedCategoryId,
+            sub_category_id: resolvedSubCategoryId,
+            brand_id: resolvedBrandId,
             tags: tags ?? null,
             is_active: is_active ?? true,
             is_featured: is_featured ?? false,

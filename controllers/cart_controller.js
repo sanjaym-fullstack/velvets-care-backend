@@ -137,6 +137,9 @@ const GetCart = async (req, res) => {
 // Admin: Get cart count per user
 const AdminCartStats = async (req, res) => {
     try {
+        const session_user = req.headers.user;
+        if (!session_user || !session_user.is_admin) throw new Error('Unauthorized');
+
         const cartStats = await Cart.findAll({
             attributes: [
                 'user_id',

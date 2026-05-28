@@ -59,8 +59,8 @@ const UpdateBrand = async (req, res) => {
     let uploaded_files = null;
     if (brand_image) {
 
-      uploadedImage = await FileFunctions.uploadToS3(brand_image.filename, 'uploads/brands', fs.readFileSync(brand_image.path));
-      const uploaded_files = await Files.create({
+      const uploadedImage = await FileFunctions.uploadToS3(brand_image.filename, 'uploads/brands', fs.readFileSync(brand_image.path));
+      uploaded_files = await Files.create({
         files_url: uploadedImage.key,
         extension: uploadedImage.key.split('.').pop(),
         original_name: uploadedImage.key,
@@ -160,6 +160,9 @@ const AdminBrands = async (req, res) => {
 // User Fetch Brands
 const UserBrands = async (req, res) => {
   try {
+    const session_user = req.headers.user;
+    if (!session_user) throw new Error('Session expired');
+
     const brands = await Brands.findAll({
       where: { is_active: true },
       include: [
@@ -191,6 +194,9 @@ const UserBrands = async (req, res) => {
 // Get Single Brand
 const GetBrandById = async (req, res) => {
   try {
+    const session_user = req.headers.user;
+    if (!session_user) throw new Error('Session expired');
+
     const brandId = req.params.id;
 
     const brand = await Brands.findByPk(brandId, {

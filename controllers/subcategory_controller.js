@@ -1,3 +1,4 @@
+const fs = require('fs');
 const { Op } = require('sequelize');
 const { Subcategories, Categories, Files } = require('../models');
 const {
@@ -161,6 +162,9 @@ const AdminSubCategories = async (req, res) => {
 // User Fetch Subcategories
 const UserSubCategories = async (req, res) => {
   try {
+    const session_user = req.headers.user;
+    if (!session_user) throw new Error('Session expired');
+
     const subcategories = await Subcategories.findAll({
       where: { is_active: true }
       , include: [{ model: Categories }, { model: Files }],
@@ -196,6 +200,9 @@ const UserSubCategories = async (req, res) => {
 // Get Single Subcategory
 const GetSubCategoryById = async (req, res) => {
   try {
+    const session_user = req.headers.user;
+    if (!session_user) throw new Error('Session expired');
+
     const subId = req.params.id;
 
     const subcategory = await Subcategories.findByPk(subId, { include: [{ model: Categories }, { model: Files }] });

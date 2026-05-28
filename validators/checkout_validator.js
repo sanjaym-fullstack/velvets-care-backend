@@ -1,7 +1,6 @@
 const Joi = require('joi');
 
 const checkoutValidator = Joi.object({
-    user_id: Joi.number().required(),
     items: Joi.array().items(
         Joi.object({
             product_id: Joi.number().required(),
