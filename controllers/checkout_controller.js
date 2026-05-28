@@ -10,11 +10,14 @@ const { MailFunctions } = require('../helpers');
 // Create Checkout / Order
 const createCheckout = async (req, res) => {
     try {
-        const { user_id, items, total_amount, discount_code } = req.payload;
+        const session_user = req.headers.user;
+        if (!session_user) throw new Error('Session expired');
+
+        const { items, total_amount, discount_code } = req.payload;
 
         // Create Order
         const order = await Orders.create({
-            user_id,
+            user_id: session_user.user_id,
             total_amount,
             status: 'pending',
             discount_code: discount_code || null
@@ -40,7 +43,7 @@ const createCheckout = async (req, res) => {
         });
 
         // Send Email Notification to User
-        const user = await Users.findByPk(user_id);
+        const user = await Users.findByPk(session_user.user_id);
         const subject = 'Order Placed Successfully';
         const message = `Hi ${user.name}, your order #${order.id} has been placed.`;
         await MailFunctions.sendHtmlMailToSingleReceiver(
@@ -62,10 +65,16 @@ const createCheckout = async (req, res) => {
 // Verify Payment
 const verifyPayment = async (req, res) => {
     try {
+        const session_user = req.headers.user;
+        if (!session_user) throw new Error('Session expired');
+
         const { order_id, razorpay_payment_id } = req.payload;
 
         const order = await Orders.findByPk(order_id);
         if (!order) throw new Error('Order not found');
+        if (order.user_id !== session_user.user_id && !session_user.is_admin) {
+            throw new Error('Unauthorized');
+        }
 
         // Capture Payment
         const payment = await capturePayment(order.total_amount * 100, razorpay_payment_id);
@@ -94,8 +103,11 @@ const verifyPayment = async (req, res) => {
 // Fetch User Orders
 const fetchUserOrders = async (req, res) => {
     try {
+        const session_user = req.headers.user;
+        if (!session_user) throw new Error('Session expired');
+
         const { page = 1, limit = 10, status, start_date, end_date } = req.query;
-        const user_id = req.headers.user.user_id;
+        const user_id = session_user.user_id;
         const offset = (page - 1) * limit;
 
         const where = { user_id };

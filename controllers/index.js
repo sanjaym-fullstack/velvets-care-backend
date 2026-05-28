@@ -19,6 +19,7 @@ module.exports = {
     DiscountedUserController: require('./discounteduser_controller'),
     DiscountedProductController: require('./discountedproduct_controller'),
     OrderController: require('./order_controller'),
+    CheckoutController: require('./checkout_controller'),
     FileController: require('./file_controller'),
     DashboardController: require('./dashboard_controller'),
     PrescriptionController: require('./prescription_controller'),

@@ -19,6 +19,7 @@ const {
     status: DataTypes.STRING,
     payment_status: DataTypes.STRING,
     payment_method: DataTypes.STRING,
+    discount_code: DataTypes.STRING,
     notes: DataTypes.JSON
   }, {
     sequelize,

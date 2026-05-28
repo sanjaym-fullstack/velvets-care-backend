@@ -1,5 +1,6 @@
 'use strict';
 
+const fs = require('fs');
 const { Op } = require('sequelize');
 const { Categories, Files } = require('../models');
 const {
@@ -17,8 +18,8 @@ const CreateCategory = async (req, res) => {
         if (existing) throw new Error('Category already exists');
         let uploaded_files = null;
         if(category_image) {
-           const uploadedImage = await FileFunctions.uploadToS3(category_image.filename, 'uploads/brands', fs.readFileSync(brand_image.path));
-              uploaded_files = await Files.create({
+           const uploadedImage = await FileFunctions.uploadToS3(category_image.filename, 'uploads/categories', fs.readFileSync(category_image.path));
+               uploaded_files = await Files.create({
                 files_url: uploadedImage.key,
                 extension: uploadedImage.key.split('.').pop(),
                 original_name: uploadedImage.key,
@@ -57,7 +58,7 @@ const UpdateCategory = async (req, res) => {
         if (!category) throw new Error('Category not found');
         let uploaded_files = null;
         if (category_image) {
-            const uploadedImage = await FileFunctions.uploadToS3(category_image.filename, 'uploads/brands', fs.readFileSync(brand_image.path));
+            const uploadedImage = await FileFunctions.uploadToS3(category_image.filename, 'uploads/categories', fs.readFileSync(category_image.path));
             uploaded_files = await Files.create({
                 files_url: uploadedImage.key,
                 extension: uploadedImage.key.split('.').pop(),
@@ -109,6 +110,9 @@ const DeleteCategory = async (req, res) => {
 // Get Category by ID
 const GetCategoryById = async (req, res) => {
     try {
+        const session_user = req.headers.user;
+        if (!session_user) throw new Error('Session expired');
+
         const { id } = req.params;
         const category = await Categories.findOne({ where: { id } });
         if (!category) throw new Error('Category not found');
