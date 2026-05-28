@@ -20,5 +20,8 @@ const {
     paranoid: true,
     modelName: Wishlists,
   });
-  
+
+  Wishlist.belongsTo(require('./product'), { foreignKey: 'product_id' });
+  Wishlist.belongsTo(require('./users'), { foreignKey: 'user_id' });
+
 module.exports = Wishlist;

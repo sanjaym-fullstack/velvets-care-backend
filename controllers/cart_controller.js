@@ -1,5 +1,5 @@
 'use strict';
-const { Carts: Cart, Users } = require('../models');
+const { Carts: Cart, Users, Products, ProductImages, Brands, Categories, Subcategories } = require('../models');
 const { sequelize } = require('../config');
 
 // Add product to cart
@@ -121,7 +121,11 @@ const GetCart = async (req, res) => {
         if (!session_user) throw new Error('Session expired');
 
         const cartItems = await Cart.findAll({
-            where: { user_id: session_user.user_id }
+            where: { user_id: session_user.user_id },
+            include: [{
+                model: Products,
+                include: [ProductImages, Brands, Categories, Subcategories]
+            }]
         });
 
         return res.response({

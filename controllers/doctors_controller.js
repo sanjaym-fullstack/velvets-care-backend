@@ -4,7 +4,8 @@ const {
     Adresses,
     Otps,
     Files,
-    Appointments
+    Appointments,
+    Specialization
 } = require('../models')
 const {
     Op,
@@ -334,9 +335,10 @@ const doctorlist_user = async (req, h) => {
       limit: Number(limit),
       offset,
       include: [
-        { model: Files, as: 'profile_image', required: false }, // Only profile image
+        { model: Files, as: 'profile_image', required: false },
         { model: Adresses },
-        { model: Doctorsavailability }
+        { model: Doctorsavailability },
+        { model: Specialization }
       ],
       raw: true,
       nest: true,
@@ -421,6 +423,7 @@ const doctorlist = async (req, h) => {
         { model: Files, as: 'medical_degree_certificate', required: false },
         { model: Files, as: 'government_id_file', required: false },
         { model: Files, as: 'pan_card_file', required: false },
+        { model: Specialization },
       ],
       order: [['createdAt', 'DESC']]
     });
@@ -492,7 +495,8 @@ const fetch_single_doctor = async (req, h) => {
         { model: Files, as: 'registration_certificate', required: false },
         { model: Files, as: 'medical_degree_certificate', required: false },
         { model: Files, as: 'government_id_file', required: false },
-        { model: Files, as: 'pan_card_file', required: false }
+        { model: Files, as: 'pan_card_file', required: false },
+        { model: Specialization }
       ],
       raw: true,
       nest: true
@@ -573,7 +577,8 @@ const fetch_popular_doctors = async (req, h) => {
         { model: Files, as: "government_id_file", required: false },
         { model: Files, as: "pan_card_file", required: false },
         { model: Adresses },
-        { model: Doctorsavailability }
+        { model: Doctorsavailability },
+        { model: Specialization }
       ],
       distinct: true,  // 🔥 avoids duplicates caused by joins
       nest: true,
@@ -671,7 +676,8 @@ const fetch_popular_doctors_admin = async (req, h) => {
         { model: Files, as: "government_id_file", attributes: ["files_url"], required: false },
         { model: Files, as: "pan_card_file", attributes: ["files_url"], required: false },
         { model: Adresses },
-        { model: Doctorsavailability }
+        { model: Doctorsavailability },
+        { model: Specialization }
       ],
       distinct: true,      // 🔥 Prevents duplicate records
       nest: true,

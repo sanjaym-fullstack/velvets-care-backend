@@ -101,6 +101,7 @@ module.exports = [
                 SessionValidator
             ],
             validate: {
+                params: fetchSingleProductValidator,
                 payload: updateProductValidator,
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {

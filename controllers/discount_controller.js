@@ -5,6 +5,7 @@ const {
     DiscountedProducts: DiscountedProduct,
     DiscountedUsers: DiscountedUser,
     Products,
+    ProductImages,
     Users
 } = require('../models');
 
@@ -89,7 +90,7 @@ const GetDiscountById = async (req, res) => {
         const discount = await Discount.findOne({
             where: { id },
             include: [
-                { model: DiscountedProduct, include: [Products] },
+                { model: DiscountedProduct, include: [{ model: Products, include: [ProductImages] }] },
                 { model: DiscountedUser, include: [Users] }
             ]
         });
@@ -126,7 +127,11 @@ const AdminDiscounts = async (req, res) => {
         const { rows, count } = await Discount.findAndCountAll({
             where,
             limit,
-            offset
+            offset,
+            include: [
+                { model: DiscountedProduct, include: [Products] },
+                { model: DiscountedUser, include: [Users] }
+            ]
         });
 
         return res.response({

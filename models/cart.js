@@ -23,4 +23,7 @@ const {
     modelName: Carts,
   });
 
+  Cart.belongsTo(require('./product'), { foreignKey: 'product_id' });
+  Cart.belongsTo(require('./users'), { foreignKey: 'user_id' });
+
 module.exports = Cart;

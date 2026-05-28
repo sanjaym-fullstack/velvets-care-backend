@@ -27,7 +27,7 @@ const fetchOrdersAdmin = async (req, res) => {
             limit,
             offset,
             include: [
-                { model: OrderItems, include: [Products] },
+                { model: OrderItems, include: [{ model: Products, include: [require('../models/productimage')] }] },
                 { model: Users },
                 { model: Payments }
             ],
@@ -66,7 +66,7 @@ const fetchUserOrders = async (req, res) => {
             limit,
             offset,
             include: [
-                { model: OrderItems, include: [Products] },
+                { model: OrderItems, include: [{ model: Products, include: [require('../models/productimage')] }] },
                 { model: Payments }
             ],
             order: [['createdAt', 'DESC']]
@@ -166,7 +166,7 @@ const fetchOrderById = async (req, res) => {
         const order = await Orders.findOne({
             where,
             include: [
-                { model: OrderItems, include: [Products] },
+                { model: OrderItems, include: [{ model: Products, include: [require('../models/productimage')] }] },
                 { model: Payments },
                 { model: Users }
             ]

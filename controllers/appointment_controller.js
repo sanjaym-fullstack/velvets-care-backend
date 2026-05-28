@@ -439,7 +439,7 @@ const getadminAppointments = async (req, res) => {
             offset: (page - 1) * limit,
             order: [['appointment_date', 'DESC'], ['appointment_time', 'DESC']],
             include: [
-                { model: Users, attributes: ['id', 'name', 'email', 'phone'] },
+                { model: Users, attributes: ['id', 'name', 'email', 'phone'], include: [{ model: Files }] },
                 {
                     model: Doctors,
                     attributes: { exclude: ['access_token', 'otp_id', 'refresh_token'] },

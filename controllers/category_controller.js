@@ -114,7 +114,10 @@ const GetCategoryById = async (req, res) => {
         if (!session_user) throw new Error('Session expired');
 
         const { id } = req.params;
-        const category = await Categories.findOne({ where: { id } });
+        const category = await Categories.findOne({
+            where: { id },
+            include: [{ model: Files }]
+        });
         if (!category) throw new Error('Category not found');
 
         return res.response({
