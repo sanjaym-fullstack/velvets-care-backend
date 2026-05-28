@@ -9,6 +9,13 @@ const CreateDiscountedProduct = async (req, res) => {
 
         const { product_id, discount_id, usage_limit } = req.payload;
 
+        const [product, discount] = await Promise.all([
+            Products.findByPk(product_id),
+            Discount.findByPk(discount_id)
+        ]);
+        if (!product) throw new Error('Product not found');
+        if (!discount) throw new Error('Discount not found');
+
         const discountedProduct = await DiscountedProduct.create({
             product_id,
             discount_id,
@@ -37,6 +44,15 @@ const UpdateDiscountedProduct = async (req, res) => {
 
         const discountedProduct = await DiscountedProduct.findOne({ where: { id } });
         if (!discountedProduct) throw new Error('Discounted product not found');
+
+        if (updates.product_id) {
+            const product = await Products.findByPk(updates.product_id);
+            if (!product) throw new Error('Product not found');
+        }
+        if (updates.discount_id) {
+            const discount = await Discount.findByPk(updates.discount_id);
+            if (!discount) throw new Error('Discount not found');
+        }
 
         await discountedProduct.update(updates);
 

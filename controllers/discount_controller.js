@@ -151,7 +151,17 @@ const AdminDiscounts = async (req, res) => {
 // Assign Discount to Product
 const AssignDiscountToProduct = async (req, res) => {
     try {
+        const session_user = req.headers.user;
+        if (!session_user) throw new Error('Session expired');
+
         const { discount_id, product_id, usage_limit } = req.payload;
+
+        const [product, discount] = await Promise.all([
+            Products.findByPk(product_id),
+            Discount.findByPk(discount_id)
+        ]);
+        if (!product) throw new Error('Product not found');
+        if (!discount) throw new Error('Discount not found');
 
         const discountedProduct = await DiscountedProduct.create({
             discount_id,
@@ -173,7 +183,17 @@ const AssignDiscountToProduct = async (req, res) => {
 // Assign Discount to User
 const AssignDiscountToUser = async (req, res) => {
     try {
+        const session_user = req.headers.user;
+        if (!session_user) throw new Error('Session expired');
+
         const { discount_id, user_id } = req.payload;
+
+        const [user, discount] = await Promise.all([
+            Users.findByPk(user_id),
+            Discount.findByPk(discount_id)
+        ]);
+        if (!user) throw new Error('User not found');
+        if (!discount) throw new Error('Discount not found');
 
         const discountedUser = await DiscountedUser.create({
             discount_id,

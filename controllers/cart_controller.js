@@ -10,6 +10,9 @@ const AddToCart = async (req, res) => {
 
         const { product_id, quantity = 1 } = req.payload;
 
+        const product = await Products.findByPk(product_id);
+        if (!product) throw new Error('Product not found');
+
         const cartItem = await Cart.findOne({
             where: { user_id: session_user.user_id, product_id }
         });

@@ -11,6 +11,9 @@ const AddToWishlist = async (req, res) => {
 
         const { product_id } = req.payload;
 
+        const product = await Products.findByPk(product_id);
+        if (!product) throw new Error('Product not found');
+
         const existing = await Wishlists.findOne({
             where: { user_id: session_user.user_id, product_id }
         });

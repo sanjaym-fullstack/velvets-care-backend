@@ -9,6 +9,13 @@ const CreateDiscountedUser = async (req, res) => {
 
         const { user_id, discount_id } = req.payload;
 
+        const [user, discount] = await Promise.all([
+            Users.findByPk(user_id),
+            Discount.findByPk(discount_id)
+        ]);
+        if (!user) throw new Error('User not found');
+        if (!discount) throw new Error('Discount not found');
+
         const discountedUser = await DiscountedUser.create({
             user_id,
             discount_id,
@@ -37,6 +44,15 @@ const UpdateDiscountedUser = async (req, res) => {
 
         const discountedUser = await DiscountedUser.findOne({ where: { id } });
         if (!discountedUser) throw new Error('Discounted user not found');
+
+        if (updates.user_id) {
+            const user = await Users.findByPk(updates.user_id);
+            if (!user) throw new Error('User not found');
+        }
+        if (updates.discount_id) {
+            const discount = await Discount.findByPk(updates.discount_id);
+            if (!discount) throw new Error('Discount not found');
+        }
 
         await discountedUser.update(updates);
 
