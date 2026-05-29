@@ -71,17 +71,9 @@ const uploadProductImagesValidator = Joi.object({
     product_id: Joi.number().integer().required().messages({
         'any.required': 'Product ID is required',
     }),
-    files: Joi.array().items(
-        Joi.object({
-            filename: Joi.string().required(),
-            path: Joi.string().required(),
-            headers: Joi.object().unknown(),
-            bytes: Joi.number().optional(),
-        })
-    ).min(1).required().messages({
-        'any.required': 'At least one image is required',
-        'array.min': 'At least one image is required',
-    }),
+    files: Joi.any()
+        .meta({ swaggerType: 'file' })
+        .description('Product images'),
 });
 
 const fetchAdminProductValidator = Joi.object({
