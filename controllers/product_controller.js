@@ -488,8 +488,11 @@ const UploadProductImage = async (req, res) => {
 
         const {
             product_id,
-            files
+            files: rawFiles
         } = req.payload;
+
+        // normalize single file to array (Hapi sends single file as object, multiple as array)
+        const files = Array.isArray(rawFiles) ? rawFiles : [rawFiles];
 
         if (!files || !files.length) {
             throw new Error('Files are required');
