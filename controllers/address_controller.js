@@ -1,18 +1,19 @@
 'use strict';
-const { Adresses, Doctors } = require('../models');
+const { Adresses, Users } = require('../models');
 
 const addAddress = async (req, h) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user || !session_user.user_id) throw new Error('Session expired');
 
-        const { doctor_id, street, area, city, state, country, zip, landmark, latitude, longitude } = req.payload;
+        const { street, area, city, state, country, zip, landmark, latitude, longitude } = req.payload;
 
-        const doctor = await Doctors.findByPk(doctor_id);
-        if (!doctor) throw new Error('Doctor not found');
+        const user = await Users.findByPk(session_user.user_id);
+        if (!user) throw new Error('User not found');
 
         const address = await Adresses.create({
-            doctor_id, street, area, city, state, country, zip, landmark, latitude, longitude
+            user_id: session_user.user_id,
+            street, area, city, state, country, zip, landmark, latitude, longitude
         });
 
         return h.response({
@@ -29,14 +30,11 @@ const addAddress = async (req, h) => {
 const getAddresses = async (req, h) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user || !session_user.user_id) throw new Error('Session expired');
 
-        const { doctor_id } = req.query;
-
-        const where = {};
-        if (doctor_id) where.doctor_id = doctor_id;
-
-        const addresses = await Adresses.findAll({ where });
+        const addresses = await Adresses.findAll({
+            where: { user_id: session_user.user_id }
+        });
 
         return h.response({
             success: true,
@@ -52,12 +50,14 @@ const getAddresses = async (req, h) => {
 const updateAddress = async (req, h) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user || !session_user.user_id) throw new Error('Session expired');
 
         const { id } = req.params;
         const { street, area, city, state, country, zip, landmark, latitude, longitude } = req.payload;
 
-        const address = await Adresses.findByPk(id);
+        const address = await Adresses.findOne({
+            where: { id, user_id: session_user.user_id }
+        });
         if (!address) throw new Error('Address not found');
 
         await address.update({ street, area, city, state, country, zip, landmark, latitude, longitude });
@@ -76,11 +76,13 @@ const updateAddress = async (req, h) => {
 const deleteAddress = async (req, h) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user || !session_user.user_id) throw new Error('Session expired');
 
         const { id } = req.params;
 
-        const address = await Adresses.findByPk(id);
+        const address = await Adresses.findOne({
+            where: { id, user_id: session_user.user_id }
+        });
         if (!address) throw new Error('Address not found');
 
         await address.destroy();

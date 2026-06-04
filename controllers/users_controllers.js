@@ -14,10 +14,16 @@ const fs = require('fs')
 const { TwilioFunctions, FileFunctions } = require('../helpers')
 const DEMO_OTP = '1234'
 
+const normalizePhone = (phone) => {
+    if (!phone) return phone;
+    return phone.replace(/^(\+91|\+1|\+44|\+81|\+86|\+49|\+33|\+61|\+82|\+7|\+55|\+91)\s*/, '').trim();
+};
+
 const request_otp_login = async (req, res) => {
     try {
 
-        const { phone } = req.payload;
+        const { phone: rawPhone } = req.payload;
+        const phone = normalizePhone(rawPhone);
         const user = await Users.findOne({
             where: {
                 phone: phone
@@ -27,8 +33,11 @@ const request_otp_login = async (req, res) => {
         const otp = await OTPFunctions.getOTPByLength(4);
         console.log("login otp:", otp);
         if (!user) {
-            throw new Error('User not found');
-        }
+            return res.response({
+                success: false,
+                message: 'User not found, please register',
+            });
+            }
         const otpCode = await Otps.create({
             otp: otp,
             otp_time: Date.now()
@@ -53,7 +62,7 @@ const request_otp_login = async (req, res) => {
     catch (error) {
         console.log(error);
         return res.response({
-            success: true,
+            success: false,
             message: error.message,
         })
 
@@ -62,7 +71,8 @@ const request_otp_login = async (req, res) => {
 
 const request_otp_register = async (req, res) => {
     try {
-        const { phone, name } = req.payload;
+        const { phone: rawPhone, name } = req.payload;
+        const phone = normalizePhone(rawPhone);
         const user = await Users.findOne({
             where: {
                 phone: phone
@@ -99,7 +109,7 @@ const request_otp_register = async (req, res) => {
     catch (error) {
         console.log(error);
         return res.response({
-            success: true,
+            success: false,
             message: error.message,
         })
 
@@ -107,11 +117,15 @@ const request_otp_register = async (req, res) => {
 }
 const verify_otp = async (req, res) => {
     try {
-        const { phone, otp } = req.payload;
+        const { phone: rawPhone, otp } = req.payload;
+        const phone = normalizePhone(rawPhone);
 
         const user = await Users.findOne({ where: { phone }, raw: true });
         if (!user) {
-            throw new Error('User not found');
+            return res.response({
+                success: false,
+                message: 'User not found',
+            });
         }
 
         // If DEMO_OTP is used
@@ -144,7 +158,10 @@ const verify_otp = async (req, res) => {
         });
 
         if (!otpCode) {
-            throw new Error('OTP not found');
+            return res.response({
+                success: false,
+                message: 'OTP not found',
+            });
         }
 
         const otpTime = new Date(otpCode.otp_time);
@@ -152,11 +169,17 @@ const verify_otp = async (req, res) => {
         const diffInMinutes = (currentTime - otpTime) / 1000 / 60;
 
         if (diffInMinutes > 10) {
-            throw new Error('OTP expired');
+            return res.response({
+                success: false,
+                message: 'OTP expired',
+            });
         }
 
         if (otpCode.otp !== otp) {
-            throw new Error('Invalid OTP');
+            return res.response({
+                success: false,
+                message: 'Invalid OTP',
+            });
         }
 
         const payload = {
@@ -194,7 +217,10 @@ const validateusersession = async (req, res) => {
     try {
         const session_user = req.headers.user;
         if (!session_user) {
-            throw new Error('Session expired');
+            return res.response({
+                success: false,
+                message: 'Session expired',
+            }).code(200);
         }
         console.log(session_user, "session checker");
         const user = await Users.findOne({
@@ -204,7 +230,10 @@ const validateusersession = async (req, res) => {
         },
         )
         if (!user) {
-            throw new Error('Session expired');
+            return res.response({
+                success: false,
+                message: 'Session expired',
+            }).code(200);
         }
         return res.response({
             success: true,
@@ -224,16 +253,25 @@ const logout = async (req, res) => {
     try {
         const session_user = req.headers.user;
         if (!session_user) {
-            throw new Error('Session expired');
+            return res.response({
+                success: false,
+                message: 'Session expired',
+            }).code(200);
         }
         const { refresh_token } = req.payload;
         if (!refresh_token) {
-            throw new Error('Refresh token required');
+            return res.response({
+                success: false,
+                message: 'Refresh token required',
+            }).code(200);
         }
         const decoded = JWTFunctions.verifyToken(refresh_token);
         const user = await Users.findOne({ where: { id: decoded.user_id } });
         if (!user) {
-            throw new Error('User not found');
+            return res.response({
+                success: false,
+                message: 'User not found',
+            }).code(200);
         }
 
         await Users.update({
@@ -261,12 +299,23 @@ const logout = async (req, res) => {
 const update_user = async (req, res) => {
   try {
     const session_user = req.headers.user;
-    if (!session_user) throw new Error('Session expired');
+    if (!session_user) {
+      return res.response({
+        success: false,
+        message: 'Session expired',
+      }).code(200);
+    }
 
-    const { name, phone, gender, profile_image, dob, email } = req.payload;
+    const { name, phone: rawPhone, gender, profile_image, dob, email } = req.payload;
+    const phone = normalizePhone(rawPhone);
 
     const user = await Users.findOne({ where: { id: session_user.user_id } });
-    if (!user) throw new Error('User not found');
+    if (!user) {
+      return res.response({
+        success: false,
+        message: 'User not found',
+      }).code(200);
+    }
 
     let profileFileId = user.profile_image_id;
 
@@ -338,12 +387,18 @@ const user_refresh_token = async (req, res) => {
     try {
         const { refresh_token } = req.headers;
         if (!refresh_token) {
-            throw new Error('Refresh token required');
+            return res.response({
+                success: false,
+                message: 'Refresh token required',
+            }).code(200);
         }
         const decoded = JWTFunctions.verifyToken(refresh_token);
         const user = await Users.findOne({ where: { id: decoded.user_id } });
         if (!user) {
-            throw new Error('User not found');
+            return res.response({
+                success: false,
+                message: 'User not found',
+            }).code(200);
         }
         const payload = {
             user_id: user.id,
@@ -382,7 +437,12 @@ const user_refresh_token = async (req, res) => {
 const getusers = async (req, res) => {
   try {
     const session_user = req.headers.user;
-    if (!session_user) throw new Error('Session expired');
+    if (!session_user) {
+      return res.response({
+        success: false,
+        message: 'Session expired',
+      }).code(200);
+    }
 
     const { page = 1, limit = 10, searchquery } = req.query;
 
@@ -442,53 +502,55 @@ const googleSignIn = async (request, h) => {
         const { token } = request.payload;
         const userData = await GoogleAuthFunctions.verifyGoogleToken(token);
 
-        let user = await User.findByEmail(userData.email);
+        let user = await Users.findOne({ where: { email: userData.email } });
 
         let accessToken, refreshToken;
+        const payload = {
+            user_id: user?.id,
+            email: userData.email,
+            name: userData.name,
+            role: 'USER'
+        };
 
-        // Upload profile image only if user does not exist
         if (!user) {
-            const profileImage = await FileFunctions.uploadFile(request, userData.picture, 'uploads/profiles/');
-            const uploadedImage = await FileFunctions.uploadFile(req, image, profileImage);
+            accessToken = await JWTFunctions.generateToken(payload, '1d');
+            refreshToken = await JWTFunctions.generateToken(payload, '30d');
 
-            const file = await Files.create({
-                files_url: uploadedImage.file_url,
-                extension: uploadedImage.extension,
-                original_name: uploadedImage.original_name,
-                size: uploadedImage.size
+            user = await Users.create({
+                email: userData.email,
+                name: userData.name,
+                access_token: accessToken,
+                refresh_token: refreshToken,
             });
 
-            accessToken = JWTFunctions.generateAccessToken(userData.email, userData.name);
-            refreshToken = JWTFunctions.generateRefreshToken(userData.email, userData.name);
-
-            const user
-                = await Users.create({
-                    email: userData.email,
-                    name: userData.name,
-                    access_token: accessToken,
-                    refresh_token: refreshToken,
-                    profile_image_id: file.id
-                });
-
-        } else {
-            // Generate new tokens
-            accessToken = JWTFunctions.generateAccessToken(user.email, user.name);
-            refreshToken = JWTFunctions.generateRefreshToken(user.email, user.name);
+            payload.user_id = user.id;
 
             await Users.update({
                 access_token: accessToken,
                 refresh_token: refreshToken
             }, {
-                where: {
-                    id: user.id
-                }
-            })
+                where: { id: user.id }
+            });
+        } else {
+            payload.user_id = user.id;
+            accessToken = await JWTFunctions.generateToken(payload, '1d');
+            refreshToken = await JWTFunctions.generateToken(payload, '30d');
+
+            await Users.update({
+                access_token: accessToken,
+                refresh_token: refreshToken
+            }, {
+                where: { id: user.id }
+            });
         }
         return h.response({
+            success: true,
             message: 'Login successful',
-            user,
-            accessToken,
-            refreshToken,
+            data: {
+                access_token: accessToken,
+                refresh_token: refreshToken,
+                user: payload,
+            }
         }).code(200);
 
     } catch (err) {
@@ -504,7 +566,10 @@ const getuserData = async (request, h) => {
     try {
         const session_user = request.headers.user;
         if (!session_user) {
-            throw new Error('Session expired');
+            return h.response({
+                success: false,
+                message: 'Session expired',
+            }).code(200);
         }
         const user = await Users.findOne({
             where: { id: session_user.user_id },
@@ -516,7 +581,10 @@ const getuserData = async (request, h) => {
             mapToModel: true
         });
         if (!user) {
-            throw new Error('User not found');
+            return h.response({
+                success: false,
+                message: 'User not found',
+            }).code(200);
         }
         return h.response({
             success: true,
@@ -538,12 +606,23 @@ const getuserData = async (request, h) => {
 const CreateUserByAdmin = async (req, res) => {
   try {
     const session_user = req.headers.user;
-    if (!session_user) throw new Error('Session expired');
+    if (!session_user) {
+      return res.response({
+        success: false,
+        message: 'Session expired',
+      }).code(200);
+    }
 
-    const { name, phone, gender, profile_image, dob } = req.payload;
+    const { name, phone: rawPhone, gender, profile_image, dob } = req.payload;
+    const phone = normalizePhone(rawPhone);
 
     const existing_user = await Users.findOne({ where: { phone } });
-    if (existing_user) throw new Error('User already exists');
+    if (existing_user) {
+      return res.response({
+        success: false,
+        message: 'User already exists',
+      }).code(200);
+    }
 
     let profileFileId = null;
 

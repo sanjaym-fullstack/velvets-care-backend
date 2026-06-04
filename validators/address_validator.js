@@ -2,10 +2,6 @@
 const Joi = require('joi');
 
 const addAddressValidator = Joi.object({
-    doctor_id: Joi.number().required().messages({
-        'number.base': 'Doctor ID must be a number',
-        'any.required': 'Doctor ID is required',
-    }),
     street: Joi.string().allow('', null).optional(),
     area: Joi.string().allow('', null).optional(),
     city: Joi.string().required().messages({
@@ -48,15 +44,8 @@ const addressIdParamValidator = Joi.object({
     }),
 });
 
-const getAddressesValidator = Joi.object({
-    doctor_id: Joi.number().optional().messages({
-        'number.base': 'Doctor ID must be a number',
-    }),
-});
-
 module.exports = {
     addAddressValidator,
     updateAddressValidator,
     addressIdParamValidator,
-    getAddressesValidator,
 };

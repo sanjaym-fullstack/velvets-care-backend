@@ -5,9 +5,16 @@ const {
 } = require('../helpers')
 
 const DEMO_OTP = '1234'
+
+const normalizePhone = (phone) => {
+    if (!phone) return phone;
+    return phone.replace(/^(\+91|\+1|\+44|\+81|\+86|\+49|\+33|\+61|\+82|\+7|\+55|\+91)\s*/, '').trim();
+};
+
 const doctor_request_otp = async (req, res) => {
     try {
-        const { phone } = req.payload;
+        const { phone: rawPhone } = req.payload;
+        const phone = normalizePhone(rawPhone);
         const doctor = await Doctors.findOne({
             where: {
                 phone: phone
@@ -74,13 +81,19 @@ const doctor_request_otp = async (req, res) => {
 
 const doctor_verify_otp = async (req, res) => {
     try {
-        const { phone, otp } = req.payload;
+        const { phone: rawPhone, otp } = req.payload;
+        const phone = normalizePhone(rawPhone);
         const doctor = await Doctors.findOne({
             where: { phone },
             raw: true
         });
 
-        if (!doctor) throw new Error('Doctor not found');
+        if (!doctor) {
+            return res.response({
+                success: false,
+                message: 'Doctor not found',
+            });
+        }
 
         let access_token;
         let refresh_token;
@@ -107,7 +120,12 @@ const doctor_verify_otp = async (req, res) => {
                 raw: true
             });
 
-            if (!otpCode) throw new Error('OTP already used or expired');
+            if (!otpCode) {
+                return res.response({
+                    success: false,
+                    message: 'OTP already used or expired',
+                });
+            }
 
             const otpTime = new Date(otpCode.otp_time);
             const currentTime = new Date();

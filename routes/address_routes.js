@@ -15,7 +15,6 @@ const {
         addAddressValidator,
         updateAddressValidator,
         addressIdParamValidator,
-        getAddressesValidator,
     },
     HeaderValidator,
 } = require('../validators');
@@ -25,9 +24,9 @@ const tags = ["api", "Address"];
 module.exports = [
     {
         method: 'POST',
-        path: '/doctor/address',
+        path: '/address',
         options: {
-            description: 'Add a new address for doctor',
+            description: 'Add a new address for user',
             tags,
             pre: [SessionValidator],
             validate: {
@@ -43,13 +42,12 @@ module.exports = [
     },
     {
         method: 'GET',
-        path: '/doctor/address',
+        path: '/address',
         options: {
-            description: 'Get addresses for a doctor',
+            description: 'Get all addresses for logged-in user',
             tags,
             pre: [SessionValidator],
             validate: {
-                query: getAddressesValidator,
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
@@ -61,7 +59,7 @@ module.exports = [
     },
     {
         method: 'PUT',
-        path: '/doctor/address/{id}',
+        path: '/address/{id}',
         options: {
             description: 'Update an address',
             tags,
@@ -80,7 +78,7 @@ module.exports = [
     },
     {
         method: 'DELETE',
-        path: '/doctor/address/{id}',
+        path: '/address/{id}',
         options: {
             description: 'Delete an address',
             tags,
