@@ -13,12 +13,12 @@ const {
 const CreateDiscount = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) return res.response({ success: false, message: 'Session expired' });
 
         const { name, code, type, value, start_date, end_date, usage_limit, is_active } = req.payload;
 
         const existing = await Discount.findOne({ where: { code } });
-        if (existing) throw new Error('Discount with this code already exists');
+        if (existing) return res.response({ success: false, message: 'Discount with this code already exists' });
 
         const discount = await Discount.create({
             name, code, type, value, start_date, end_date, usage_limit, is_active
@@ -39,13 +39,13 @@ const CreateDiscount = async (req, res) => {
 const UpdateDiscount = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) return res.response({ success: false, message: 'Session expired' });
 
         const { id } = req.params;
         const updates = req.payload;
 
         const discount = await Discount.findOne({ where: { id } });
-        if (!discount) throw new Error('Discount not found');
+        if (!discount) return res.response({ success: false, message: 'Discount not found' });
 
         await discount.update(updates);
 
@@ -64,11 +64,11 @@ const UpdateDiscount = async (req, res) => {
 const DeleteDiscount = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) return res.response({ success: false, message: 'Session expired' });
 
         const { id } = req.params;
         const discount = await Discount.findOne({ where: { id } });
-        if (!discount) throw new Error('Discount not found');
+        if (!discount) return res.response({ success: false, message: 'Discount not found' });
 
         await discount.destroy();
 
@@ -95,7 +95,7 @@ const GetDiscountById = async (req, res) => {
             ]
         });
 
-        if (!discount) throw new Error('Discount not found');
+        if (!discount) return res.response({ success: false, message: 'Discount not found' });
 
         return res.response({
             success: true,
@@ -111,7 +111,7 @@ const GetDiscountById = async (req, res) => {
 const AdminDiscounts = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) return res.response({ success: false, message: 'Session expired' });
 
         const { page = 1, limit = 10, search = '' } = req.query;
         const offset = (page - 1) * limit;
@@ -152,7 +152,7 @@ const AdminDiscounts = async (req, res) => {
 const AssignDiscountToProduct = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) return res.response({ success: false, message: 'Session expired' });
 
         const { discount_id, product_id, usage_limit } = req.payload;
 
@@ -160,8 +160,8 @@ const AssignDiscountToProduct = async (req, res) => {
             Products.findByPk(product_id),
             Discount.findByPk(discount_id)
         ]);
-        if (!product) throw new Error('Product not found');
-        if (!discount) throw new Error('Discount not found');
+        if (!product) return res.response({ success: false, message: 'Product not found' });
+        if (!discount) return res.response({ success: false, message: 'Discount not found' });
 
         const discountedProduct = await DiscountedProduct.create({
             discount_id,
@@ -184,7 +184,7 @@ const AssignDiscountToProduct = async (req, res) => {
 const AssignDiscountToUser = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) return res.response({ success: false, message: 'Session expired' });
 
         const { discount_id, user_id } = req.payload;
 
@@ -192,8 +192,8 @@ const AssignDiscountToUser = async (req, res) => {
             Users.findByPk(user_id),
             Discount.findByPk(discount_id)
         ]);
-        if (!user) throw new Error('User not found');
-        if (!discount) throw new Error('Discount not found');
+        if (!user) return res.response({ success: false, message: 'User not found' });
+        if (!discount) return res.response({ success: false, message: 'Discount not found' });
 
         const discountedUser = await DiscountedUser.create({
             discount_id,
@@ -218,24 +218,24 @@ const ValidateDiscountUsage = async (req, res) => {
         const { discount_code, user_id, product_id } = req.payload;
 
         const discount = await Discount.findOne({ where: { code: discount_code, is_active: true } });
-        if (!discount) throw new Error('Discount not found or inactive');
+        if (!discount) return res.response({ success: false, message: 'Discount not found or inactive' });
 
         if (new Date(discount.start_date) > new Date() || new Date(discount.end_date) < new Date()) {
-            throw new Error('Discount is not valid at this time');
+            return res.response({ success: false, message: 'Discount is not valid at this time' });
         }
 
         if (discount.usage_limit !== null) {
             const usedCount = await DiscountedUser.sum('used_count', { where: { discount_id: discount.id } });
-            if (usedCount >= discount.usage_limit) throw new Error('Discount usage limit reached');
+            if (usedCount >= discount.usage_limit) return res.response({ success: false, message: 'Discount usage limit reached' });
         }
 
         const discountedUser = await DiscountedUser.findOne({ where: { discount_id: discount.id, user_id } });
         if (discountedUser && discountedUser.used_count >= (discountedUser.usage_limit || discount.usage_limit)) {
-            throw new Error('User has reached discount usage limit');
+            return res.response({ success: false, message: 'User has reached discount usage limit' });
         }
 
         const discountedProduct = await DiscountedProduct.findOne({ where: { discount_id: discount.id, product_id } });
-        if (!discountedProduct) throw new Error('Discount not applicable for this product');
+        if (!discountedProduct) return res.response({ success: false, message: 'Discount not applicable for this product' });
 
         return res.response({
             success: true,
