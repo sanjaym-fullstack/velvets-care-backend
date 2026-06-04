@@ -24,4 +24,5 @@ module.exports = {
     DashboardController: require('./dashboard_controller'),
     PrescriptionController: require('./prescription_controller'),
     FCMController: require('./fcm_controller'),
+    PayoutController: require('./payout_controller'),
 }

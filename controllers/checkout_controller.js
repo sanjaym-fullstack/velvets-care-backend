@@ -1,6 +1,6 @@
 'use strict';
 
-const { Orders, OrderItems, Users, Payments } = require('../models');
+const { Orders, OrderItems, Users, Payments, Products } = require('../models');
 const { Op } = require('sequelize');
 const { createRazorpayOrder, capturePayment } = require('../helpers/razorpay');
 const { MailFunctions } = require('../helpers');
@@ -11,35 +11,82 @@ const { MailFunctions } = require('../helpers');
 const createCheckout = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) return res.response({ success: false, message: 'Session expired' }).code(401);
 
-        const { items, total_amount, discount_code } = req.payload;
+        const { items, discount_code } = req.payload;
+
+        // Fetch products from DB for validation & server-side calculation
+        const productIds = items.map(i => i.product_id);
+        const products = await Products.findAll({
+            where: { id: { [Op.in]: productIds } }
+        });
+
+        if (products.length !== productIds.length) {
+            return res.response({ success: false, message: 'One or more products not found' }).code(404);
+        }
+
+        const productMap = {};
+        products.forEach(p => { productMap[p.id] = p; });
+
+        // Validate stock and calculate total server-side
+        let calculatedTotal = 0;
+        const orderItemsData = [];
+        for (const item of items) {
+            const product = productMap[item.product_id];
+            if (product.stock < item.quantity) {
+                return res.response({
+                    success: false,
+                    message: `Insufficient stock for product: ${product.name}`
+                }).code(400);
+            }
+            const price = product.selling_price;
+            const total = price * item.quantity;
+            calculatedTotal += total;
+            orderItemsData.push({
+                product_id: item.product_id,
+                quantity: item.quantity,
+                price,
+                total
+            });
+        }
 
         // Create Order
         const order = await Orders.create({
             user_id: session_user.user_id,
-            total_amount,
+            total_amount: calculatedTotal,
             status: 'pending',
+            payment_status: 'pending',
+            payment_method: 'razorpay',
             discount_code: discount_code || null
         });
 
-        // Create Order Items
-        const orderItems = items.map(i => ({
-            order_id: order.id,
-            product_id: i.product_id,
-            quantity: i.quantity
+        // Create Order Items with price and total
+        const orderItems = orderItemsData.map(i => ({
+            ...i,
+            order_id: order.id
         }));
         await OrderItems.bulkCreate(orderItems);
 
-        // Create Razorpay order
-        const razorpayOrder = await createRazorpayOrder(total_amount);
+        // Deduct stock
+        for (const item of items) {
+            await Products.decrement('stock', {
+                by: item.quantity,
+                where: { id: item.product_id }
+            });
+        }
 
-        // Save payment reference
+        // Create Razorpay order
+        const razorpayOrder = await createRazorpayOrder(calculatedTotal);
+
+        // Save payment record with all fields
         await Payments.create({
             order_id: order.id,
             payment_status: 'pending',
             payment_method: 'razorpay',
-            payment_reference_id: razorpayOrder.id
+            payment_reference_id: razorpayOrder.id,
+            razorpay_order_id: razorpayOrder.id,
+            amount: calculatedTotal,
+            currency: 'INR'
         });
 
         // Send Email Notification to User
@@ -58,7 +105,7 @@ const createCheckout = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message }).code(500);
     }
 };
 
@@ -66,14 +113,14 @@ const createCheckout = async (req, res) => {
 const verifyPayment = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) return res.response({ success: false, message: 'Session expired' }).code(401);
 
         const { order_id, razorpay_payment_id } = req.payload;
 
         const order = await Orders.findByPk(order_id);
-        if (!order) throw new Error('Order not found');
+        if (!order) return res.response({ success: false, message: 'Order not found' }).code(404);
         if (order.user_id !== session_user.user_id && !session_user.is_admin) {
-            throw new Error('Unauthorized');
+            return res.response({ success: false, message: 'Unauthorized' }).code(403);
         }
 
         // Capture Payment
@@ -85,8 +132,11 @@ const verifyPayment = async (req, res) => {
             payment_reference_id: razorpay_payment_id
         }, { where: { order_id } });
 
-        // Update order status
-        await Orders.update({ status: 'confirmed' }, { where: { id: order_id } });
+        // Update order status and payment_status
+        await Orders.update({
+            status: 'confirmed',
+            payment_status: 'paid'
+        }, { where: { id: order_id } });
 
         return res.response({
             success: true,
@@ -96,48 +146,11 @@ const verifyPayment = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(400);
-    }
-};
-
-// Fetch User Orders
-const fetchUserOrders = async (req, res) => {
-    try {
-        const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
-
-        const { page = 1, limit = 10, status, start_date, end_date } = req.query;
-        const user_id = session_user.user_id;
-        const offset = (page - 1) * limit;
-
-        const where = { user_id };
-        if (status) where.status = status;
-        if (start_date && end_date) where.createdAt = { [Op.between]: [start_date, end_date] };
-
-        const orders = await Orders.findAndCountAll({
-            where,
-            limit,
-            offset,
-            include: [OrderItems, Payments]
-        });
-
-        return res.response({
-            success: true,
-            message: 'Orders fetched successfully',
-            data: orders.rows,
-            total: orders.count,
-            page,
-            limit
-        }).code(200);
-
-    } catch (error) {
-        console.error(error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message }).code(500);
     }
 };
 
 module.exports = {
     createCheckout,
-    verifyPayment,
-    fetchUserOrders
+    verifyPayment
 };

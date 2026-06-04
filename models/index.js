@@ -28,6 +28,9 @@ module.exports = {
   OrderItems: require('./orderitem'),
   Payments: require('./payment'),
   Prescriptions: require('./prescription'),
+  PayoutSettings: require('./payout_settings'),
+  DoctorBankAccounts: require('./doctor_bank_account'),
+  Payouts: require('./payout'),
 
   // Notifications: require('./notifications'),
   // SustainabilityScore: require('./sustainability_score'),

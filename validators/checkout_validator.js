@@ -7,7 +7,7 @@ const checkoutValidator = Joi.object({
             quantity: Joi.number().required(),
         })
     ).required(),
-    total_amount: Joi.number().required(),
+    total_amount: Joi.number().optional(),
     discount_code: Joi.string().allow(null),
 });
 

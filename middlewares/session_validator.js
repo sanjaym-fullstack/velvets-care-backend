@@ -21,7 +21,7 @@ const SessionValidator = async (req, res, required = true) => {
             return res.response({
                 success: false,
                 message: error.message,
-            }).code(200);
+            }).code(401);
         }
     }
 }

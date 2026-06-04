@@ -24,4 +24,5 @@ module.exports = [
     ...require('./prescription_routes'),
     ...require('./fcm_routes'),
     ...require('./checkout_routes'),
+    ...require('./payout_routes'),
 ]

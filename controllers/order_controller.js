@@ -1,6 +1,6 @@
 'use strict';
 
-const { Orders, OrderItems, Users, Payments, Products } = require('../models');
+const { Orders, OrderItems, Users, Payments, Products, ProductImages } = require('../models');
 const { Op } = require('sequelize');
 const { MailFunctions } = require('../helpers');
 
@@ -10,7 +10,7 @@ const { MailFunctions } = require('../helpers');
 const fetchOrdersAdmin = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user || !session_user.is_admin) throw new Error('Unauthorized');
+        if (!session_user || !session_user.is_admin) return res.response({ success: false, message: 'Unauthorized' }).code(401);
         const { page = 1, limit = 10, search, status, from_date, to_date } = req.query;
         const offset = (page - 1) * limit;
 
@@ -20,14 +20,18 @@ const fetchOrdersAdmin = async (req, res) => {
             const searchNum = parseInt(search);
             if (!isNaN(searchNum)) where.id = searchNum;
         }
-        if (from_date && to_date) where.createdAt = { [Op.between]: [from_date, to_date] };
+        if (from_date && to_date) {
+            const endDate = new Date(to_date);
+            endDate.setHours(23, 59, 59, 999);
+            where.createdAt = { [Op.between]: [from_date, endDate] };
+        }
 
         const orders = await Orders.findAndCountAll({
             where,
             limit,
             offset,
             include: [
-                { model: OrderItems, include: [{ model: Products, include: [require('../models/productimage')] }] },
+                { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
                 { model: Users },
                 { model: Payments }
             ],
@@ -45,7 +49,7 @@ const fetchOrdersAdmin = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message }).code(500);
     }
 };
 
@@ -53,20 +57,25 @@ const fetchOrdersAdmin = async (req, res) => {
 const fetchUserOrders = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Unauthorized');
+        if (!session_user) return res.response({ success: false, message: 'Unauthorized' }).code(401);
         const user_id = session_user.user_id;
-        const { page = 1, limit = 10, status } = req.query;
+        const { page = 1, limit = 10, status, from_date, to_date } = req.query;
         const offset = (page - 1) * limit;
 
         const where = { user_id };
         if (status) where.status = status;
+        if (from_date && to_date) {
+            const endDate = new Date(to_date);
+            endDate.setHours(23, 59, 59, 999);
+            where.createdAt = { [Op.between]: [from_date, endDate] };
+        }
 
         const orders = await Orders.findAndCountAll({
             where,
             limit,
             offset,
             include: [
-                { model: OrderItems, include: [{ model: Products, include: [require('../models/productimage')] }] },
+                { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
                 { model: Payments }
             ],
             order: [['createdAt', 'DESC']]
@@ -83,7 +92,7 @@ const fetchUserOrders = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message }).code(500);
     }
 };
 
@@ -91,15 +100,16 @@ const fetchUserOrders = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user || !session_user.is_admin) throw new Error('Unauthorized');
-        const { order_id, status, subject, message } = req.payload;
+        if (!session_user || !session_user.is_admin) return res.response({ success: false, message: 'Unauthorized' }).code(401);
 
-        const order = await Orders.findByPk(order_id, { include: [Users] });
-        if (!order) throw new Error('Order not found');
+        const { id } = req.params;
+        const { status, subject, message } = req.payload;
 
-        await Orders.update({ status }, { where: { id: order_id } });
+        const order = await Orders.findByPk(id, { include: [Users] });
+        if (!order) return res.response({ success: false, message: 'Order not found' }).code(404);
 
-        // Send email notification
+        await Orders.update({ status }, { where: { id } });
+
         await MailFunctions.sendHtmlMailToSingleReceiver(
             order.User.email, order.User.name,
             process.env.MAIL_USER, 'Velvets Care',
@@ -110,7 +120,7 @@ const updateOrderStatus = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message }).code(500);
     }
 };
 
@@ -118,7 +128,7 @@ const updateOrderStatus = async (req, res) => {
 const fetchPaymentsAdmin = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user || !session_user.is_admin) throw new Error('Unauthorized');
+        if (!session_user || !session_user.is_admin) return res.response({ success: false, message: 'Unauthorized' }).code(401);
         const { page = 1, limit = 10, status, method, user_id } = req.query;
         const offset = (page - 1) * limit;
 
@@ -146,7 +156,7 @@ const fetchPaymentsAdmin = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message }).code(500);
     }
 };
 
@@ -154,7 +164,7 @@ const fetchPaymentsAdmin = async (req, res) => {
 const fetchOrderById = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Unauthorized');
+        if (!session_user) return res.response({ success: false, message: 'Unauthorized' }).code(401);
 
         const { id } = req.params;
 
@@ -166,13 +176,13 @@ const fetchOrderById = async (req, res) => {
         const order = await Orders.findOne({
             where,
             include: [
-                { model: OrderItems, include: [{ model: Products, include: [require('../models/productimage')] }] },
+                { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
                 { model: Payments },
                 { model: Users }
             ]
         });
 
-        if (!order) throw new Error('Order not found');
+        if (!order) return res.response({ success: false, message: 'Order not found' }).code(404);
 
         return res.response({
             success: true,
@@ -182,7 +192,7 @@ const fetchOrderById = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message }).code(500);
     }
 };
 
