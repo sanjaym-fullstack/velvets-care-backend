@@ -1,7 +1,7 @@
 module.exports = {
     UsersControllers: require('./users_controllers'),
     ShopsControllers: require('./shops_controllers'),
-    AddressController: require('./reverseGeocode'),
+    ReverseGeocodeController: require('./reverseGeocode'),
     AdminController: require('./admin_controller'),
     BannerController: require('./banner_controller'),
     DoctorController: require('./doctors_controller'),
@@ -25,4 +25,5 @@ module.exports = {
     PrescriptionController: require('./prescription_controller'),
     FCMController: require('./fcm_controller'),
     PayoutController: require('./payout_controller'),
+    AddressController: require('./address_controller'),
 }

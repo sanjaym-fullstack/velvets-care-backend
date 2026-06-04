@@ -27,7 +27,7 @@ module.exports = {
       },
       {
         key: 'minimum_payout_amount',
-        label: 'Minimum Payout Amount (₹)',
+        label: 'Minimum Payout Amount (Rs)',
         value: 100,
         type: 'fixed',
         createdAt: new Date(),

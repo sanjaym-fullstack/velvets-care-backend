@@ -367,13 +367,28 @@ const AdminProducts = async (req, res) => {
             order: [['id', 'DESC']]
         });
 
+        const mappedRows = await Promise.all(rows.map(async (row) => {
+            const json = row.toJSON();
+            if (json.ProductImages) {
+                json.ProductImages = await Promise.all(
+                    json.ProductImages.map(async (img) => ({
+                        ...img,
+                        file_url: img.file_url
+                            ? await FileFunctions.getFromS3(img.file_url)
+                            : null,
+                    }))
+                );
+            }
+            return json;
+        }));
+
         return res.response({
             success: true,
             message: 'Products fetched successfully',
             total: count,
             page: pageNumber,
             limit: limitNumber,
-            data: rows,
+            data: mappedRows,
         });
 
     } catch (error) {
@@ -453,13 +468,28 @@ const UserProducts = async (req, res) => {
             order: [['id', 'DESC']]
         });
 
+        const mappedRows = await Promise.all(rows.map(async (row) => {
+            const json = row.toJSON();
+            if (json.ProductImages) {
+                json.ProductImages = await Promise.all(
+                    json.ProductImages.map(async (img) => ({
+                        ...img,
+                        file_url: img.file_url
+                            ? await FileFunctions.getFromS3(img.file_url)
+                            : null,
+                    }))
+                );
+            }
+            return json;
+        }));
+
         return res.response({
             success: true,
             message: 'Products fetched successfully',
             total: count,
             page: pageNumber,
             limit: limitNumber,
-            data: rows,
+            data: mappedRows,
         });
 
     } catch (error) {
