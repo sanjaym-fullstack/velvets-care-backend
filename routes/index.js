@@ -25,4 +25,5 @@ module.exports = [
     ...require('./fcm_routes'),
     ...require('./checkout_routes'),
     ...require('./payout_routes'),
+    ...require('./address_routes'),
 ]

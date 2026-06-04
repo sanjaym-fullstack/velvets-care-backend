@@ -5,7 +5,7 @@ const {
     ShopsControllers: {
         getFashionShops,
     },
-    AddressController:{
+    ReverseGeocodeController:{
         getAddress
     }
 

@@ -1,5 +1,6 @@
 'use strict';
 const { DiscountedProducts: DiscountedProduct, Products, Discounts: Discount, ProductImages } = require('../models');
+const { FileFunctions } = require('../helpers');
 
 // Create / Assign Discounted Product
 const CreateDiscountedProduct = async (req, res) => {
@@ -104,13 +105,28 @@ const GetDiscountedProducts = async (req, res) => {
             offset
         });
 
+        const mappedRows = await Promise.all(rows.map(async (row) => {
+            const json = row.toJSON();
+            if (json.Product?.ProductImages) {
+                json.Product.ProductImages = await Promise.all(
+                    json.Product.ProductImages.map(async (img) => ({
+                        ...img,
+                        file_url: img.file_url
+                            ? await FileFunctions.getFromS3(img.file_url)
+                            : null,
+                    }))
+                );
+            }
+            return json;
+        }));
+
         return res.response({
             success: true,
             message: 'Discounted products fetched successfully',
             total: count,
             page,
             limit,
-            data: rows
+            data: mappedRows
         });
     } catch (error) {
         console.error('Error fetching discounted products:', error);
