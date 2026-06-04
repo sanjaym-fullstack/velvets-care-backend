@@ -26,6 +26,9 @@ module.exports = {
     Orders: 'orders',
     OrderItems: 'order_items',
     Payments: 'payments',
-    prescriptions: 'prescriptions'
+    prescriptions: 'prescriptions',
+    PayoutSettings: 'payout_settings',
+    DoctorBankAccounts: 'doctor_bank_accounts',
+    Payouts: 'payouts'
 
 }
