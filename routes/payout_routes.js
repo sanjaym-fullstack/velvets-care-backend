@@ -10,8 +10,9 @@ const {
     getBankAccount,
     getAdminPayouts,
     getDoctorPayouts,
-    processPayout,
-    calculatePayouts
+    getPayoutPlan,
+    markAsPaid,
+    getPayoutHistory
   }
 } = require('../controllers');
 const {
@@ -19,9 +20,10 @@ const {
     addBankAccountValidator,
     updateBankAccountValidator,
     updateSettingValidator,
-    calculatePayoutsValidator,
-    processPayoutValidator,
-    payoutsListValidator
+    payoutPlanValidator,
+    markAsPaidValidator,
+    payoutsListValidator,
+    payoutHistoryValidator
   }
 } = require('../validators');
 const {
@@ -99,18 +101,18 @@ module.exports = [
     handler: getBankAccount
   },
   {
-    method: 'POST',
-    path: '/admin/payout/calculate',
+    method: 'GET',
+    path: '/admin/payout/plan',
     options: {
-      description: 'Calculate pending payouts for doctors',
+      description: 'Get payout plan from last paid to current date',
       tags,
       pre: [SessionValidator],
       validate: {
-        payload: calculatePayoutsValidator,
+        query: payoutPlanValidator,
         headers: HeaderValidator
       }
     },
-    handler: calculatePayouts
+    handler: getPayoutPlan
   },
   {
     method: 'GET',
@@ -141,16 +143,30 @@ module.exports = [
   },
   {
     method: 'POST',
-    path: '/admin/payout/process',
+    path: '/admin/payout/mark-paid',
     options: {
-      description: 'Process pending payouts',
+      description: 'Mark payout as paid for a date range',
       tags,
       pre: [SessionValidator],
       validate: {
-        payload: processPayoutValidator,
+        payload: markAsPaidValidator,
         headers: HeaderValidator
       }
     },
-    handler: processPayout
+    handler: markAsPaid
+  },
+  {
+    method: 'GET',
+    path: '/admin/payout/history',
+    options: {
+      description: 'Get completed payout history',
+      tags,
+      pre: [SessionValidator],
+      validate: {
+        query: payoutHistoryValidator,
+        headers: HeaderValidator
+      }
+    },
+    handler: getPayoutHistory
   }
 ];

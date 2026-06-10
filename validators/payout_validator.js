@@ -27,25 +27,47 @@ const updateSettingValidator = Joi.object({
   value: Joi.number().required().messages({ 'any.required': 'Value is required' })
 }).unknown();
 
-const calculatePayoutsValidator = Joi.object({
-  doctor_id: Joi.number().optional()
+const payoutPlanValidator = Joi.object({
+  doctor_id: Joi.number().optional(),
+  from_date: Joi.string().optional(),
+  to_date: Joi.string().optional()
 }).unknown();
 
-const processPayoutValidator = Joi.object({
-  doctor_id: Joi.number().optional(),
-  payout_ids: Joi.array().items(Joi.number()).optional()
+const markAsPaidValidator = Joi.object({
+  doctor_id: Joi.number().required().messages({
+    'any.required': 'Doctor ID is required'
+  }),
+  from_date: Joi.string().required().messages({
+    'any.required': 'From date is required'
+  }),
+  to_date: Joi.string().required().messages({
+    'any.required': 'To date is required'
+  }),
+  comment: Joi.string().optional().allow(''),
+  transaction_id: Joi.string().required().messages({
+    'any.required': 'Transaction ID is required'
+  })
 }).unknown();
 
 const payoutsListValidator = Joi.object({
   status: Joi.string().optional(),
-  doctor_id: Joi.number().optional()
+  doctor_id: Joi.number().optional(),
+  from_date: Joi.string().optional(),
+  to_date: Joi.string().optional()
+}).unknown();
+
+const payoutHistoryValidator = Joi.object({
+  doctor_id: Joi.number().optional(),
+  from_date: Joi.string().optional(),
+  to_date: Joi.string().optional()
 }).unknown();
 
 module.exports = {
   addBankAccountValidator,
   updateBankAccountValidator,
   updateSettingValidator,
-  calculatePayoutsValidator,
-  processPayoutValidator,
-  payoutsListValidator
+  payoutPlanValidator,
+  markAsPaidValidator,
+  payoutsListValidator,
+  payoutHistoryValidator
 };

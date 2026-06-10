@@ -273,7 +273,7 @@ const doctor_update_profile = async (req, res) => {
 
             // Save file record in DB
             const fileRecord = await Files.create({
-                file_url: uploadedFile.key,
+                files_url: uploadedFile.key,
                 extension: uploadedFile.key.split('.').pop(),
                 original_name: uploadedFile.key,
                 size: fs.statSync(profile_image.path).size

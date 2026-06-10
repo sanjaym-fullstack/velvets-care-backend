@@ -24,8 +24,14 @@ Payout.init({
   total_deductions: DataTypes.FLOAT,
   net_payout: DataTypes.FLOAT,
   status: DataTypes.STRING,
+  payout_type: DataTypes.STRING,
+  comment: DataTypes.TEXT,
+  transaction_id: DataTypes.STRING,
+  processed_by: DataTypes.INTEGER,
   razorpay_payout_id: DataTypes.STRING,
   utr: DataTypes.STRING,
+  from_date: DataTypes.DATEONLY,
+  to_date: DataTypes.DATEONLY,
   processed_at: DataTypes.DATE
 }, {
   sequelize,
