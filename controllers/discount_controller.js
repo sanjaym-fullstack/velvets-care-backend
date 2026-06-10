@@ -102,9 +102,9 @@ const GetDiscountById = async (req, res) => {
         if (discountJSON.DiscountedProducts) {
             discountJSON.DiscountedProducts = await Promise.all(
                 discountJSON.DiscountedProducts.map(async (dp) => {
-                    if (dp.Product?.ProductImages) {
-                        dp.Product.ProductImages = await Promise.all(
-                            dp.Product.ProductImages.map(async (img) => ({
+                    if (dp.Product?.product_images) {
+                        dp.Product.product_images = await Promise.all(
+                            dp.Product.product_images.map(async (img) => ({
                                 ...img,
                                 file_url: img.file_url
                                     ? await FileFunctions.getFromS3(img.file_url)
