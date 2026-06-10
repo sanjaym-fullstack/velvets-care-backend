@@ -1,6 +1,7 @@
 'use strict';
 const { Carts: Cart, Users, Products, ProductImages, Brands, Categories, Subcategories } = require('../models');
 const { sequelize } = require('../config');
+const { FileFunctions } = require('../helpers');
 
 // Add product to cart
 const AddToCart = async (req, res) => {
@@ -131,9 +132,24 @@ const GetCart = async (req, res) => {
             }]
         });
 
+        const mappedItems = await Promise.all(cartItems.map(async (item) => {
+            const json = item.toJSON();
+            if (json.Product?.ProductImages) {
+                json.Product.ProductImages = await Promise.all(
+                    json.Product.ProductImages.map(async (img) => ({
+                        ...img,
+                        file_url: img.file_url
+                            ? await FileFunctions.getFromS3(img.file_url)
+                            : null,
+                    }))
+                );
+            }
+            return json;
+        }));
+
         return res.response({
             success: true,
-            data: cartItems
+            data: mappedItems
         });
     } catch (error) {
         console.error('Error fetching cart:', error);
