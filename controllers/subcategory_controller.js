@@ -137,7 +137,7 @@ const AdminSubCategories = async (req, res) => {
         slug: subcategory.slug,
         category_id: subcategory.category_id,
         category: subcategory.category,
-        subcategory_image: subcategory.Files?.files_url ? await FileFunctions.getFromS3(subcategory.Files.files_url) : null,
+        subcategory_image: subcategory.file?.files_url ? await FileFunctions.getFromS3(subcategory.file.files_url) : null,
         description: subcategory.description,
         is_active: subcategory.is_active,
       };
@@ -181,7 +181,7 @@ const UserSubCategories = async (req, res) => {
         slug: subcategory.slug,
         category_id: subcategory.category_id,
         category: subcategory.category,
-        subcategory_image: subcategory.Files?.files_url ? await FileFunctions.getFromS3(subcategory.Files.files_url) : null,
+        subcategory_image: subcategory.file?.files_url ? await FileFunctions.getFromS3(subcategory.file.files_url) : null,
         description: subcategory.description,
         is_active: subcategory.is_active,
       };
@@ -207,14 +207,21 @@ const GetSubCategoryById = async (req, res) => {
 
     const subcategory = await Subcategories.findByPk(subId, { include: [{ model: Categories }, { model: Files }] });
     if (!subcategory) throw new Error('Subcategory not found');
-    const subcategory_image = subcategory.Files[0]?.files_url ? await FileFunctions.getFromS3(subcategory.Files[0].files_url) : null;
+
+    const data = {
+      id: subcategory.id,
+      name: subcategory.name,
+      slug: subcategory.slug,
+      category_id: subcategory.category_id,
+      category: subcategory.category,
+      subcategory_image: subcategory.file?.files_url ? await FileFunctions.getFromS3(subcategory.file.files_url) : null,
+      description: subcategory.description,
+      is_active: subcategory.is_active,
+    };
 
     return res.response({
       success: true,
-      data: {
-        ...subcategory.dataValues,
-        subcategory_image,
-      },
+      data,
     });
   } catch (error) {
     console.error('Error fetching subcategory:', error);

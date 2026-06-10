@@ -47,6 +47,11 @@ const Subcategories = require('./subcategory');
   Product.belongsTo(Subcategories, { foreignKey: 'sub_category_id', onDelete: 'CASCADE' });
   Subcategories.hasMany(Product, { foreignKey: 'sub_category_id', onDelete: 'CASCADE' });
 
+  Product.beforeDestroy(async (product, options) => {
+    const ProductImage = product.sequelize.models.product_images;
+    await ProductImage.destroy({ where: { product_id: product.id }, transaction: options.transaction });
+  });
+
   // Product.hasMany(Reviews, { foreignKey: 'product_id' });
   // Reviews.belongsTo(Product, { foreignKey: 'product_id' });
   

@@ -29,10 +29,15 @@ SubCategory.init({
     modelName: Subcategories,
   });
 
-  SubCategory.belongsTo(Category, { foreignKey: 'category_id' });
-  Category.hasMany(SubCategory, { foreignKey: 'category_id' });
+  SubCategory.belongsTo(Category, { foreignKey: 'category_id', onDelete: 'CASCADE' });
+  Category.hasMany(SubCategory, { foreignKey: 'category_id', onDelete: 'CASCADE' });
 
-  SubCategory.belongsTo(Files, { foreignKey: 'subcategory_image' });
-  Files.hasMany(SubCategory, { foreignKey: 'subcategory_image' });
+  SubCategory.belongsTo(Files, { foreignKey: 'subcategory_image', onDelete: 'CASCADE' });
+  Files.hasMany(SubCategory, { foreignKey: 'subcategory_image', onDelete: 'CASCADE' });
+
+  SubCategory.beforeDestroy(async (subcategory, options) => {
+    const Product = subcategory.sequelize.models.products;
+    await Product.destroy({ where: { sub_category_id: subcategory.id }, individualHooks: true, transaction: options.transaction });
+  });
 
 module.exports = SubCategory;

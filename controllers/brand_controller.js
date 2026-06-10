@@ -135,7 +135,7 @@ const AdminBrands = async (req, res) => {
         id: brand.id,
         name: brand.name,
         slug: brand.slug,
-        brand_image: brand.Files?.[0]?.files_url ? await FileFunctions.getFromS3(brand.Files[0].files_url) : null,
+        brand_image: brand.file?.files_url ? await FileFunctions.getFromS3(brand.file.files_url) : null,
         description: brand.description,
         is_active: brand.is_active,
       };
@@ -176,7 +176,7 @@ const UserBrands = async (req, res) => {
         id: brand.id,
         name: brand.name,
         slug: brand.slug,
-        brand_image: brand.Files?.[0]?.files_url ? await FileFunctions.getFromS3(brand.Files[0].files_url) : null,
+        brand_image: brand.file?.files_url ? await FileFunctions.getFromS3(brand.file.files_url) : null,
         description: brand.description,
         is_active: brand.is_active,
       };
@@ -208,7 +208,7 @@ const GetBrandById = async (req, res) => {
       id: brand.id,
       name: brand.name,
       slug: brand.slug,
-      brand_image: brand.Files?.[0]?.files_url ? await FileFunctions.getFromS3(brand.Files[0].files_url) : null,
+      brand_image: brand.file?.files_url ? await FileFunctions.getFromS3(brand.file.files_url) : null,
       description: brand.description,
       is_active: brand.is_active,
     };
