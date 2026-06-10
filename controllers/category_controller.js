@@ -120,9 +120,18 @@ const GetCategoryById = async (req, res) => {
         });
         if (!category) throw new Error('Category not found');
 
+        const data = {
+            id: category.id,
+            name: category.name,
+            slug: category.slug,
+            category_image: category.file?.files_url ? await FileFunctions.getFromS3(category.file.files_url) : null,
+            description: category.description,
+            is_active: category.is_active,
+        };
+
         return res.response({
             success: true,
-            data: category,
+            data,
         });
     } catch (error) {
         console.error('Error fetching category by id:', error);

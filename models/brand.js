@@ -25,7 +25,12 @@ const Files = require('./files');
     modelName: Brands,
   });
 
-  Brand.belongsTo(Files, { foreignKey: 'brand_image' });
-  Files.hasMany(Brand, { foreignKey: 'brand_image' });
- 
+  Brand.belongsTo(Files, { foreignKey: 'brand_image', onDelete: 'CASCADE' });
+  Files.hasMany(Brand, { foreignKey: 'brand_image', onDelete: 'CASCADE' });
+
+  Brand.beforeDestroy(async (brand, options) => {
+    const Product = brand.sequelize.models.products;
+    await Product.destroy({ where: { brand_id: brand.id }, individualHooks: true, transaction: options.transaction });
+  });
+
 module.exports = Brand;
