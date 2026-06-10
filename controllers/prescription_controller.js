@@ -42,7 +42,8 @@ const uploadPrescription = async (req, res) => {
         const fileRecord = await Files.create({
             files_url: uploadedFile.key,
             extension: uploadedFile.key.split('.').pop(),
-            original_name: file.filename
+            original_name: file.filename,
+            size: fs.statSync(file.path).size
         });
 
         const prescription = await Prescriptions.create({
@@ -100,11 +101,21 @@ const getUserPrescriptions = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
+        const mapped = await Promise.all(rows.map(async (row) => {
+            const json = row.toJSON();
+            if (json.File) {
+                json.file_url = json.File.files_url
+                    ? await FileFunctions.getFromS3(json.File.files_url)
+                    : null;
+            }
+            return json;
+        }));
+
         return res.response({
             success: true,
             total: count,
             page,
-            data: rows
+            data: mapped
         }).code(200);
 
     } catch (error) {
@@ -140,6 +151,16 @@ const getDoctorPrescriptions = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
+        const mapped = await Promise.all(prescriptions.rows.map(async (row) => {
+            const json = row.toJSON();
+            if (json.File) {
+                json.file_url = json.File.files_url
+                    ? await FileFunctions.getFromS3(json.File.files_url)
+                    : null;
+            }
+            return json;
+        }));
+
         // Stats
         const todayCount = await Prescriptions.count({
             where: {
@@ -166,7 +187,7 @@ const getDoctorPrescriptions = async (req, res) => {
                 yearly: yearCount
             },
             total: prescriptions.count,
-            data: prescriptions.rows
+            data: mapped
         }).code(200);
 
     } catch (error) {
@@ -204,10 +225,20 @@ const getAdminPrescriptions = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
+        const mapped = await Promise.all(prescriptions.rows.map(async (row) => {
+            const json = row.toJSON();
+            if (json.File) {
+                json.file_url = json.File.files_url
+                    ? await FileFunctions.getFromS3(json.File.files_url)
+                    : null;
+            }
+            return json;
+        }));
+
         return res.response({
             success: true,
             total: prescriptions.count,
-            data: prescriptions.rows
+            data: mapped
         }).code(200);
 
     } catch (error) {
@@ -230,9 +261,16 @@ const getPrescriptionById = async (req, res) => {
 
         if (!prescription) throw new Error('Prescription not found');
 
+        const json = prescription.toJSON();
+        if (json.File) {
+            json.file_url = json.File.files_url
+                ? await FileFunctions.getFromS3(json.File.files_url)
+                : null;
+        }
+
         return res.response({
             success: true,
-            data: prescription
+            data: json
         }).code(200);
 
     } catch (error) {
@@ -247,16 +285,48 @@ const getPrescriptionById = async (req, res) => {
 
 const updatePrescription = async (req, res) => {
     try {
-        const { id, prescription_name } = req.payload;
+        const { id, prescription_name, file } = req.payload;
 
         const prescription = await Prescriptions.findByPk(id);
         if (!prescription) throw new Error('Prescription not found');
 
-        await prescription.update({ prescription_name });
+        const updates = {};
+        if (prescription_name) updates.prescription_name = prescription_name;
+
+        if (file) {
+            const uploadedFile = await FileFunctions.uploadToS3(
+                file.filename,
+                'uploads/prescriptions',
+                fs.readFileSync(file.path)
+            );
+
+            const fileRecord = await Files.create({
+                files_url: uploadedFile.key,
+                extension: uploadedFile.key.split('.').pop(),
+                original_name: file.filename,
+                size: fs.statSync(file.path).size
+            });
+
+            updates.file_id = fileRecord.id;
+        }
+
+        await prescription.update(updates);
+
+        const updated = await Prescriptions.findByPk(id, {
+            include: [Files]
+        });
+
+        const json = updated.toJSON();
+        if (json.File) {
+            json.file_url = json.File.files_url
+                ? await FileFunctions.getFromS3(json.File.files_url)
+                : null;
+        }
 
         return res.response({
             success: true,
-            message: 'Prescription updated'
+            message: 'Prescription updated',
+            data: json
         }).code(200);
 
     } catch (error) {

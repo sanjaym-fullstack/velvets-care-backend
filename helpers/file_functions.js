@@ -22,45 +22,16 @@ const s3 = new AWS.S3({
 });
 const BUCKET_NAME = process.env.S3_BUCKET_NAME;
 
-// Upload file to S3
+// Upload file to S3 (delegates to uploadToS3)
 const uploadFile = async (file, store_path = "") => {
     try {
-        // Guard for optional file
-        if (!file) {
-            return null;
-        }
-
-        const originalName = file.filename || file.filename;
-        if (!originalName) {
-            return null; // no filename, skip
-        }
-
-        const file_extension = originalName.split('.').pop();
-        const uniqueFileName = `${store_path}${Date.now()}-${uuidv4()}.${file_extension}`;
-
-        // Get file buffer
-        const fileContent = await fs.readFileSync(file.path);
-        if (!fileContent) {
-            throw new Error("File content not found");
-        }
-
-        const params = {
-            Bucket: BUCKET_NAME,
-            Key: uniqueFileName,
-            Body: fileContent,
-        };
-
-        const data = await s3.putObject()
-        console.log(`File uploaded successfully at ${data}`);
-
-        // ✅ Return the actual full URL instead of just the key
-        const file_url = data?.Location || `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${data.Key}`;
-
+        if (!file) return null;
+        const data = await uploadToS3(file.filename, store_path, fs.readFileSync(file.path));
         return {
-            file_url,
-            extension: file_extension,
-            original_name: originalName,
-            size: formatBytes(Buffer.byteLength(fileContent))
+            file_url: data.Location || `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${data.Key}`,
+            extension: data.Key.split('.').pop(),
+            original_name: file.filename,
+            size: formatBytes(file.size || Buffer.byteLength(fs.readFileSync(file.path)))
         };
     } catch (error) {
         console.error('S3 Upload Error:', error);

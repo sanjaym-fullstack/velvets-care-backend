@@ -1,4 +1,5 @@
 
+const fs = require('fs')
 const {
     Op
 } = require('sequelize')
@@ -36,13 +37,12 @@ const createClinic = async (req, res) => {
             description
         } = req.payload
 
-        const storePath = 'uploads/clinic_images/'
-        const uploadedImage = await FileFunctions.uploadFile(req, profile_image, storePath)
+        const uploadedImage = await FileFunctions.uploadToS3(profile_image.filename, 'uploads/clinic_images', fs.readFileSync(profile_image.path))
         const uploaded_files = await Files.create({
-            file_url: uploadedImage.file_url,
-            extension: uploadedImage.extension,
-            original_name: uploadedImage.original_name,
-            size: uploadedImage.size
+            files_url: uploadedImage.key,
+            extension: uploadedImage.key.split('.').pop(),
+            original_name: uploadedImage.key,
+            size: fs.statSync(profile_image.path).size
         })
 
         const clinic = await Clinics.create({

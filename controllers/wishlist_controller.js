@@ -48,7 +48,7 @@ const RemoveFromWishlist = async (req, res) => {
         const session_user = req.headers.user;
         if (!session_user) throw new Error('Session expired');
 
-        const { id } = req.params;
+        const { id } = req.payload;
         const wishlistItem = await Wishlists.findOne({ where: { id, user_id: session_user.user_id } });
         if (!wishlistItem) throw new Error('Wishlist item not found');
 

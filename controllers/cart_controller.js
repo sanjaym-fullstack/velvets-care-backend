@@ -49,7 +49,7 @@ const RemoveFromCart = async (req, res) => {
         const session_user = req.headers.user;
         if (!session_user) throw new Error('Session expired');
 
-        const { id } = req.params;
+        const { id } = req.payload;
         const cartItem = await Cart.findOne({ where: { id, user_id: session_user.user_id } });
         if (!cartItem) throw new Error('Cart item not found');
 
@@ -69,7 +69,7 @@ const RemoveFromCart = async (req, res) => {
 const IncrementCartItem = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        const { id } = req.params;
+        const { id } = req.payload;
 
         const cartItem = await Cart.findOne({ where: { id, user_id: session_user.user_id } });
         if (!cartItem) throw new Error('Cart item not found');
@@ -91,7 +91,7 @@ const IncrementCartItem = async (req, res) => {
 const DecrementCartItem = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        const { id } = req.params;
+        const { id } = req.payload;
 
         const cartItem = await Cart.findOne({ where: { id, user_id: session_user.user_id } });
         if (!cartItem) throw new Error('Cart item not found');

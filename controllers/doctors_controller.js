@@ -59,7 +59,7 @@ const updateBasicDetails = async (req, h) => {
         if (profile_image) {
             const uploadedfile = await FileFunctions.uploadToS3(profile_image.filename,  'uploads/profile_images', fs.readFileSync(profile_image.path));
             const profileFile = await Files.create({
-                file_url: uploadedfile.key,
+                files_url: uploadedfile.key,
                 extension: uploadedfile.key.split('.').pop(),
                 original_name: uploadedfile.key,
                 size: fs.statSync(profile_image.path).size
@@ -70,7 +70,7 @@ const updateBasicDetails = async (req, h) => {
         if (government_id) {
             const uploadedfile = await FileFunctions.uploadToS3(government_id.filename,  'uploads/government_ids', fs.readFileSync(government_id.path));
             const govFile = await Files.create({
-                file_url: uploadedfile.key,
+                files_url: uploadedfile.key,
                 extension: uploadedfile.key.split('.').pop(),
                 original_name: uploadedfile.key,
                 size: fs.statSync(government_id.path).size
@@ -81,7 +81,7 @@ const updateBasicDetails = async (req, h) => {
         if (pan_card) {
             const uploadedfile = await FileFunctions.uploadToS3(pan_card.filename,  'uploads/pan_cards', fs.readFileSync(pan_card.path));
             const panFile = await Files.create({
-                file_url: uploadedfile.key,
+                files_url: uploadedfile.key,
                 extension: uploadedfile.key.split('.').pop(),
                 original_name: uploadedfile.key,
                 size: fs.statSync(pan_card.path).size
@@ -92,7 +92,7 @@ const updateBasicDetails = async (req, h) => {
         if (registration_certificate) {
             const uploadedfile = await FileFunctions.uploadToS3(registration_certificate.filename,  'uploads/registration_certificates', fs.readFileSync(registration_certificate.path));
             const regFile = await Files.create({
-                file_url: uploadedfile.key,
+                files_url: uploadedfile.key,
                 extension: uploadedfile.key.split('.').pop(),
                 original_name: uploadedfile.key,
                 size: fs.statSync(registration_certificate.path).size
@@ -103,7 +103,7 @@ const updateBasicDetails = async (req, h) => {
         if (medical_degree_certificate) {
             const uploadedfile = await FileFunctions.uploadToS3(medical_degree_certificate.filename,  'uploads/medical_degree_certificates', fs.readFileSync(medical_degree_certificate.path));
             const degreeFile = await Files.create({
-                file_url: uploadedfile.key,
+                files_url: uploadedfile.key,
                 extension: uploadedfile.key.split('.').pop(),
                 original_name: uploadedfile.key,
                 size: fs.statSync(medical_degree_certificate.path).size
@@ -765,7 +765,7 @@ const updateDoctoreDetailsByAdmin = async (req, h) => {
         if (profile_image) {
             const uploadedfile = await FileFunctions.uploadToS3(profile_image.filename, 'uploads/profile_images', fs.readFileSync(profile_image.path));
             const profileFile = await Files.create({
-                file_url: uploadedfile.key,
+                files_url: uploadedfile.key,
                 extension: uploadedfile.key.split('.').pop(),
                 original_name: uploadedfile.key,
                 size: fs.statSync(profile_image.path).size
@@ -776,7 +776,7 @@ const updateDoctoreDetailsByAdmin = async (req, h) => {
         if (government_id) {
             const uploadedfile = await FileFunctions.uploadToS3(government_id.filename, 'uploads/government_ids', fs.readFileSync(government_id.path));
             const govFile = await Files.create({
-                file_url: uploadedfile.key,
+                files_url: uploadedfile.key,
                 extension: uploadedfile.key.split('.').pop(),
                 original_name: uploadedfile.key,
                 size: fs.statSync(government_id.path).size
@@ -787,7 +787,7 @@ const updateDoctoreDetailsByAdmin = async (req, h) => {
         if (pan_card) {
             const uploadedfile = await FileFunctions.uploadToS3(pan_card.filename, 'uploads/pan_cards', fs.readFileSync(pan_card.path));
             const panFile = await Files.create({
-                file_url: uploadedfile.key,
+                files_url: uploadedfile.key,
                 extension: uploadedfile.key.split('.').pop(),
                 original_name: uploadedfile.key,
                 size: fs.statSync(pan_card.path).size
@@ -798,7 +798,7 @@ const updateDoctoreDetailsByAdmin = async (req, h) => {
         if (registration_certificate) {
             const uploadedfile = await FileFunctions.uploadToS3(registration_certificate.filename, 'uploads/registration_certificates', fs.readFileSync(registration_certificate.path));
             const regFile = await Files.create({
-                file_url: uploadedfile.key,
+                files_url: uploadedfile.key,
                 extension: uploadedfile.key.split('.').pop(),
                 original_name: uploadedfile.key,
                 size: fs.statSync(registration_certificate.path).size
@@ -809,7 +809,7 @@ const updateDoctoreDetailsByAdmin = async (req, h) => {
         if (medical_degree_certificate) {
             const uploadedfile = await FileFunctions.uploadToS3(medical_degree_certificate.filename, 'uploads/medical_degree_certificates', fs.readFileSync(medical_degree_certificate.path));
             const degreeFile = await Files.create({
-                file_url: uploadedfile.key,
+                files_url: uploadedfile.key,
                 extension: uploadedfile.key.split('.').pop(),
                 original_name: uploadedfile.key,
                 size: fs.statSync(medical_degree_certificate.path).size
