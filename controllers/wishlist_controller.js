@@ -2,6 +2,7 @@
 const { Wishlists, Users, Products, ProductImages, Brands, Categories, Subcategories } = require('../models');
 const { sequelize } = require('../config');
 const { Op } = require('sequelize');
+const { FileFunctions } = require('../helpers');
 
 // Add product to wishlist
 const AddToWishlist = async (req, res) => {
@@ -78,9 +79,24 @@ const GetWishlist = async (req, res) => {
             }]
         });
 
+        const mappedItems = await Promise.all(wishlistItems.map(async (item) => {
+            const json = item.toJSON();
+            if (json.Product?.ProductImages) {
+                json.Product.ProductImages = await Promise.all(
+                    json.Product.ProductImages.map(async (img) => ({
+                        ...img,
+                        file_url: img.file_url
+                            ? await FileFunctions.getFromS3(img.file_url)
+                            : null,
+                    }))
+                );
+            }
+            return json;
+        }));
+
         return res.response({
             success: true,
-            data: wishlistItems,
+            data: mappedItems,
             message: 'Wishlist fetched successfully'
         });
     } catch (error) {

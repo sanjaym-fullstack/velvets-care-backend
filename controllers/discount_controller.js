@@ -8,6 +8,7 @@ const {
     ProductImages,
     Users
 } = require('../models');
+const { FileFunctions } = require('../helpers');
 
 // Create Discount
 const CreateDiscount = async (req, res) => {
@@ -97,9 +98,28 @@ const GetDiscountById = async (req, res) => {
 
         if (!discount) return res.response({ success: false, message: 'Discount not found' });
 
+        const discountJSON = discount.toJSON();
+        if (discountJSON.DiscountedProducts) {
+            discountJSON.DiscountedProducts = await Promise.all(
+                discountJSON.DiscountedProducts.map(async (dp) => {
+                    if (dp.Product?.ProductImages) {
+                        dp.Product.ProductImages = await Promise.all(
+                            dp.Product.ProductImages.map(async (img) => ({
+                                ...img,
+                                file_url: img.file_url
+                                    ? await FileFunctions.getFromS3(img.file_url)
+                                    : null,
+                            }))
+                        );
+                    }
+                    return dp;
+                })
+            );
+        }
+
         return res.response({
             success: true,
-            data: discount
+            data: discountJSON
         });
     } catch (error) {
         console.error('Error fetching discount:', error);

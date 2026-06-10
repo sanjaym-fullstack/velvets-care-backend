@@ -2,7 +2,7 @@
 
 const { Orders, OrderItems, Users, Payments, Products, ProductImages } = require('../models');
 const { Op } = require('sequelize');
-const { MailFunctions } = require('../helpers');
+const { MailFunctions, FileFunctions } = require('../helpers');
 
 // ================= Order Controllers =================
 
@@ -38,10 +38,30 @@ const fetchOrdersAdmin = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
+        const mappedOrders = await Promise.all(orders.rows.map(async (order) => {
+            const json = order.toJSON();
+            if (json.OrderItems) {
+                json.OrderItems = await Promise.all(json.OrderItems.map(async (item) => {
+                    if (item.Product?.ProductImages) {
+                        item.Product.ProductImages = await Promise.all(
+                            item.Product.ProductImages.map(async (img) => ({
+                                ...img,
+                                file_url: img.file_url
+                                    ? await FileFunctions.getFromS3(img.file_url)
+                                    : null,
+                            }))
+                        );
+                    }
+                    return item;
+                }));
+            }
+            return json;
+        }));
+
         return res.response({
             success: true,
             message: 'Orders fetched successfully',
-            data: orders.rows,
+            data: mappedOrders,
             total: orders.count,
             page,
             limit
@@ -81,10 +101,30 @@ const fetchUserOrders = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
+        const mappedOrders = await Promise.all(orders.rows.map(async (order) => {
+            const json = order.toJSON();
+            if (json.OrderItems) {
+                json.OrderItems = await Promise.all(json.OrderItems.map(async (item) => {
+                    if (item.Product?.ProductImages) {
+                        item.Product.ProductImages = await Promise.all(
+                            item.Product.ProductImages.map(async (img) => ({
+                                ...img,
+                                file_url: img.file_url
+                                    ? await FileFunctions.getFromS3(img.file_url)
+                                    : null,
+                            }))
+                        );
+                    }
+                    return item;
+                }));
+            }
+            return json;
+        }));
+
         return res.response({
             success: true,
             message: 'User orders fetched successfully',
-            data: orders.rows,
+            data: mappedOrders,
             total: orders.count,
             page,
             limit
@@ -184,10 +224,27 @@ const fetchOrderById = async (req, res) => {
 
         if (!order) return res.response({ success: false, message: 'Order not found' }).code(404);
 
+        const orderJSON = order.toJSON();
+        if (orderJSON.OrderItems) {
+            orderJSON.OrderItems = await Promise.all(orderJSON.OrderItems.map(async (item) => {
+                if (item.Product?.ProductImages) {
+                    item.Product.ProductImages = await Promise.all(
+                        item.Product.ProductImages.map(async (img) => ({
+                            ...img,
+                            file_url: img.file_url
+                                ? await FileFunctions.getFromS3(img.file_url)
+                                : null,
+                        }))
+                    );
+                }
+                return item;
+            }));
+        }
+
         return res.response({
             success: true,
             message: 'Order fetched successfully',
-            data: order
+            data: orderJSON
         }).code(200);
 
     } catch (error) {
