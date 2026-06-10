@@ -42,9 +42,9 @@ const fetchOrdersAdmin = async (req, res) => {
             const json = order.toJSON();
             if (json.OrderItems) {
                 json.OrderItems = await Promise.all(json.OrderItems.map(async (item) => {
-                    if (item.Product?.ProductImages) {
-                        item.Product.ProductImages = await Promise.all(
-                            item.Product.ProductImages.map(async (img) => ({
+                    if (item.Product?.product_images) {
+                        item.Product.product_images = await Promise.all(
+                            item.Product.product_images.map(async (img) => ({
                                 ...img,
                                 file_url: img.file_url
                                     ? await FileFunctions.getFromS3(img.file_url)
@@ -105,9 +105,9 @@ const fetchUserOrders = async (req, res) => {
             const json = order.toJSON();
             if (json.OrderItems) {
                 json.OrderItems = await Promise.all(json.OrderItems.map(async (item) => {
-                    if (item.Product?.ProductImages) {
-                        item.Product.ProductImages = await Promise.all(
-                            item.Product.ProductImages.map(async (img) => ({
+                    if (item.Product?.product_images) {
+                        item.Product.product_images = await Promise.all(
+                            item.Product.product_images.map(async (img) => ({
                                 ...img,
                                 file_url: img.file_url
                                     ? await FileFunctions.getFromS3(img.file_url)
@@ -227,9 +227,9 @@ const fetchOrderById = async (req, res) => {
         const orderJSON = order.toJSON();
         if (orderJSON.OrderItems) {
             orderJSON.OrderItems = await Promise.all(orderJSON.OrderItems.map(async (item) => {
-                if (item.Product?.ProductImages) {
-                    item.Product.ProductImages = await Promise.all(
-                        item.Product.ProductImages.map(async (img) => ({
+                if (item.Product?.product_images) {
+                    item.Product.product_images = await Promise.all(
+                        item.Product.product_images.map(async (img) => ({
                             ...img,
                             file_url: img.file_url
                                 ? await FileFunctions.getFromS3(img.file_url)

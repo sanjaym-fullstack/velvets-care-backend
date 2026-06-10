@@ -19,7 +19,7 @@ const createRazorpayOrder = async (amount, currency = 'INR', receipt = `receipt_
     return order;
   } catch (error) {
     console.log(error);
-    throw new Error(`Razorpay order creation failed: ${error.message}`);
+    throw new Error(`Razorpay order creation failed: ${error.error?.description || error.message || 'Unknown error'}`);
   }
 };
 
@@ -28,7 +28,16 @@ const capturePayment = async (amount, razorpayPaymentId) => {
    const payment = await razorpayInstance.payments.capture(razorpayPaymentId, amount, "INR")
     return payment;
   } catch (error) {
-    throw new Error(`Razorpay payment capture failed: ${error.message}`);
+    throw new Error(`Razorpay payment capture failed: ${error.error?.description || error.message || 'Unknown error'}`);
+  }
+};
+
+const fetchPayment = async (razorpayPaymentId) => {
+  try {
+    const payment = await razorpayInstance.payments.fetch(razorpayPaymentId);
+    return payment;
+  } catch (error) {
+    throw new Error(`Razorpay payment fetch failed: ${error.error?.description || error.message || 'Unknown error'}`);
   }
 };
 
@@ -44,7 +53,7 @@ const createRazorpayContact = async (name, phone, email, reference_id) => {
     return contact;
   } catch (error) {
     console.log(error);
-    throw new Error(`Razorpay contact creation failed: ${error.message}`);
+    throw new Error(`Razorpay contact creation failed: ${error.error?.description || error.message || 'Unknown error'}`);
   }
 };
 
@@ -62,7 +71,7 @@ const createRazorpayFundAccount = async (contact_id, account_holder_name, accoun
     return fundAccount;
   } catch (error) {
     console.log(error);
-    throw new Error(`Razorpay fund account creation failed: ${error.message}`);
+    throw new Error(`Razorpay fund account creation failed: ${error.error?.description || error.message || 'Unknown error'}`);
   }
 };
 
@@ -81,7 +90,7 @@ const createRazorpayPayout = async (account_number, fund_account_id, amount, mod
     return payout;
   } catch (error) {
     console.log(error);
-    throw new Error(`Razorpay payout creation failed: ${error.message}`);
+    throw new Error(`Razorpay payout creation failed: ${error.error?.description || error.message || 'Unknown error'}`);
   }
 };
 
@@ -90,7 +99,7 @@ const fetchRazorpayPayout = async (payout_id) => {
     const payout = await razorpayInstance.payouts.fetch(payout_id);
     return payout;
   } catch (error) {
-    throw new Error(`Razorpay payout fetch failed: ${error.message}`);
+    throw new Error(`Razorpay payout fetch failed: ${error.error?.description || error.message || 'Unknown error'}`);
   }
 };
 
@@ -99,13 +108,14 @@ const fetchRazorpayBalance = async () => {
     const balance = await razorpayInstance.payments.balance();
     return balance;
   } catch (error) {
-    throw new Error(`Razorpay balance fetch failed: ${error.message}`);
+    throw new Error(`Razorpay balance fetch failed: ${error.error?.description || error.message || 'Unknown error'}`);
   }
 };
 
 module.exports = {
   createRazorpayOrder,
   capturePayment,
+  fetchPayment,
   createRazorpayContact,
   createRazorpayFundAccount,
   createRazorpayPayout,

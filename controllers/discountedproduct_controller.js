@@ -107,9 +107,9 @@ const GetDiscountedProducts = async (req, res) => {
 
         const mappedRows = await Promise.all(rows.map(async (row) => {
             const json = row.toJSON();
-            if (json.Product?.ProductImages) {
-                json.Product.ProductImages = await Promise.all(
-                    json.Product.ProductImages.map(async (img) => ({
+            if (json.Product?.product_images) {
+                json.Product.product_images = await Promise.all(
+                    json.Product.product_images.map(async (img) => ({
                         ...img,
                         file_url: img.file_url
                             ? await FileFunctions.getFromS3(img.file_url)

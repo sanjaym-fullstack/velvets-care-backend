@@ -280,8 +280,8 @@ const GetProductById = async (req, res) => {
         const productJSON = product.toJSON();
 
         // image urls
-        productJSON.ProductImages = await Promise.all(
-            (productJSON.ProductImages || []).map(async (img) => ({
+        productJSON.product_images = await Promise.all(
+            (productJSON.product_images || []).map(async (img) => ({
                 ...img,
                 file_url: img.file_url
                     ? await FileFunctions.getFromS3(img.file_url)
@@ -369,9 +369,9 @@ const AdminProducts = async (req, res) => {
 
         const mappedRows = await Promise.all(rows.map(async (row) => {
             const json = row.toJSON();
-            if (json.ProductImages) {
-                json.ProductImages = await Promise.all(
-                    json.ProductImages.map(async (img) => ({
+            if (json.product_images) {
+                json.product_images = await Promise.all(
+                    json.product_images.map(async (img) => ({
                         ...img,
                         file_url: img.file_url
                             ? await FileFunctions.getFromS3(img.file_url)
@@ -470,9 +470,9 @@ const UserProducts = async (req, res) => {
 
         const mappedRows = await Promise.all(rows.map(async (row) => {
             const json = row.toJSON();
-            if (json.ProductImages) {
-                json.ProductImages = await Promise.all(
-                    json.ProductImages.map(async (img) => ({
+            if (json.product_images) {
+                json.product_images = await Promise.all(
+                    json.product_images.map(async (img) => ({
                         ...img,
                         file_url: img.file_url
                             ? await FileFunctions.getFromS3(img.file_url)

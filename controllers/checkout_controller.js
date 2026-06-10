@@ -2,7 +2,7 @@
 
 const { Orders, OrderItems, Users, Payments, Products } = require('../models');
 const { Op } = require('sequelize');
-const { createRazorpayOrder, capturePayment } = require('../helpers/razorpay');
+const { createRazorpayOrder, fetchPayment } = require('../helpers/razorpay');
 const { MailFunctions } = require('../helpers');
 
 // ================= Controller Functions =================
@@ -123,13 +123,18 @@ const verifyPayment = async (req, res) => {
             return res.response({ success: false, message: 'Unauthorized' }).code(403);
         }
 
-        // Capture Payment
-        const payment = await capturePayment(order.total_amount * 100, razorpay_payment_id);
+        // Fetch payment to verify it was captured (auto-captured via payment_capture:1)
+        const payment = await fetchPayment(razorpay_payment_id);
+
+        if (payment.status !== 'captured') {
+            throw new Error(`Payment status is ${payment.status}, expected captured`);
+        }
 
         // Update payment status
         await Payments.update({
             payment_status: 'success',
-            payment_reference_id: razorpay_payment_id
+            payment_reference_id: razorpay_payment_id,
+            razorpay_payment_response: payment
         }, { where: { order_id } });
 
         // Update order status and payment_status
