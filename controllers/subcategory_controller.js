@@ -123,9 +123,6 @@ const AdminSubCategories = async (req, res) => {
         model: Files,
       },
       ],
-      mapToModel: true,
-      nest: true,
-      raw: true,  
       limit,
       offset,
     });
@@ -166,11 +163,8 @@ const UserSubCategories = async (req, res) => {
     if (!session_user) throw new Error('Session expired');
 
     const subcategories = await Subcategories.findAll({
-      where: { is_active: true }
-      , include: [{ model: Categories }, { model: Files }],
-      mapToModel: true,
-      nest: true,
-      raw: true,
+      where: { is_active: true },
+      include: [{ model: Categories }, { model: Files }],
     });
 
 

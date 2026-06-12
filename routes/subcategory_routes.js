@@ -49,7 +49,18 @@ module.exports = [
                     throw Boom.badRequest(errors.join(', '));
                 },
             },
-
+            payload: {
+                maxBytes: 20 * 1024 * 1024,
+                parse: true,
+                output: 'file',
+                multipart: true,
+                allow: 'multipart/form-data'
+            },
+            plugins: {
+                'hapi-swagger': {
+                    payloadType: 'form'
+                }
+            }
         },
         handler: CreateSubCategory
     },
@@ -71,7 +82,18 @@ module.exports = [
                     throw Boom.badRequest(errors.join(', '));
                 },
             },
-
+            payload: {
+                maxBytes: 20 * 1024 * 1024,
+                parse: true,
+                output: 'file',
+                multipart: true,
+                allow: 'multipart/form-data'
+            },
+            plugins: {
+                'hapi-swagger': {
+                    payloadType: 'form'
+                }
+            }
         },
         handler: UpdateSubCategory
     },

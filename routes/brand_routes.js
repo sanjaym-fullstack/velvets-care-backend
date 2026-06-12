@@ -48,11 +48,23 @@ module.exports = [
                     throw Boom.badRequest(errors.join(', '));
                 }
             },
+            payload: {
+                maxBytes: 20 * 1024 * 1024,
+                parse: true,
+                output: 'file',
+                multipart: true,
+                allow: 'multipart/form-data'
+            },
+            plugins: {
+                'hapi-swagger': {
+                    payloadType: 'form'
+                }
+            }
         },
         handler: CreateBrand
     },
     {
-        method: 'POST',
+        method: 'PUT',
         path: '/brand/{id}',
         options: {
             description: 'Update a brand',
@@ -62,12 +74,25 @@ module.exports = [
             ],
             validate: {
                 payload: updateBrandValidator,
+                params: fetchSingleBrandValidator,
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
                     throw Boom.badRequest(errors.join(', '));
                 }
             },
+            payload: {
+                maxBytes: 20 * 1024 * 1024,
+                parse: true,
+                output: 'file',
+                multipart: true,
+                allow: 'multipart/form-data'
+            },
+            plugins: {
+                'hapi-swagger': {
+                    payloadType: 'form'
+                }
+            }
         },
         handler: UpdateBrand
     },
