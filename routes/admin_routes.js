@@ -3,13 +3,15 @@ const {
 
 } = require('../middlewares')
 const Boom = require('@hapi/boom');
+const Joi = require('joi');
 // src/routes/authRoutes.js
 const {
     AdminController: {
         send_otp_admin,
         verify_otp_admin,
         fetchAdmins,
-        createAdmin
+        createAdmin,
+        sendNotification
     }
 } = require('../controllers');
 const {
@@ -99,6 +101,30 @@ module.exports = [
             }
         },
         handler: validateSession,
+    },
+    {
+        method: 'POST',
+        path: '/admin/notification/send',
+        options: {
+            description: 'Send push notification to users/doctors or all',
+            tags,
+            pre: [SessionValidator],
+            validate: {
+                headers: HeaderValidator,
+                payload: Joi.object({
+                    title: Joi.string().required(),
+                    body: Joi.string().required(),
+                    user_ids: Joi.array().items(Joi.number().integer()).optional(),
+                    doctor_ids: Joi.array().items(Joi.number().integer()).optional(),
+                    send_to_all: Joi.boolean().default(false)
+                }),
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
+            }
+        },
+        handler: sendNotification
     },
     {
         method: 'POST',

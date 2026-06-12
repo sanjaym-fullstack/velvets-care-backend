@@ -10,4 +10,5 @@ module.exports = {
     RazorpayFunctions: require('./razorpay'),
     AgoraFunctions: require('./agora'),
     PushNotificationFunctions: require('./pushNotification'),
+    NotificationHelper: require('./notification_helper'),
 }
