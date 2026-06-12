@@ -11,7 +11,7 @@ const {
     Op
 } = require('sequelize')
 const {
-    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions
+    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper
 } = require('../helpers');
 const Razorpay = require('razorpay');
 require('dotenv/config');
@@ -127,6 +127,18 @@ const confirmAppointment = async (req, res) => {
         await Doctors.update(
             { total_earnings: (doctor.total_earnings || 0) + fee },
             { where: { id: doctor_id } }
+        );
+
+        const patient = await Users.findByPk(session_user.user_id);
+        NotificationHelper.sendToUser(session_user.user_id,
+            'Appointment Booked',
+            `Your appointment with Dr. ${doctor.full_name} on ${appointment_date} at ${appointment_time} has been booked.`,
+            { appointment_id: appointment.id }
+        );
+        NotificationHelper.sendToDoctor(doctor_id,
+            'New Appointment',
+            `New appointment booked by ${patient?.name || 'a patient'} on ${appointment_date} at ${appointment_time}.`,
+            { appointment_id: appointment.id }
         );
 
         return res.response({
@@ -266,6 +278,12 @@ const DoctorApproval = async (req, h) => {
             status: 'approved'
         }, { where: { id: appointmentId } });
 
+        NotificationHelper.sendToUser(appointment.patient_id,
+            'Appointment Approved',
+            `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been approved.`,
+            { appointment_id: appointment.id }
+        );
+
         return h.response({
             success: true,
             message: 'Appointment approved successfully',
@@ -304,6 +322,21 @@ const UpdateAppointmentStatus = async (req, h) => {
         }
         // Update status
         await appointment.update({ status });
+
+        if (status === 'completed') {
+            NotificationHelper.sendToUser(appointment.patient_id,
+                'Appointment Completed',
+                `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been marked as completed.`,
+                { appointment_id: appointment.id }
+            );
+        } else if (status === 'no_show') {
+            NotificationHelper.sendToUser(appointment.patient_id,
+                'Missed Appointment',
+                `You missed your appointment on ${appointment.appointment_date} at ${appointment.appointment_time}. Please reschedule.`,
+                { appointment_id: appointment.id }
+            );
+        }
+
         return h.response({
             success: true,
             message: 'Appointment status updated successfully',
@@ -343,8 +376,14 @@ const doctoreject = async (req, h) => {
             status: 'rejected',
             cancel_reason,
             cancel_by: 'doctor'
-
         });
+
+        NotificationHelper.sendToUser(appointment.patient_id,
+            'Appointment Rejected',
+            `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been rejected. Reason: ${cancel_reason || 'N/A'}`,
+            { appointment_id: appointment.id }
+        );
+
         return h.response({
             success: true,
             message: 'Appointment rejected successfully',
@@ -394,6 +433,12 @@ const cancelAppointmentByUser = async (req, h) => {
             cancel_reason: cancel_reason,
             cancel_by: 'patient'
         });
+
+        NotificationHelper.sendToDoctor(appointment.doctor_id,
+            'Appointment Cancelled',
+            `An appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been cancelled by the patient. Reason: ${cancel_reason || 'N/A'}`,
+            { appointment_id: appointment.id }
+        );
 
         return h.response({
             success: true,

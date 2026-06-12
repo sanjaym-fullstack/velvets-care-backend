@@ -1,13 +1,15 @@
 const {
     Admins,
     Otps,
-    Files
+    Files,
+    Users,
+    Doctors
 } = require('../models')
 const {
     Op
 } = require('sequelize')
 const {
-    OTPFunctions, MailFunctions, JWTFunctions
+    OTPFunctions, MailFunctions, JWTFunctions, NotificationHelper
 } = require('../helpers')
 
 
@@ -214,10 +216,41 @@ const createAdmin = async (req, res) => {
         }).code(200);
     }
 }
+const sendNotification = async (req, res) => {
+    try {
+        const session_user = req.headers.user;
+        if (!session_user || !session_user.is_admin) throw new Error('Unauthorized');
+
+        const { user_ids, doctor_ids, title, body, send_to_all } = req.payload;
+
+        if (send_to_all) {
+            await NotificationHelper.sendToAllUsers(title, body);
+            await NotificationHelper.sendToAllDoctors(title, body);
+        } else {
+            if (user_ids?.length) {
+                await Promise.allSettled(user_ids.map(id =>
+                    NotificationHelper.sendToUser(id, title, body)
+                ));
+            }
+            if (doctor_ids?.length) {
+                await Promise.allSettled(doctor_ids.map(id =>
+                    NotificationHelper.sendToDoctor(id, title, body)
+                ));
+            }
+        }
+
+        return res.response({ success: true, message: 'Notification sent successfully' }).code(200);
+    } catch (error) {
+        console.error(error);
+        return res.response({ success: false, message: error.message }).code(500);
+    }
+};
+
 module.exports = {
     send_otp_admin,
     verify_otp_admin,
     fetchAdmins,
     createAdmin,
-    validateSession
+    validateSession,
+    sendNotification
 }

@@ -2,7 +2,7 @@
 
 const { Orders, OrderItems, Users, Payments, Products, ProductImages } = require('../models');
 const { Op } = require('sequelize');
-const { MailFunctions, FileFunctions } = require('../helpers');
+const { MailFunctions, FileFunctions, NotificationHelper } = require('../helpers');
 
 // ================= Order Controllers =================
 
@@ -154,6 +154,12 @@ const updateOrderStatus = async (req, res) => {
             order.User.email, order.User.name,
             process.env.MAIL_USER, 'Velvets Care',
             subject, message
+        );
+
+        NotificationHelper.sendToUser(order.user_id,
+            `Order ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+            `Your order #${order.id} status has been updated to ${status}. ${message || ''}`,
+            { order_id: order.id, status }
         );
 
         return res.response({ success: true, message: 'Order status updated successfully' }).code(200);

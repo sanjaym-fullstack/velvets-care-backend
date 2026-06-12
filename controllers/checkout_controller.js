@@ -3,7 +3,7 @@
 const { Orders, OrderItems, Users, Payments, Products } = require('../models');
 const { Op } = require('sequelize');
 const { createRazorpayOrder, fetchPayment } = require('../helpers/razorpay');
-const { MailFunctions } = require('../helpers');
+const { MailFunctions, NotificationHelper } = require('../helpers');
 
 // ================= Controller Functions =================
 
@@ -97,6 +97,12 @@ const createCheckout = async (req, res) => {
             user.email, user.name, process.env.MAIL_USER, 'Velvets Care', subject, message
         );
 
+        NotificationHelper.sendToUser(session_user.user_id,
+            'Order Placed',
+            `Your order #${order.id} of ₹${calculatedTotal} has been placed successfully.`,
+            { order_id: order.id, total: calculatedTotal }
+        );
+
         return res.response({
             success: true,
             message: 'Order created successfully',
@@ -142,6 +148,12 @@ const verifyPayment = async (req, res) => {
             status: 'confirmed',
             payment_status: 'paid'
         }, { where: { id: order_id } });
+
+        NotificationHelper.sendToUser(order.user_id,
+            'Payment Confirmed',
+            `Payment of ₹${order.total_amount} for order #${order.id} has been confirmed.`,
+            { order_id: order.id, payment_id: razorpay_payment_id }
+        );
 
         return res.response({
             success: true,
