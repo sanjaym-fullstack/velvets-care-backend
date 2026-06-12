@@ -20,13 +20,22 @@ const razorpay = new Razorpay({
     key_secret: process.env.RAZORPAY_SECRET
 });
 
+const normalizeDate = (dateStr) => {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 
 const precheckAndCreateOrder = async (req, res) => {
     try {
         const session_user = req.headers.user;
         if (!session_user) throw new Error('Session expired');
         const { doctor_id, appointment_date, appointment_time } = req.payload;
-        if (new Date(appointment_date) < new Date()) throw new Error('Booking for past date is not allowed');
+        if (new Date(normalizeDate(appointment_date)) < new Date(normalizeDate(new Date().toISOString()))) throw new Error('Booking for past date is not allowed');
         const user = await Users.findOne({ where: { id: session_user.user_id } });
         const doctor = await Doctors.findOne({
             where:
@@ -58,22 +67,12 @@ const precheckAndCreateOrder = async (req, res) => {
         const existingAppointment = await Appointments.findOne({
             where: {
                 doctor_id,
-                appointment_date,
+                appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` },
                 appointment_time
             }
         });
 
         if (existingAppointment) throw new Error('Slot already booked');
-        const appointmentDate_date = new Date(appointment_date);
-        appointmentDate_date.setHours(0, 0, 0, 0);
-
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        if (appointmentDate <= today) {
-            throw new Error('Appointments must be booked for a future date, not today or past');
-        }
-
         const amount = doctor.consultation_fee || 500;
         const order = await RazorpayFunctions.createRazorpayOrder(amount);
 
@@ -111,7 +110,7 @@ const confirmAppointment = async (req, res) => {
         const appointment = await Appointments.create({
             doctor_id,
             patient_id: session_user.user_id,
-            appointment_date,
+            appointment_date: normalizeDate(appointment_date),
             appointment_time,
             reason,
             status: 'pending',
@@ -677,7 +676,7 @@ const checkDoctorAvailability = async (req, res) => {
         if (!doctor_id || !appointment_date || !appointment_time) {
             throw new Error('doctor_id, appointment_date and appointment_time are required');
         }
-        if (new Date(appointment_date) < new Date()) {
+        if (new Date(normalizeDate(appointment_date)) < new Date(normalizeDate(new Date().toISOString()))) {
             throw new Error('Booking for past date is not allowed');
         }
 
@@ -714,7 +713,7 @@ const checkDoctorAvailability = async (req, res) => {
 
         // 6️⃣  Collision check
         const existing = await Appointments.findOne({
-            where: { doctor_id, appointment_date, appointment_time }
+            where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }, appointment_time }
         });
         if (existing) throw new Error('Slot already booked');
 
@@ -754,7 +753,7 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
             appointmentDate = new Date(appointment_date);
         }
 
-        if (appointmentDate < new Date()) {
+        if (new Date(normalizeDate(appointmentDate.toISOString())) < new Date(normalizeDate(new Date().toISOString()))) {
             throw new Error('Past date not allowed');
         }
 
@@ -805,7 +804,7 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
         const allAppointments = await Appointments.findAll({
             where: {
                 doctor_id,
-                appointment_date
+                appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }
             },
             raw: true
         });
@@ -831,7 +830,7 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
         // 🔟 Final response
         return res.response({
             success: true,
-            date: appointment_date,
+            date: normalizeDate(appointment_date),
             day: appointmentDay,
             start_time: startTimeStr,
             end_time: endTimeStr,
@@ -924,7 +923,7 @@ const adminCheckDoctorSlot = async (req, res) => {
         if (!doctor_id || !appointment_date || !appointment_time)
             throw new Error('doctor_id, appointment_date and appointment_time are required');
 
-        if (new Date(appointment_date) < new Date())
+        if (new Date(normalizeDate(appointment_date)) < new Date(normalizeDate(new Date().toISOString())))
             throw new Error('Booking for past date is not allowed');
 
         const doctor = await Doctors.findByPk(doctor_id);
@@ -950,7 +949,7 @@ const adminCheckDoctorSlot = async (req, res) => {
         if (outsideWindow) throw new Error('Doctor is not available at this time');
 
         // Check if booked
-        const booked = await Appointments.findOne({ where: { doctor_id, appointment_date, appointment_time } });
+        const booked = await Appointments.findOne({ where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }, appointment_time } });
         if (booked) throw new Error('Slot already booked');
 
         return res.response({
@@ -980,7 +979,7 @@ const adminGetDoctorAvailableSlots = async (req, res) => {
         if (!doctor) throw new Error('Invalid doctor');
 
         const dateObj = new Date(appointment_date);
-        if (dateObj < new Date()) throw new Error('Past date not allowed');
+        if (new Date(normalizeDate(appointment_date)) < new Date(normalizeDate(new Date().toISOString()))) throw new Error('Past date not allowed');
 
         const day = dateObj.toLocaleDateString('en-IN', { weekday: 'long' });
 
@@ -1003,7 +1002,7 @@ const adminGetDoctorAvailableSlots = async (req, res) => {
 
         // Booked slots
         const booked = await Appointments.findAll({
-            where: { doctor_id, appointment_date },
+            where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` } },
             raw: true
         });
         const bookedTimes = new Set(booked.map(b => b.appointment_time));
@@ -1056,15 +1055,10 @@ const adminGetTodaysAppointments = async (req, res) => {
         if (!doctor) throw new Error('Invalid doctor');
 
         const today = new Date();
-        const formattedToday = `${(today.getMonth() + 1)
-            .toString()
-            .padStart(2, '0')}-${today
-                .getDate()
-                .toString()
-                .padStart(2, '0')}-${today.getFullYear()}`;
+        const formattedToday = normalizeDate(today.toISOString());
 
         const appointments = await Appointments.findAll({
-            where: { doctor_id, appointment_date: formattedToday },
+            where: { doctor_id, appointment_date: { [Op.like]: `${formattedToday}%` } },
             include: [
                 {
                     model: Users,
@@ -1122,7 +1116,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
 
         // 4️⃣ Check if slot is already booked
         const existing = await Appointments.findOne({
-            where: { doctor_id, appointment_date, appointment_time }
+            where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }, appointment_time }
         });
         if (existing) throw new Error('Slot already booked for this time');
 
@@ -1154,7 +1148,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         const appointment = await Appointments.create({
             doctor_id,
             patient_id,
-            appointment_date,
+            appointment_date: normalizeDate(appointment_date),
             appointment_time,
             reason,
             status: 'pending',          // pending until payment
