@@ -80,12 +80,18 @@ const fetchAdminProductValidator = Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(10),
     search: Joi.string().allow('', null),
+    category_id: Joi.number().integer().optional(),
+    sub_category_id: Joi.number().integer().optional(),
+    brand_id: Joi.number().integer().optional(),
 });
 
 const fetchUserProductValidator = Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(10),
     search: Joi.string().allow('', null),
+    category_id: Joi.number().integer().optional(),
+    sub_category_id: Joi.number().integer().optional(),
+    brand_id: Joi.number().integer().optional(),
 });
 
 const fetchSingleProductValidator = Joi.object({

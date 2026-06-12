@@ -321,7 +321,10 @@ const AdminProducts = async (req, res) => {
         const {
             page = 1,
             limit = 10,
-            search = ''
+            search = '',
+            category_id,
+            sub_category_id,
+            brand_id,
         } = req.query;
 
         const pageNumber = parseInt(page);
@@ -350,6 +353,18 @@ const AdminProducts = async (req, res) => {
                     }
                 },
             ];
+        }
+
+        if (category_id) {
+            where.category_id = parseInt(category_id);
+        }
+
+        if (sub_category_id) {
+            where.sub_category_id = parseInt(sub_category_id);
+        }
+
+        if (brand_id) {
+            where.brand_id = parseInt(brand_id);
         }
 
         const { rows, count } = await Products.findAndCountAll({
@@ -417,7 +432,10 @@ const UserProducts = async (req, res) => {
         const {
             page = 1,
             limit = 10,
-            search = ''
+            search = '',
+            category_id,
+            sub_category_id,
+            brand_id,
         } = req.query;
 
         const pageNumber = parseInt(page);
@@ -448,6 +466,18 @@ const UserProducts = async (req, res) => {
                     }
                 },
             ];
+        }
+
+        if (category_id) {
+            where.category_id = parseInt(category_id);
+        }
+
+        if (sub_category_id) {
+            where.sub_category_id = parseInt(sub_category_id);
+        }
+
+        if (brand_id) {
+            where.brand_id = parseInt(brand_id);
         }
 
         const { rows, count } = await Products.findAndCountAll({
