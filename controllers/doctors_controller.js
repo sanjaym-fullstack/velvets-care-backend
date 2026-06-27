@@ -13,6 +13,7 @@ const {
   col,
   where,
 } = require('sequelize')
+const sequelize = require('../config/sequelize')
 const {
   OTPFunctions, JWTFunctions
 } = require('../helpers')
