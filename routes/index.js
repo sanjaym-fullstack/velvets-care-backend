@@ -26,4 +26,5 @@ module.exports = [
     ...require('./checkout_routes'),
     ...require('./payout_routes'),
     ...require('./address_routes'),
+    ...require('./doctor_dashboard_routes'),
 ]

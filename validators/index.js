@@ -32,5 +32,6 @@ module.exports = {
     CheckoutValidator: require('./checkout_validator'),
     PayoutValidator: require('./payout_validator'),
     AddressValidator: require('./address_validator'),
+    DoctorDashboardValidator: require('./doctor_dashboard_validator'),
 
 }
