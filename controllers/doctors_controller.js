@@ -326,8 +326,12 @@ const doctorlist_user = async (req, h) => {
         { phone: { [Op.like]: `%${searchquery}%` } }
       ];
     }
-    if (specialization) filter.specialization = specialization;
-    if (years_of_experience) filter.years_of_experience = Number(years_of_experience);
+    if (specialization) filter.specialization = {
+      [Op.like]: `%${specialization}%`
+    };
+    if (years_of_experience) filter.years_of_experience = {
+      [Op.gte]: Number(years_of_experience)
+    };
 
     const total = await Doctors.count({ where: filter });
 
