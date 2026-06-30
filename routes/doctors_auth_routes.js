@@ -12,18 +12,18 @@ const {
         doctor_logout,
         doctor_update_profile,
         doctor_refresh_token,
-getDoctorProfile
+        getDoctorProfile
     }
 
 } = require('../controllers');
 const {
     DoctorAuthValidator: {
-       login_doctor,
-    verify_otp,
-    logout_doctor,
-    get_doctor_list,
-    doctor_refresh_token_validator,
-    update_doctor_profile_validator
+        login_doctor,
+        verify_otp,
+        logout_doctor,
+        get_doctor_list,
+        doctor_refresh_token_validator,
+        update_doctor_profile_validator
     },
     HeaderValidator,
 } = require('../validators');
@@ -114,7 +114,7 @@ module.exports = [
             ],
             validate: {
                 headers: HeaderValidator,
-                payload:update_doctor_profile_validator,
+                payload: update_doctor_profile_validator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
                     throw Boom.badRequest(errors.join(', '));
@@ -173,7 +173,7 @@ module.exports = [
                 },
             },
         },
-        handler: getDoctorProfile,  
+        handler: getDoctorProfile,
     }
 
 ];

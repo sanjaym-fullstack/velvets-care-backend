@@ -1,7 +1,10 @@
 
 const { Doctors, Otps, Users, Files, Doctorsavailability, Adresses, Specialization } = require('../models');
 const {
-    OTPFunctions, JWTFunctions, TwilioFunctions
+    OTPFunctions,
+    JWTFunctions,
+    TwilioFunctions,
+    FileFunctions
 } = require('../helpers')
 
 const DEMO_OTP = '1234'
