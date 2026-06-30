@@ -82,7 +82,7 @@ const getSummaryStats = async (doctor_id) => {
         Appointments.count({ where: { ...baseWhere, appointment_date: todayStr } }),
         Appointments.findAll({
             where: baseWhere,
-            attributes: [[fn('COUNT', fn('DISTINCT', col('patient_id'))), 'count']],
+            attributes: [[literal('COUNT(DISTINCT patient_id)'), 'count']],
             raw: true
         }),
         Appointments.count({
@@ -135,7 +135,7 @@ const getMonthlyTrends = async (doctor_id, year) => {
             [fn('SUM', literal("CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END")), 'cancelled'],
             [fn('SUM', literal("CASE WHEN status = 'no_show' THEN 1 ELSE 0 END")), 'no_show'],
             [fn('SUM', literal("CASE WHEN status = 'completed' AND payment_status = 'paid' THEN consultation_fee ELSE 0 END")), 'revenue'],
-            [fn('COUNT', fn('DISTINCT', col('patient_id'))), 'patients']
+            [literal('COUNT(DISTINCT patient_id)'), 'patients']
         ],
         where: {
             doctor_id,
@@ -185,7 +185,7 @@ const getStatusDistribution = async (doctor_id) => {
 const getWeekdayDistribution = async (doctor_id) => {
     const rows = await Appointments.findAll({
         attributes: [
-            [fn('DAYNAME', col('appointment_date')), 'day'],
+            [literal('MAX(DAYNAME(appointment_date))'), 'day'],
             [fn('COUNT', literal('*')), 'count']
         ],
         where: { doctor_id },
