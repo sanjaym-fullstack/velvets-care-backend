@@ -1,6 +1,6 @@
 'use strict';
 
-const { Orders, OrderItems, Users, Payments, Products } = require('../models');
+const { Orders, OrderItems, Users, Payments, Products, Adresses } = require('../models');
 const { Op } = require('sequelize');
 const { createRazorpayOrder, fetchPayment } = require('../helpers/razorpay');
 const { MailFunctions, NotificationHelper } = require('../helpers');
@@ -13,7 +13,12 @@ const createCheckout = async (req, res) => {
         const session_user = req.headers.user;
         if (!session_user) return res.response({ success: false, message: 'Session expired' }).code(401);
 
-        const { items, discount_code } = req.payload;
+        const { items, discount_code, address_id } = req.payload;
+
+        const address = await Adresses.findOne({ where: { id: address_id, user_id: session_user.user_id } });
+        if (!address) {
+            return res.response({ success: false, message: 'Address not found' }).code(404);
+        }
 
         // Fetch products from DB for validation & server-side calculation
         const productIds = items.map(i => i.product_id);
@@ -57,7 +62,8 @@ const createCheckout = async (req, res) => {
             status: 'pending',
             payment_status: 'pending',
             payment_method: 'razorpay',
-            discount_code: discount_code || null
+            discount_code: discount_code || null,
+            address_id: address_id
         });
 
         // Create Order Items with price and total

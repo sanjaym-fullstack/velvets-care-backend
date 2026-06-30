@@ -1,6 +1,6 @@
 'use strict';
 
-const { Orders, OrderItems, Users, Payments, Products, ProductImages } = require('../models');
+const { Orders, OrderItems, Adresses, Users, Payments, Products, ProductImages } = require('../models');
 const { Op } = require('sequelize');
 const { MailFunctions, FileFunctions, NotificationHelper } = require('../helpers');
 
@@ -33,7 +33,8 @@ const fetchOrdersAdmin = async (req, res) => {
             include: [
                 { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
                 { model: Users },
-                { model: Payments }
+                { model: Payments },
+                { model: Adresses }
             ],
             order: [['createdAt', 'DESC']]
         });
@@ -96,7 +97,8 @@ const fetchUserOrders = async (req, res) => {
             offset,
             include: [
                 { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
-                { model: Payments }
+                { model: Payments },
+                { model: Adresses }
             ],
             order: [['createdAt', 'DESC']]
         });
