@@ -83,7 +83,7 @@ const updateAppointmentValidator = Joi.object({
         'string.empty': 'Status is required',
         'any.required': 'Status is required',
     }),
-  
+
 })
 
 const cancelAppointmentValidator = Joi.object({
@@ -190,7 +190,24 @@ const createAppointmentAdminValidator = Joi.object({
         'any.required': 'Consultation modes is required',
     }),
 });
+
+const callbackValidator = Joi.object({
+    razorpay_payment_id: Joi.string().required().messages({
+        'string.empty': 'Payment ID is required',
+        'any.required': 'Payment ID is required',
+    }),
+    razorpay_order_id: Joi.string().required().messages({
+        'string.empty': 'Order ID is required',
+        'any.required': 'Order ID is required',
+    }),
+    razorpay_signature: Joi.string().required().messages({
+        'string.empty': 'Signature is required',
+        'any.required': 'Signature is required',
+    }),
+});
+
 module.exports = {
+    callbackValidator,
     appointmentValidator,
     razorpayPaymentValidator,
     updateAppointmentValidator,

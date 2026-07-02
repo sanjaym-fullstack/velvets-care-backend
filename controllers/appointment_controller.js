@@ -1219,8 +1219,8 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
             },
             notify: { sms: true, email: true },
             reminder_enable: true,
-            callback_url: `${process.env.SERVICE_URL}/payment/${appointment.id}/callback`,
-            callback_method: 'get'
+            callback_url: `${process.env.SERVICE_URL}/appointment/${appointment.id}/callback`,
+            callback_method: 'post'
         });
         const paymentLink = await razorpay.paymentLink.create({
             amount: amount * 100, // in paise
@@ -1234,8 +1234,8 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
             },
             notify: { sms: true, email: true },
             reminder_enable: true,
-            callback_url: `${process.env.SERVICE_URL}/payment/${appointment.id}/callback`,
-            callback_method: 'get'
+            callback_url: `${process.env.SERVICE_URL}/appointment/${appointment.id}/callback`,
+            callback_method: 'post'
         });
         appointment.order_id = paymentLink.id;
         await appointment.save();
@@ -1258,6 +1258,41 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
     }
 };
 
+const callbackPayment = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const {
+            razorpay_payment_id,
+            razorpay_order_id,
+            razorpay_signature
+        } = req.payload;
+
+        const appointment = await Appointments.findByPk(id);
+        if (!appointment) throw new Error('Appointment not found');
+
+        await appointment.update({
+            payment_id: razorpay_payment_id,
+            order_id: razorpay_order_id,
+            payment_signature: razorpay_signature,
+            payment_status: 'paid',
+            status: 'pending'
+        });
+
+        return res.response({
+            success: true,
+            message: 'Payment successful and appointment updated',
+            data: appointment
+        }).code(200);
+
+    } catch (err) {
+        console.error(err);
+        return res.response({
+            success: false,
+            message: err.message
+        }).code(200);
+    }
+}
+
 module.exports = {
     precheckAndCreateOrder,
     confirmAppointment,
@@ -1275,7 +1310,8 @@ module.exports = {
     adminGetTodaysAppointments,
     adminCheckDoctorSlot,
     adminCreateAppointmentWithPaymentLink,
-    adminGetDoctorAvailableSlots
+    adminGetDoctorAvailableSlots,
+    callbackPayment
 
 }
 
