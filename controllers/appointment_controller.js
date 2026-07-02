@@ -1207,7 +1207,21 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
             consultation_fee: amount,
             consultation_modes
         });
-
+        console.log('Appointment created with ID:', {
+            amount: amount * 100, // in paise
+            currency: 'INR',
+            accept_partial: false,
+            description: `Consultation with Dr. ${doctor.name} on ${appointment_date} at ${appointment_time}`,
+            customer: {
+                name: patient.name,
+                email: patient.email,
+                contact: patient.phone
+            },
+            notify: { sms: true, email: true },
+            reminder_enable: true,
+            callback_url: `${process.env.SERVICE_URL}/payment/${appointment.id}/callback`,
+            callback_method: 'get'
+        });
         const paymentLink = await razorpay.paymentLink.create({
             amount: amount * 100, // in paise
             currency: 'INR',
