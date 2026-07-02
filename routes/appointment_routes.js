@@ -9,6 +9,7 @@ const {
         getadminAppointments,
         getDoctorAppointments,
         doctoreject,
+        callbackPayment,
         DoctorApproval,
         getUserAppointments,
         checkDoctorAvailability,
