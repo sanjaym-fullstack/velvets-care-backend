@@ -107,7 +107,7 @@ module.exports = [
         handler: confirmAppointment,
     },
     {
-        method: 'POST',
+        method: 'GET',
         path: '/appointment/{id}/callback',
         options: {
             description: 'Callback for an appointment payment',
