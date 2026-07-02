@@ -1220,7 +1220,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
             notify: { sms: true, email: true },
             reminder_enable: true,
             callback_url: `${process.env.SERVICE_URL}/appointment/${appointment.id}/callback`,
-            callback_method: 'post'
+            callback_method: 'POST'
         });
         const paymentLink = await razorpay.paymentLink.create({
             amount: amount * 100, // in paise
@@ -1235,7 +1235,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
             notify: { sms: true, email: true },
             reminder_enable: true,
             callback_url: `${process.env.SERVICE_URL}/appointment/${appointment.id}/callback`,
-            callback_method: 'post'
+            callback_method: 'POST'
         });
         appointment.order_id = paymentLink.id;
         await appointment.save();

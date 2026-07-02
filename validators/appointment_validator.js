@@ -204,7 +204,8 @@ const callbackValidator = Joi.object({
         'string.empty': 'Signature is required',
         'any.required': 'Signature is required',
     }),
-});
+}).unknown();
+
 
 module.exports = {
     callbackValidator,
