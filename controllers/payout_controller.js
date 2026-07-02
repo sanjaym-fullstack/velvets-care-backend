@@ -96,7 +96,7 @@ const getBankAccountAdmin = async (req, res) => {
     const { doctor_id } = req.params;
 
     const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
-    if (!bankAccount) return res.response({ success: false, message: 'No bank account found' }).code(404);
+    if (!bankAccount) return res.response({ success: false, message: 'No bank account found' }).code(200);
     return res.response({ success: true, message: 'Bank account fetched', data: bankAccount }).code(200);
   } catch (err) {
     console.error(err);
