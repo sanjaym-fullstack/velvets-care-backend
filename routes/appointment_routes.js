@@ -3,35 +3,36 @@ const Boom = require('@hapi/boom');
 // src/routes/authRoutes.js
 const {
     AppointmentController: {
-     precheckAndCreateOrder,
-    confirmAppointment,
-    cancelAppointmentByUser,
-    getadminAppointments,
-    getDoctorAppointments,
-    doctoreject,
-    DoctorApproval,
-    getUserAppointments,
-    checkDoctorAvailability,
-    getDoctorAvailableTimeSlots,
-    getTodaysAppointmentsDoctor,
-    UpdateAppointmentStatus,
-    adminCreateAppointmentWithPaymentLink
-    
+        precheckAndCreateOrder,
+        confirmAppointment,
+        cancelAppointmentByUser,
+        getadminAppointments,
+        getDoctorAppointments,
+        doctoreject,
+        DoctorApproval,
+        getUserAppointments,
+        checkDoctorAvailability,
+        getDoctorAvailableTimeSlots,
+        getTodaysAppointmentsDoctor,
+        UpdateAppointmentStatus,
+        adminCreateAppointmentWithPaymentLink
+
 
     }
 } = require('../controllers');
 const {
     AppointmentValidator: {
-     appointmentValidator,
-    razorpayPaymentValidator,
-    cancelAppointmentValidator,
-    fecthAppointmentsValidator,
-    fetchdoctorAppointmentsValidator,
-    appointment,
-    slotcheckingValidator,
-    UpdateAppointmentStatusParams,
-    updateAppointmentStatusValidator,
-    createAppointmentAdminValidator
+        appointmentValidator,
+        razorpayPaymentValidator,
+        callbackValidator,
+        cancelAppointmentValidator,
+        fecthAppointmentsValidator,
+        fetchdoctorAppointmentsValidator,
+        appointment,
+        slotcheckingValidator,
+        UpdateAppointmentStatusParams,
+        updateAppointmentStatusValidator,
+        createAppointmentAdminValidator
     },
     HeaderValidator,
 } = require('../validators');
@@ -57,9 +58,9 @@ module.exports = [
                 headers: HeaderValidator,
                 payload: razorpayPaymentValidator,
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: precheckAndCreateOrder,
@@ -77,9 +78,9 @@ module.exports = [
                 headers: HeaderValidator,
                 payload: razorpayPaymentValidator,
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: checkDoctorAvailability,
@@ -97,12 +98,33 @@ module.exports = [
                 headers: HeaderValidator,
                 payload: appointmentValidator,
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: confirmAppointment,
+    },
+    {
+        method: 'POST',
+        path: '/appointment/{id}/callback',
+        options: {
+            description: 'Callback for an appointment payment',
+            tags,
+            pre: [
+                SessionValidator
+            ],
+            validate: {
+                headers: HeaderValidator,
+                params: appointment,
+                payload: callbackValidator,
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
+            },
+        },
+        handler: callbackPayment,
     },
     {
         method: 'POST',
@@ -118,9 +140,9 @@ module.exports = [
                 params: appointment,
                 payload: cancelAppointmentValidator,
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: cancelAppointmentByUser,
@@ -138,9 +160,9 @@ module.exports = [
                 headers: HeaderValidator,
                 query: fecthAppointmentsValidator,
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: getadminAppointments,
@@ -158,9 +180,9 @@ module.exports = [
                 headers: HeaderValidator,
                 query: fetchdoctorAppointmentsValidator,
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: getDoctorAppointments,
@@ -178,9 +200,9 @@ module.exports = [
                 headers: HeaderValidator,
                 params: appointment,
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: doctoreject,
@@ -198,9 +220,9 @@ module.exports = [
                 headers: HeaderValidator,
                 params: appointment,
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: DoctorApproval,
@@ -221,9 +243,9 @@ module.exports = [
                     amount: Joi.number().required()
                 }),
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: async (request, h) => {
@@ -244,9 +266,9 @@ module.exports = [
             validate: {
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: getUserAppointments,
@@ -283,9 +305,9 @@ module.exports = [
             validate: {
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {
-                                    const errors = err.details.map(e => e.message);
-                                    throw Boom.badRequest(errors.join(', '));
-                                }
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             },
         },
         handler: getTodaysAppointmentsDoctor,
@@ -311,31 +333,31 @@ module.exports = [
         },
         handler: UpdateAppointmentStatus,
     },
-//     {
-//         method: 'PUT',
-//         path: '/admin/appointment/{id}/status',
-//         options: {
-//             description: 'Update appointment status',
-//             tags,
-//             pre: [
-//                 SessionValidator
-//             ],
-//             validate: {
-//                 headers: HeaderValidator,
-//                 params: appointment,
-//             payload: Joi.object({
-//                 status: Joi.string().valid('completed', 'no_show').required()
-//             }),
-//             failAction: (request, h, err) => {
-//                 const errors = err.details.map(e => e.message);
-//                 throw Boom.badRequest(errors.join(', '));
-//             }
-//         },
-//     },
-//     handler: UpdateAppointmentStatus,
-// }
+    //     {
+    //         method: 'PUT',
+    //         path: '/admin/appointment/{id}/status',
+    //         options: {
+    //             description: 'Update appointment status',
+    //             tags,
+    //             pre: [
+    //                 SessionValidator
+    //             ],
+    //             validate: {
+    //                 headers: HeaderValidator,
+    //                 params: appointment,
+    //             payload: Joi.object({
+    //                 status: Joi.string().valid('completed', 'no_show').required()
+    //             }),
+    //             failAction: (request, h, err) => {
+    //                 const errors = err.details.map(e => e.message);
+    //                 throw Boom.badRequest(errors.join(', '));
+    //             }
+    //         },
+    //     },
+    //     handler: UpdateAppointmentStatus,
+    // }
 
-{
+    {
 
         method: 'POST',
         path: '/admin/appointment/create-with-payment-link',
