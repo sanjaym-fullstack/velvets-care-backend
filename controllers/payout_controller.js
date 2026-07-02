@@ -40,11 +40,11 @@ const addBankAccount = async (req, res) => {
 
     const bankAccount = await DoctorBankAccounts.create({
       doctor_id,
-      account_holder_name: encryptText(account_holder_name),
-      account_number: encryptText(account_number),
-      ifsc_code: encryptText(ifsc_code),
-      bank_name: encryptText(bank_name),
-      branch_name: encryptText(branch_name)
+      account_holder_name: await encryptText(account_holder_name),
+      account_number: await encryptText(account_number),
+      ifsc_code: await encryptText(ifsc_code),
+      bank_name: await encryptText(bank_name),
+      branch_name: await encryptText(branch_name)
     });
 
     return res.response({ success: true, message: 'Bank account added', data: bankAccount }).code(201);
@@ -69,11 +69,11 @@ const addBankAccountAdmin = async (req, res) => {
 
     const bankAccount = await DoctorBankAccounts.create({
       doctor_id,
-      account_holder_name: encryptText(account_holder_name),
-      account_number: encryptText(account_number),
-      ifsc_code: encryptText(ifsc_code),
-      bank_name: encryptText(bank_name),
-      branch_name: encryptText(branch_name)
+      account_holder_name: await encryptText(account_holder_name),
+      account_number: await encryptText(account_number),
+      ifsc_code: await encryptText(ifsc_code),
+      bank_name: await encryptText(bank_name),
+      branch_name: await encryptText(branch_name)
     });
 
     return res.response({ success: true, message: 'Bank account added', data: bankAccount }).code(201);
@@ -92,11 +92,11 @@ const updateBankAccount = async (req, res) => {
     const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
     if (!bankAccount) return res.response({ success: false, message: 'No bank account found. Add one first.' }).code(404);
 
-    bankAccount.account_holder_name = encryptText(account_holder_name || decryptText(bankAccount.account_holder_name));
-    bankAccount.account_number = encryptText(account_number || decryptText(bankAccount.account_number));
-    bankAccount.ifsc_code = encryptText(ifsc_code || decryptText(bankAccount.ifsc_code));
-    bankAccount.bank_name = encryptText(bank_name || decryptText(bankAccount.bank_name));
-    bankAccount.branch_name = encryptText(branch_name || decryptText(bankAccount.branch_name));
+    bankAccount.account_holder_name = await encryptText(account_holder_name || await decryptText(bankAccount.account_holder_name));
+    bankAccount.account_number = await encryptText(account_number || await decryptText(bankAccount.account_number));
+    bankAccount.ifsc_code = await encryptText(ifsc_code || await decryptText(bankAccount.ifsc_code));
+    bankAccount.bank_name = await encryptText(bank_name || await decryptText(bankAccount.bank_name));
+    bankAccount.branch_name = await encryptText(branch_name || await decryptText(bankAccount.branch_name));
     await bankAccount.save();
 
     return res.response({ success: true, message: 'Bank account updated', data: bankAccount }).code(200);
@@ -121,11 +121,11 @@ const updateBankAccountAdmin = async (req, res) => {
     const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
     if (!bankAccount) return res.response({ success: false, message: 'No bank account found. Add one first.' }).code(200);
 
-    bankAccount.account_holder_name = encryptText(account_holder_name || decryptText(bankAccount.account_holder_name));
-    bankAccount.account_number = encryptText(account_number || decryptText(bankAccount.account_number));
-    bankAccount.ifsc_code = encryptText(ifsc_code || decryptText(bankAccount.ifsc_code));
-    bankAccount.bank_name = encryptText(bank_name || decryptText(bankAccount.bank_name));
-    bankAccount.branch_name = encryptText(branch_name || decryptText(bankAccount.branch_name));
+    bankAccount.account_holder_name = await encryptText(account_holder_name || await decryptText(bankAccount.account_holder_name));
+    bankAccount.account_number = await encryptText(account_number || await decryptText(bankAccount.account_number));
+    bankAccount.ifsc_code = await encryptText(ifsc_code || await decryptText(bankAccount.ifsc_code));
+    bankAccount.bank_name = await encryptText(bank_name || await decryptText(bankAccount.bank_name));
+    bankAccount.branch_name = await encryptText(branch_name || await decryptText(bankAccount.branch_name));
     await bankAccount.save();
 
     return res.response({ success: true, message: 'Bank account updated', data: bankAccount }).code(200);
@@ -144,11 +144,11 @@ const getBankAccount = async (req, res) => {
     return res.response({
       success: true, message: 'Bank account fetched', data: {
         ...bankAccount,
-        account_holder_name: decryptText(bankAccount.account_holder_name),
-        account_number: decryptText(bankAccount.account_number),
-        ifsc_code: decryptText(bankAccount.ifsc_code),
-        bank_name: decryptText(bankAccount.bank_name),
-        branch_name: decryptText(bankAccount.branch_name),
+        account_holder_name: await decryptText(bankAccount.account_holder_name),
+        account_number: await decryptText(bankAccount.account_number),
+        ifsc_code: await decryptText(bankAccount.ifsc_code),
+        bank_name: await decryptText(bankAccount.bank_name),
+        branch_name: await decryptText(bankAccount.branch_name),
       }
     }).code(200);
   } catch (err) {
@@ -168,11 +168,11 @@ const getBankAccountAdmin = async (req, res) => {
     return res.response({
       success: true, message: 'Bank account fetched', data: {
         ...bankAccount,
-        account_holder_name: decryptText(bankAccount.account_holder_name),
-        account_number: decryptText(bankAccount.account_number),
-        ifsc_code: decryptText(bankAccount.ifsc_code),
-        bank_name: decryptText(bankAccount.bank_name),
-        branch_name: decryptText(bankAccount.branch_name),
+        account_holder_name: await decryptText(bankAccount.account_holder_name),
+        account_number: await decryptText(bankAccount.account_number),
+        ifsc_code: await decryptText(bankAccount.ifsc_code),
+        bank_name: await decryptText(bankAccount.bank_name),
+        branch_name: await decryptText(bankAccount.branch_name),
       }
     }).code(200);
   } catch (err) {
