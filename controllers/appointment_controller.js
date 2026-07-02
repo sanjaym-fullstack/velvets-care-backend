@@ -1188,6 +1188,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         const endTime = endH % 12 + (endPM ? 12 : 0) + endM / 60;
 
         const reqTime = requestedTime + minutes / 60;
+        console.log(`Requested: ${reqTime}, Start: ${startTime}, End: ${endTime}`);
         if (reqTime < startTime || reqTime >= endTime) throw new Error('Doctor is not available at this time');
 
         // 7️⃣ Create Razorpay Payment Link
