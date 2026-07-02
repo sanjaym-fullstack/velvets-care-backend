@@ -1167,9 +1167,11 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
 
         // 5️⃣ Check doctor availability for that day
         const appointmentDay = appointmentDateObj.toLocaleDateString('en-IN', { weekday: 'long' });
+        console.log(appointmentDay);
         const availability = await Doctorsavailability.findOne({
             where: { doctor_id, day: appointmentDay }
         });
+        console.log(availability);
         if (!availability) throw new Error('Doctor is not available on this day');
 
         // 6️⃣ Check if requested time is within doctor's available time
