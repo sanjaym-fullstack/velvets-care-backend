@@ -52,6 +52,35 @@ const addBankAccount = async (req, res) => {
     return res.response({ success: false, message: err.message }).code(200);
   }
 };
+const addBankAccountAdmin = async (req, res) => {
+  try {
+    const user = req.headers.user;
+    if (!user || user.role != 'ADMIN') return res.response({ success: false, message: 'Unauthorized' }).code(403);
+    const { doctor_id } = req.params;
+
+    const doctor = await Doctors.findByPk(doctor_id);
+    if (!doctor) return res.response({ success: false, message: 'Doctor not found' }).code(200);
+
+    const { account_holder_name, account_number, ifsc_code, bank_name, branch_name } = req.payload;
+
+    const existing = await DoctorBankAccounts.findOne({ where: { doctor_id } });
+    if (existing) return res.response({ success: false, message: 'Bank account already exists. Use update endpoint.' }).code(200);
+
+    const bankAccount = await DoctorBankAccounts.create({
+      doctor_id,
+      account_holder_name,
+      account_number,
+      ifsc_code,
+      bank_name,
+      branch_name
+    });
+
+    return res.response({ success: true, message: 'Bank account added', data: bankAccount }).code(201);
+  } catch (err) {
+    console.error(err);
+    return res.response({ success: false, message: err.message }).code(200);
+  }
+};
 
 const updateBankAccount = async (req, res) => {
   try {
@@ -61,6 +90,35 @@ const updateBankAccount = async (req, res) => {
 
     const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
     if (!bankAccount) return res.response({ success: false, message: 'No bank account found. Add one first.' }).code(404);
+
+    bankAccount.account_holder_name = account_holder_name || bankAccount.account_holder_name;
+    bankAccount.account_number = account_number || bankAccount.account_number;
+    bankAccount.ifsc_code = ifsc_code || bankAccount.ifsc_code;
+    bankAccount.bank_name = bank_name || bankAccount.bank_name;
+    bankAccount.branch_name = branch_name || bankAccount.branch_name;
+    await bankAccount.save();
+
+    return res.response({ success: true, message: 'Bank account updated', data: bankAccount }).code(200);
+  } catch (err) {
+    console.error(err);
+    return res.response({ success: false, message: err.message }).code(200);
+  }
+};
+
+const updateBankAccountAdmin = async (req, res) => {
+  try {
+    const user = req.headers.user;
+    if (!user || user.role != 'ADMIN') return res.response({ success: false, message: 'Unauthorized' }).code(403);
+
+    const { doctor_id } = req.params;
+
+    const doctor = await Doctors.findByPk(doctor_id);
+    if (!doctor) return res.response({ success: false, message: 'Doctor not found' }).code(200);
+
+    const { account_holder_name, account_number, ifsc_code, bank_name, branch_name } = req.payload;
+
+    const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
+    if (!bankAccount) return res.response({ success: false, message: 'No bank account found. Add one first.' }).code(200);
 
     bankAccount.account_holder_name = account_holder_name || bankAccount.account_holder_name;
     bankAccount.account_number = account_number || bankAccount.account_number;
@@ -387,7 +445,9 @@ module.exports = {
   getSettings,
   updateSetting,
   addBankAccount,
+  addBankAccountAdmin,
   updateBankAccount,
+  updateBankAccountAdmin,
   getBankAccount,
   getBankAccountAdmin,
   getAdminPayouts,
