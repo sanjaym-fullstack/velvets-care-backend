@@ -118,7 +118,7 @@ module.exports = [
             validate: {
                 headers: HeaderValidator,
                 params: appointment,
-                payload: callbackValidator,
+                query: callbackValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
                     throw Boom.badRequest(errors.join(', '));

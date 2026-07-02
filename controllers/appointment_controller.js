@@ -1265,7 +1265,7 @@ const callbackPayment = async (req, res) => {
             razorpay_payment_id,
             razorpay_order_id,
             razorpay_signature
-        } = req.payload;
+        } = req.query;
 
         const appointment = await Appointments.findByPk(id);
         if (!appointment) throw new Error('Appointment not found');
