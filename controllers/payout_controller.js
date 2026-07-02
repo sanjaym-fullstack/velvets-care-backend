@@ -31,7 +31,7 @@ const updateSetting = async (req, res) => {
 const addBankAccount = async (req, res) => {
   try {
     const user = req.headers.user;
-    const doctor_id = user.id;
+    const doctor_id = user.doctor_id;
     const { account_holder_name, account_number, ifsc_code, bank_name, branch_name } = req.payload;
 
     const existing = await DoctorBankAccounts.findOne({ where: { doctor_id } });
@@ -56,7 +56,7 @@ const addBankAccount = async (req, res) => {
 const updateBankAccount = async (req, res) => {
   try {
     const user = req.headers.user;
-    const doctor_id = user.id;
+    const doctor_id = user.doctor_id;
     const { account_holder_name, account_number, ifsc_code, bank_name, branch_name } = req.payload;
 
     const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
@@ -79,7 +79,7 @@ const updateBankAccount = async (req, res) => {
 const getBankAccount = async (req, res) => {
   try {
     const user = req.headers.user;
-    const doctor_id = user.id;
+    const doctor_id = user.doctor_id;
     const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
     if (!bankAccount) return res.response({ success: false, message: 'No bank account found' }).code(404);
     return res.response({ success: true, message: 'Bank account fetched', data: bankAccount }).code(200);
