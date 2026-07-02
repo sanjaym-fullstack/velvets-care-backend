@@ -112,11 +112,7 @@ module.exports = [
         options: {
             description: 'Callback for an appointment payment',
             tags,
-            pre: [
-                SessionValidator
-            ],
             validate: {
-                headers: HeaderValidator,
                 params: appointment,
                 query: callbackValidator,
                 failAction: (request, h, err) => {
