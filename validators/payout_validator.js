@@ -61,6 +61,9 @@ const payoutHistoryValidator = Joi.object({
   from_date: Joi.string().optional(),
   to_date: Joi.string().optional()
 }).unknown();
+const docktorBackAccountFetchingParamsValidator = Joi.object({
+  doctor_id: Joi.number().optional(),
+});
 
 module.exports = {
   addBankAccountValidator,
@@ -69,5 +72,6 @@ module.exports = {
   payoutPlanValidator,
   markAsPaidValidator,
   payoutsListValidator,
-  payoutHistoryValidator
+  payoutHistoryValidator,
+  docktorBackAccountFetchingParamsValidator
 };

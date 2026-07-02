@@ -88,6 +88,21 @@ const getBankAccount = async (req, res) => {
     return res.response({ success: false, message: err.message }).code(200);
   }
 };
+const getBankAccountAdmin = async (req, res) => {
+  try {
+    const user = req.headers.user;
+    if (!user || !user.is_admin) return res.response({ success: false, message: 'Unauthorized' }).code(403);
+
+    const { doctor_id } = req.params;
+
+    const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
+    if (!bankAccount) return res.response({ success: false, message: 'No bank account found' }).code(404);
+    return res.response({ success: true, message: 'Bank account fetched', data: bankAccount }).code(200);
+  } catch (err) {
+    console.error(err);
+    return res.response({ success: false, message: err.message }).code(200);
+  }
+};
 
 const getAdminPayouts = async (req, res) => {
   try {
@@ -374,6 +389,7 @@ module.exports = {
   addBankAccount,
   updateBankAccount,
   getBankAccount,
+  getBankAccountAdmin,
   getAdminPayouts,
   getDoctorPayouts,
   getPayoutPlan,
