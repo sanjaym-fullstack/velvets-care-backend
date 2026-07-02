@@ -6,7 +6,9 @@ const {
     getSettings,
     updateSetting,
     addBankAccount,
+    addBankAccountAdmin,
     updateBankAccount,
+    updateBankAccountAdmin,
     getBankAccount,
     getBankAccountAdmin,
     getAdminPayouts,
@@ -76,6 +78,21 @@ module.exports = [
     handler: addBankAccount
   },
   {
+    method: 'POST',
+    path: '/doctor/{doctor_id}/bank-account',
+    options: {
+      description: 'Add doctor bank account',
+      tags,
+      pre: [SessionValidator],
+      validate: {
+        payload: addBankAccountValidator,
+        params: docktorBackAccountFetchingParamsValidator,
+        headers: HeaderValidator
+      }
+    },
+    handler: addBankAccountAdmin
+  },
+  {
     method: 'PUT',
     path: '/doctor/bank-account',
     options: {
@@ -88,6 +105,21 @@ module.exports = [
       }
     },
     handler: updateBankAccount
+  },
+  {
+    method: 'PUT',
+    path: '/doctor/{doctor_id}/bank-account',
+    options: {
+      description: 'Update doctor bank account',
+      tags,
+      pre: [SessionValidator],
+      validate: {
+        params: docktorBackAccountFetchingParamsValidator,
+        payload: updateBankAccountValidator,
+        headers: HeaderValidator
+      }
+    },
+    handler: updateBankAccountAdmin
   },
   {
     method: 'GET',
