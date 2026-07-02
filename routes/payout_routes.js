@@ -8,6 +8,7 @@ const {
     addBankAccount,
     updateBankAccount,
     getBankAccount,
+    getBankAccountAdmin,
     getAdminPayouts,
     getDoctorPayouts,
     getPayoutPlan,
@@ -23,7 +24,8 @@ const {
     payoutPlanValidator,
     markAsPaidValidator,
     payoutsListValidator,
-    payoutHistoryValidator
+    payoutHistoryValidator,
+    docktorBackAccountFetchingParamsValidator
   }
 } = require('../validators');
 const {
@@ -99,6 +101,20 @@ module.exports = [
       }
     },
     handler: getBankAccount
+  },
+  {
+    method: 'GET',
+    path: '/doctor/{doctor_id}/bank-account',
+    options: {
+      description: 'Get doctor bank account by admin',
+      tags,
+      pre: [SessionValidator],
+      validate: {
+        headers: HeaderValidator,
+        params: docktorBackAccountFetchingParamsValidator
+      }
+    },
+    handler: getBankAccountAdmin
   },
   {
     method: 'GET',
