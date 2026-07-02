@@ -1184,7 +1184,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         const startTime = startH % 12 + (startPM ? 12 : 0) + startM / 60;
 
         const [endH, endM] = availability.end_time.split(/[: ]/).map(v => parseInt(v));
-        const endPM = availability.end_time.includes('PM');
+        const endPM = availability.end_time.includes('PM') || (endH > 12); // Handle 12:00 PM edge case
         const endTime = endH % 12 + (endPM ? 12 : 0) + endM / 60;
 
         const reqTime = requestedTime + minutes / 60;
