@@ -139,7 +139,7 @@ const getBankAccount = async (req, res) => {
   try {
     const user = req.headers.user;
     const doctor_id = user.doctor_id;
-    const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
+    const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id }, raw: true });
     if (!bankAccount) return res.response({ success: false, message: 'No bank account found' }).code(404);
     return res.response({
       success: true, message: 'Bank account fetched', data: {
@@ -163,7 +163,7 @@ const getBankAccountAdmin = async (req, res) => {
 
     const { doctor_id } = req.params;
 
-    const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
+    const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id }, raw: true });
     if (!bankAccount) return res.response({ success: false, message: 'No bank account found' }).code(200);
     return res.response({
       success: true, message: 'Bank account fetched', data: {
