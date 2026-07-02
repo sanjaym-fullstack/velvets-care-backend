@@ -91,7 +91,7 @@ const getBankAccount = async (req, res) => {
 const getBankAccountAdmin = async (req, res) => {
   try {
     const user = req.headers.user;
-    if (!user || !user.is_admin) return res.response({ success: false, message: 'Unauthorized' }).code(403);
+    if (!user || user.role != 'ADMIN') return res.response({ success: false, message: 'Unauthorized' }).code(403);
 
     const { doctor_id } = req.params;
 
