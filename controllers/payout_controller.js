@@ -13,6 +13,15 @@ const getSettings = async (req, res) => {
   }
 };
 
+const normalizeDate = (dateStr) => {
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 const updateSetting = async (req, res) => {
   try {
     const { id, value } = req.payload;
@@ -194,12 +203,8 @@ const calculatePayouts = async (req, res) => {
     if (doctor_id) where.doctor_id = doctor_id;
 
 
-    const startDate = new Date(from_date);
-    startDate.setHours(0, 0, 0, 0);
-    const startTime = startDate.getTime();
-    const endDate = new Date(to_date);
-    endDate.setHours(23, 59, 59, 999);
-    const endTime = endDate.getTime();
+    const startDate = normalizeDate(from_date);
+    const endDate = normalizeDate(to_date);
 
 
     const appointments = await Appointments.findAll({
@@ -207,13 +212,7 @@ const calculatePayouts = async (req, res) => {
         status: 'completed',
         payment_status: 'paid',
         appointment_date: {
-          [Op.between]: [
-            startDate,
-            endDate
-          ]
-        },
-        appointment_time: {
-          [Op.between]: [startTime, endTime]
+          [Op.between]: [startDate, endDate]
         },
         ...where
       },
