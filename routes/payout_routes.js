@@ -12,6 +12,7 @@ const {
     getBankAccount,
     getBankAccountAdmin,
     getAdminPayouts,
+    calculatePayouts,
     getDoctorPayouts,
     getPayoutPlan,
     markAsPaid,
@@ -167,6 +168,20 @@ module.exports = [
     path: '/admin/payouts',
     options: {
       description: 'Get all payouts (admin)',
+      tags,
+      pre: [SessionValidator],
+      validate: {
+        query: payoutsListValidator,
+        headers: HeaderValidator
+      }
+    },
+    handler: getAdminPayouts
+  },
+  {
+    method: 'GET',
+    path: '/admin/payouts/calculate',
+    options: {
+      description: 'Calculate payouts (admin)',
       tags,
       pre: [SessionValidator],
       validate: {
