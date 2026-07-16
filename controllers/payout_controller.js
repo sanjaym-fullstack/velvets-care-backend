@@ -278,6 +278,8 @@ const calculatePayouts = async (req, res) => {
       };
     });
 
+    await Payouts.bulkCreate(payouts, { updateOnDuplicate: ['doctor_id', 'from_date', 'to_date'] });
+
 
     return res.response({ success: true, message: 'Payouts fetched', data: payouts }).code(200);
   } catch (err) {
