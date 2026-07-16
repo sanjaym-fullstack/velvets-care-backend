@@ -206,8 +206,6 @@ const calculatePayouts = async (req, res) => {
     const startDate = normalizeDate(from_date);
     const endDate = normalizeDate(to_date);
 
-    const commissionRate = 0.05
-
     const appointments = await Appointments.findAll({
       attributes: [
         'doctor_id',
@@ -237,20 +235,45 @@ const calculatePayouts = async (req, res) => {
       group: ['doctor.id', 'appointments.doctor_id'],
     });
 
-    const payouts = appointments.map((item) => {
-      const total = Number(item.get('total_consultation_fee'));
-      const commission = +(total * commissionRate).toFixed(2);
-      const payout = +(total - commission).toFixed(2);
+    const platformFeePercentage = await PayoutSettings.findOne({ where: { key: 'platform_fee_percentage' }, raw: true }).then(s => parseFloat(s.value) || 10);
+    const gstPercentage = await PayoutSettings.findOne({ where: { key: 'gst_percentage' }, raw: true }).then(s => parseFloat(s.value) || 18);
+
+    const payouts = appointments.map((appointment) => {
+      const totalEarnings = Number(appointment.get('total_consultation_fee'));
+
+      const platformFeeAmount =
+        (totalEarnings * platformFeePercentage) / 100;
+
+      const gstAmount =
+        (platformFeeAmount * gstPercentage) / 100;
+
+      const totalDeductions =
+        platformFeeAmount + gstAmount;
+
+      const netPayout =
+        totalEarnings - totalDeductions;
 
       return {
-        doctor: item.doctor,
-        total_appointments: Number(item.get('total_appointments')),
-        total_consultation_fee: total,
-        commission,
-        payout,
+        doctor_id: appointment.doctor_id,
+        total_earnings: totalEarnings,
+        platform_fee_percentage: platformFeePercentage,
+        platform_fee_amount: platformFeeAmount,
+        gst_percentage: gstPercentage,
+        gst_amount: gstAmount,
+        total_deductions: totalDeductions,
+        net_payout: netPayout,
+        status: 'pending',
+        payout_type: 'bank_transfer', // or 'manual'
+        comment: null,
+        transaction_id: null,
+        processed_by: adminId, // Logged in admin id
+        razorpay_payout_id: null,
+        utr: null,
+        from_date: startDate,
+        to_date: endDate,
+        processed_at: null,
       };
     });
-
 
 
     return res.response({ success: true, message: 'Payouts fetched', data: payouts }).code(200);
