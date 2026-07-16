@@ -1,5 +1,5 @@
 const { PayoutSettings, DoctorBankAccounts, Payouts, Doctors, Appointments } = require('../models');
-const { Op } = require('sequelize');
+const { Op, fn, col } = require('sequelize');
 const Sequelize = require('sequelize');
 const { decryptText, encryptText } = require('../helpers/encryption');
 
@@ -209,21 +209,40 @@ const calculatePayouts = async (req, res) => {
     console.log(startDate, endDate);
 
     const appointments = await Appointments.findAll({
+      attributes: [
+        'doctor_id',
+        [fn('SUM', col('consultation_fee')), 'total_consultation_fee'],
+        [fn('COUNT', col('Appointments.id')), 'total_appointments'],
+      ],
       where: {
         status: 'completed',
         payment_status: 'paid',
         appointment_date: {
           [Op.between]: [startDate, endDate],
         },
-        ...where
+        ...where,
       },
-      raw: true,
+      include: [
+        {
+          model: Doctor,
+          as: 'doctor', // Use your association alias
+          attributes: [
+            'id',
+            'full_name',
+            'email',
+            'phone',
+            'specialization',
+            'profile_image_id',
+          ],
+        },
+      ],
+      group: ['doctor.id', 'Appointments.doctor_id'],
+      raw: false,
     });
 
-    console.log('Appointments fetched:', appointments);
 
 
-    return res.response({ success: true, message: 'Payouts fetched', }).code(200);
+    return res.response({ success: true, message: 'Payouts fetched', data: appointments }).code(200);
   } catch (err) {
     console.error(err);
     return res.response({ success: false, message: err.message }).code(200);
