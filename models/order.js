@@ -11,6 +11,7 @@ const {
 } = require('../config');
 
 const addressModel = require('./address');
+const userModel = require('./user');
 
 
 class Order extends Model {
@@ -33,6 +34,9 @@ Order.init({
 
 addressModel.hasMany(Order, { foreignKey: 'address_id' });
 Order.belongsTo(addressModel, { foreignKey: 'address_id' });
+
+userModel.hasMany(Order, { foreignKey: 'user_id' });
+Order.belongsTo(userModel, { foreignKey: 'user_id' });
 
 
 module.exports = Order;
