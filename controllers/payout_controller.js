@@ -1,4 +1,4 @@
-const { PayoutSettings, DoctorBankAccounts, Payouts, Doctors, Appointments } = require('../models');
+const { PayoutSettings, DoctorBankAccounts, Doctors, Payouts, Doctors, Appointments } = require('../models');
 const { Op, fn, col } = require('sequelize');
 const Sequelize = require('sequelize');
 const { decryptText, encryptText } = require('../helpers/encryption');
@@ -206,8 +206,6 @@ const calculatePayouts = async (req, res) => {
     const startDate = normalizeDate(from_date);
     const endDate = normalizeDate(to_date);
 
-    console.log(startDate, endDate);
-
     const appointments = await Appointments.findAll({
       attributes: [
         'doctor_id',
@@ -224,15 +222,13 @@ const calculatePayouts = async (req, res) => {
       },
       include: [
         {
-          model: Doctor,
-          as: 'doctor', // Use your association alias
+          model: Doctors,
           attributes: [
             'id',
             'full_name',
             'email',
             'phone',
             'specialization',
-            'profile_image_id',
           ],
         },
       ],
