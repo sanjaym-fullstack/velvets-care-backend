@@ -1,4 +1,4 @@
-const { PayoutSettings, DoctorBankAccounts, Doctors, Payouts, Doctors, Appointments } = require('../models');
+const { PayoutSettings, DoctorBankAccounts, Payouts, Doctors, Appointments } = require('../models');
 const { Op, fn, col } = require('sequelize');
 const Sequelize = require('sequelize');
 const { decryptText, encryptText } = require('../helpers/encryption');
