@@ -311,7 +311,7 @@ const UpdateAppointmentStatus = async (req, h) => {
         if (!appointment) {
             throw new Error('Appointment not found');
         }
-        if (appointment.doctor_id !== doctor_id) {
+        if (session_user.role !== 'ADMIN' && appointment.doctor_id !== doctor_id) {
             throw new Error('Unauthorized: This is not your appointment');
         }
         if (appointment.status !== 'approved') {
