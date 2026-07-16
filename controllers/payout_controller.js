@@ -209,7 +209,7 @@ const calculatePayouts = async (req, res) => {
     const appointments = await Appointments.findAll({
       attributes: [
         'doctor_id',
-        [fn('SUM', col('consultation_fee')), 'total_consultation_fee'],
+        [fn('SUM', col('Appointments.consultation_fee')), 'total_consultation_fee'],
         [fn('COUNT', col('Appointments.id')), 'total_appointments'],
       ],
       where: {
