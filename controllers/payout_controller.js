@@ -181,6 +181,55 @@ const getBankAccountAdmin = async (req, res) => {
   }
 };
 
+const calculatePayouts = async (req, res) => {
+  try {
+    const { doctor_id, from_date, to_date } = req.query;
+    if (!from_date && !to_date) {
+      return res.response({ success: false, message: 'From date and to date are required' }).code(400);
+    }
+    if (from_date && to_date && new Date(from_date) > new Date(to_date)) {
+      return res.response({ success: false, message: 'From date cannot be greater than to date' }).code(400);
+    }
+    const where = {};
+    if (doctor_id) where.doctor_id = doctor_id;
+
+
+    const startDate = new Date(from_date);
+    startDate.setHours(0, 0, 0, 0);
+    const startTime = startDate.getTime();
+    const endDate = new Date(to_date);
+    endDate.setHours(23, 59, 59, 999);
+    const endTime = endDate.getTime();
+
+
+    const appointments = await Appointments.findAll({
+      where: {
+        status: 'completed',
+        payment_status: 'paid',
+        appointment_date: {
+          [Op.between]: [
+            startDate,
+            endDate
+          ]
+        },
+        appointment_time: {
+          [Op.between]: [startTime, endTime]
+        },
+        ...where
+      },
+      raw: true,
+    });
+
+    console.log('Appointments fetched:', appointments.length);
+
+
+    return res.response({ success: true, message: 'Payouts fetched', data: payouts }).code(200);
+  } catch (err) {
+    console.error(err);
+    return res.response({ success: false, message: err.message }).code(200);
+  }
+};
+
 const getAdminPayouts = async (req, res) => {
   try {
     const { status, doctor_id, from_date, to_date } = req.query;
@@ -470,6 +519,7 @@ module.exports = {
   getBankAccount,
   getBankAccountAdmin,
   getAdminPayouts,
+  calculatePayouts,
   getDoctorPayouts,
   getPayoutPlan,
   markAsPaid,
