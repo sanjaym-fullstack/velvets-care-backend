@@ -10,7 +10,7 @@ const { MailFunctions, FileFunctions, NotificationHelper } = require('../helpers
 const fetchOrdersAdmin = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user || !session_user.is_admin) return res.response({ success: false, message: 'Unauthorized' }).code(401);
+        if (!session_user || session_user.role !== 'ADMIN') return res.response({ success: false, message: 'Unauthorized' }).code(401);
         const { page = 1, limit = 10, search, status, from_date, to_date } = req.query;
         const offset = (page - 1) * limit;
 
@@ -142,7 +142,7 @@ const fetchUserOrders = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user || !session_user.is_admin) return res.response({ success: false, message: 'Unauthorized' }).code(401);
+        if (!session_user || session_user.role !== 'ADMIN') return res.response({ success: false, message: 'Unauthorized' }).code(401);
 
         const { id } = req.params;
         const { status, subject, message } = req.payload;
@@ -176,7 +176,7 @@ const updateOrderStatus = async (req, res) => {
 const fetchPaymentsAdmin = async (req, res) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user || !session_user.is_admin) return res.response({ success: false, message: 'Unauthorized' }).code(401);
+        if (!session_user || session_user.role !== 'ADMIN') return res.response({ success: false, message: 'Unauthorized' }).code(401);
         const { page = 1, limit = 10, status, method, user_id } = req.query;
         const offset = (page - 1) * limit;
 
