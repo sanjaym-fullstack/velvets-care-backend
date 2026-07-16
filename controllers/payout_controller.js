@@ -192,6 +192,9 @@ const getBankAccountAdmin = async (req, res) => {
 
 const calculatePayouts = async (req, res) => {
   try {
+    const session_user = req.headers.user;
+    if (!session_user || session_user.role !== 'ADMIN') return res.response({ success: false, message: 'Unauthorized' }).code(401);
+
     const { doctor_id, from_date, to_date } = req.query;
     if (!from_date && !to_date) {
       return res.response({ success: false, message: 'From date and to date are required' }).code(400);
@@ -285,6 +288,9 @@ const calculatePayouts = async (req, res) => {
 
 const getAdminPayouts = async (req, res) => {
   try {
+    const session_user = req.headers.user;
+    if (!session_user || session_user.role !== 'ADMIN') return res.response({ success: false, message: 'Unauthorized' }).code(401);
+
     const { status, doctor_id, from_date, to_date } = req.query;
     const where = {};
     if (status) where.status = status;
