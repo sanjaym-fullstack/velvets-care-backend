@@ -206,6 +206,8 @@ const calculatePayouts = async (req, res) => {
     const startDate = normalizeDate(from_date);
     const endDate = normalizeDate(to_date);
 
+    const commissionRate = 0.05
+
     const appointments = await Appointments.findAll({
       attributes: [
         'doctor_id',
@@ -233,12 +235,25 @@ const calculatePayouts = async (req, res) => {
         },
       ],
       group: ['doctor.id', 'appointments.doctor_id'],
-      raw: false,
+    });
+
+    const payouts = appointments.map((item) => {
+      const total = Number(item.get('total_consultation_fee'));
+      const commission = +(total * commissionRate).toFixed(2);
+      const payout = +(total - commission).toFixed(2);
+
+      return {
+        doctor: item.doctor,
+        total_appointments: Number(item.get('total_appointments')),
+        total_consultation_fee: total,
+        commission,
+        payout,
+      };
     });
 
 
 
-    return res.response({ success: true, message: 'Payouts fetched', data: appointments }).code(200);
+    return res.response({ success: true, message: 'Payouts fetched', data: payouts }).code(200);
   } catch (err) {
     console.error(err);
     return res.response({ success: false, message: err.message }).code(200);
