@@ -220,10 +220,10 @@ const calculatePayouts = async (req, res) => {
       raw: true,
     });
 
-    console.log('Appointments fetched:', appointments.length);
+    console.log('Appointments fetched:', appointments);
 
 
-    return res.response({ success: true, message: 'Payouts fetched', data: payouts }).code(200);
+    return res.response({ success: true, message: 'Payouts fetched', data: appointments }).code(200);
   } catch (err) {
     console.error(err);
     return res.response({ success: false, message: err.message }).code(200);
