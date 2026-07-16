@@ -153,7 +153,7 @@ const updateOrderStatus = async (req, res) => {
         await Orders.update({ status }, { where: { id } });
 
         await MailFunctions.sendHtmlMailToSingleReceiver(
-            order.User.email, order.User.name,
+            order.user.email, order.user.name,
             process.env.MAIL_USER, 'Velvets Care',
             subject, message
         );
