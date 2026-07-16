@@ -464,62 +464,25 @@ const markAsPaid = async (req, res) => {
     if (!from_date || !to_date) throw new Error('From date and to date are required');
     if (!transaction_id) throw new Error('Transaction ID is required');
 
-    const settings = await PayoutSettings.findAll({ raw: true });
-    const settingsMap = {};
-    settings.forEach(s => { settingsMap[s.key] = s.value; });
-
-    const platformFeePerc = settingsMap.platform_fee_percentage || 10;
-    const gstPerc = settingsMap.gst_percentage || 18;
-
-    const startDate = new Date(from_date);
-    startDate.setHours(0, 0, 0, 0);
-    const endDate = new Date(to_date);
-    endDate.setHours(23, 59, 59, 999);
-
-    const appointments = await Appointments.findAll({
+    const payout = await Payouts.findOne({
       where: {
         doctor_id,
-        status: 'completed',
-        payment_status: 'paid',
-        appointment_date: {
-          [Op.between]: [
-            from_date,
-            to_date
-          ]
-        }
-      },
-      attributes: [
-        [Sequelize.fn('SUM', Sequelize.col('consultation_fee')), 'total_earnings']
-      ],
-      raw: true
+        from_date,
+        to_date
+      }
     });
 
-    const totalEarnings = parseFloat(appointments[0]?.total_earnings) || 0;
-    if (totalEarnings <= 0) throw new Error('No earnings found for the selected period');
+    if (!payout) throw new Error('Payout not found');
 
-    const platformFeeAmount = parseFloat((totalEarnings * platformFeePerc / 100).toFixed(2));
-    const gstAmount = parseFloat((platformFeeAmount * gstPerc / 100).toFixed(2));
-    const totalDeductions = parseFloat((platformFeeAmount + gstAmount).toFixed(2));
-    const netPayout = parseFloat((totalEarnings - totalDeductions).toFixed(2));
+    if (payout.status === 'processed') throw new Error('Payout is already marked as paid');
 
-    const payout = await Payouts.create({
-      doctor_id,
-      total_earnings: totalEarnings,
-      platform_fee_percentage: platformFeePerc,
-      platform_fee_amount: platformFeeAmount,
-      gst_percentage: gstPerc,
-      gst_amount: gstAmount,
-      total_deductions: totalDeductions,
-      net_payout: netPayout,
-      status: 'processed',
-      payout_type: 'manual',
-      comment: comment || null,
-      transaction_id,
-      from_date,
-      to_date,
-      processed_by: session_user.user_id || session_user.id,
-      processed_at: new Date()
-    });
+    payout.status = 'processed';
+    payout.comment = comment || null;
+    payout.transaction_id = transaction_id;
+    payout.processed_by = session_user.id;
+    payout.processed_at = new Date();
+
+    await payout.save();
 
     return res.response({
       success: true,
