@@ -269,7 +269,7 @@ const calculatePayouts = async (req, res) => {
         payout_type: 'bank_transfer', // or 'manual'
         comment: null,
         transaction_id: null,
-        processed_by: session_user.role, // Logged in admin id
+        processed_by: session_user.id, // Logged in admin id
         razorpay_payout_id: null,
         utr: null,
         from_date: startDate,
