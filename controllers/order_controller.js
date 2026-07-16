@@ -32,7 +32,7 @@ const fetchOrdersAdmin = async (req, res) => {
             offset,
             include: [
                 { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
-                { model: Users },
+                { model: Users, exclude: ['password', 'access_token', 'refresh_token'] },
                 { model: Payments },
                 { model: Adresses }
             ],
