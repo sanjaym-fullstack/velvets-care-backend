@@ -206,6 +206,7 @@ const calculatePayouts = async (req, res) => {
     const startDate = normalizeDate(from_date);
     const endDate = normalizeDate(to_date);
 
+    console.log(startDate, endDate);
 
     const appointments = await Appointments.findAll({
       where: {
