@@ -203,26 +203,26 @@ const calculatePayouts = async (req, res) => {
     if (doctor_id) where.doctor_id = doctor_id;
 
 
-    const startDate = normalizeDate(from_date);
-    const endDate = normalizeDate(to_date);
+    // const startDate = normalizeDate(from_date);
+    // const endDate = normalizeDate(to_date);
 
 
-    const appointments = await Appointments.findAll({
-      where: {
-        status: 'completed',
-        payment_status: 'paid',
-        appointment_date: {
-          [Op.between]: [startDate, endDate]
-        },
-        ...where
-      },
-      raw: true,
-    });
+    // const appointments = await Appointments.findAll({
+    //   where: {
+    //     status: 'completed',
+    //     payment_status: 'paid',
+    //     appointment_date: {
+    //       [Op.like]: 
+    //     },
+    //     ...where
+    //   },
+    //   raw: true,
+    // });
 
-    console.log('Appointments fetched:', appointments);
+    // console.log('Appointments fetched:', appointments);
 
 
-    return res.response({ success: true, message: 'Payouts fetched', data: appointments }).code(200);
+    return res.response({ success: true, message: 'Payouts fetched', }).code(200);
   } catch (err) {
     console.error(err);
     return res.response({ success: false, message: err.message }).code(200);
