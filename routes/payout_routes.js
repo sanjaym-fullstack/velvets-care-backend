@@ -189,7 +189,7 @@ module.exports = [
         headers: HeaderValidator
       }
     },
-    handler: getAdminPayouts
+    handler: calculatePayouts
   },
   {
     method: 'GET',
