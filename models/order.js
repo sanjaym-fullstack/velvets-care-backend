@@ -11,7 +11,7 @@ const {
 } = require('../config');
 
 const addressModel = require('./address');
-const userModel = require('./user');
+const userModel = require('./users');
 
 
 class Order extends Model {
