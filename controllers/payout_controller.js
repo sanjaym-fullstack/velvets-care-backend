@@ -221,6 +221,8 @@ const calculatePayouts = async (req, res) => {
         appointment_date: {
           [Op.between]: [startDate, endDate],
         },
+        payout_id: null,
+        payout_processed: false,
         ...where,
       },
       include: [
@@ -256,6 +258,40 @@ const calculatePayouts = async (req, res) => {
       const netPayout =
         totalEarnings - totalDeductions;
 
+      const payout = await Payouts.create({
+        doctor_id: appointment.doctor_id,
+        total_earnings: totalEarnings,
+        platform_fee_percentage: platformFeePercentage,
+        platform_fee_amount: platformFeeAmount,
+        gst_percentage: gstPercentage,
+        gst_amount: gstAmount,
+        total_deductions: totalDeductions,
+        net_payout: netPayout,
+        status: 'pending',
+        payout_type: 'bank_transfer', // or 'manual'
+        comment: null,
+        transaction_id: null,
+        processed_by: session_user.id, // Logged in admin id
+        razorpay_payout_id: null,
+        utr: null,
+        from_date: startDate,
+        to_date: endDate,
+        processed_at: null,
+      })
+      await Appointments.update({
+        payout_id: payout.id,
+      }, {
+        where: {
+          doctor_id: appointment.doctor_id,
+          appointment_date: {
+            [Op.between]: [startDate, endDate],
+          },
+          status: 'completed',
+          payment_status: 'paid',
+          ...where,
+        }
+      });
+
       return {
         doctor_id: appointment.doctor_id,
         total_earnings: totalEarnings,
@@ -277,9 +313,6 @@ const calculatePayouts = async (req, res) => {
         processed_at: null,
       };
     });
-
-    await Payouts.bulkCreate(payouts, { updateOnDuplicate: ['doctor_id', 'from_date', 'to_date'] });
-
 
     return res.response({ success: true, message: 'Payouts fetched', data: payouts }).code(200);
   } catch (err) {
@@ -481,6 +514,15 @@ const markAsPaid = async (req, res) => {
     payout.transaction_id = transaction_id;
     payout.processed_by = session_user.id;
     payout.processed_at = new Date();
+
+    await Appointments.update(
+      { payout_processed: true },
+      {
+        where: {
+          payout_id: payout.id,
+        }
+      }
+    );
 
     await payout.save();
 
