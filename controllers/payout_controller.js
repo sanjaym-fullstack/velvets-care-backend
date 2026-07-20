@@ -243,7 +243,7 @@ const calculatePayouts = async (req, res) => {
     const platformFeePercentage = await PayoutSettings.findOne({ where: { key: 'platform_fee_percentage' }, raw: true }).then(s => parseFloat(s.value) || 10);
     const gstPercentage = await PayoutSettings.findOne({ where: { key: 'gst_percentage' }, raw: true }).then(s => parseFloat(s.value) || 18);
 
-    const payouts = appointments.map((appointment) => {
+    const payouts = appointments.map(async (appointment) => {
       const totalEarnings = Number(appointment.get('total_consultation_fee'));
 
       const platformFeeAmount =
@@ -314,7 +314,9 @@ const calculatePayouts = async (req, res) => {
       };
     });
 
-    return res.response({ success: true, message: 'Payouts fetched', data: payouts }).code(200);
+    const payoutData = await Promise.all(payouts);
+
+    return res.response({ success: true, message: 'Payouts fetched', data: payoutData }).code(200);
   } catch (err) {
     console.error(err);
     return res.response({ success: false, message: err.message }).code(200);
