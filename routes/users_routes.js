@@ -14,8 +14,8 @@ const {
         user_refresh_token,
         getusers,
         getuserData,
-        CreateUserByAdmin
-        
+        CreateUserByAdmin,
+        inactivateUser,
     }
 } = require('../controllers');
 const {
@@ -26,7 +26,9 @@ const {
         update_user_profile,
         user_refresh_token_validator,
         get_user_list,
-        register_user
+        register_user,
+        inactivateUserValidator,
+        singleUserValidator
     },
     HeaderValidator,
 } = require('../validators');
@@ -52,7 +54,7 @@ module.exports = [
             handler: request_otp_login,
         },
     },
-        {
+    {
         method: 'POST',
         path: '/user/register',
         options: {
@@ -230,5 +232,26 @@ module.exports = [
             },
         },
         handler: CreateUserByAdmin,
+    },
+    {
+        method: 'POST',
+        path: '/admin/user/{user_id}/inactivate',
+        options: {
+            description: 'Inactivate user by admin',
+            tags,
+            pre: [
+                SessionValidator
+            ],
+            validate: {
+                headers: HeaderValidator,
+                payload: inactivateUserValidator,
+                params: singleUserValidator,
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
+            },
+        },
+        handler: inactivateUser,
     }
 ];
