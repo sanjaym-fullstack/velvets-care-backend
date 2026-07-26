@@ -49,11 +49,11 @@ const update_user_profile = Joi.object({
         'string.empty': 'Date of birth is required',
     }),
     profile_image: Joi.any()
-      .meta({ swaggerType: 'file' })
-      .description('Profile image').messages({
-        'any.required': 'Image is required',
-        'string.empty': 'Image is required',
-      }),
+        .meta({ swaggerType: 'file' })
+        .description('Profile image').messages({
+            'any.required': 'Image is required',
+            'string.empty': 'Image is required',
+        }),
 })
 
 const logout_user = Joi.object({
@@ -83,11 +83,28 @@ const get_user_list = Joi.object({
     }),
 })
 const googleSignInValidator = Joi.object({
-      token: Joi.string().required().messages({
+    token: Joi.string().required().messages({
         'string.empty': 'Token is required',
         'any.required': 'Token is required',
-      }),
-    }).unknown()
+    }),
+}).unknown()
+
+const inactivateUser = Joi.object({
+    inactive_reason: Joi.string().required().messages({
+        'string.empty': 'Inactive reason is required',
+        'any.required': 'Inactive reason is required',
+    }),
+    inactive_till: Joi.date().allow(null).optional().messages({
+        'date.base': 'Inactive till must be a valid date',
+    }),
+})
+
+const singleUserValidator = Joi.object({
+    user_id: Joi.number().integer().required().messages({
+        'number.base': 'User ID must be a number',
+        'any.required': 'User ID is required',
+    }),
+})
 
 module.exports = {
     login_user,
@@ -97,6 +114,7 @@ module.exports = {
     user_refresh_token_validator,
     get_user_list,
     googleSignInValidator,
-    register_user
-
+    register_user,
+    inactivateUserValidator: inactivateUser,
+    singleUserValidator
 }
