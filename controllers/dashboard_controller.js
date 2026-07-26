@@ -27,7 +27,7 @@ const getDashboardStats = async (req, res) => {
         });
 
         // 3. Total Booking Amount
-        const bookingAmount = await Appointments.sum('cunsultation_fee', {
+        const bookingAmount = await Appointments.sum('consultation_fee', {
             where: { createdAt: { [Op.between]: [start, end] } }
         }) || 0;
 

@@ -5,6 +5,7 @@ const Boom = require('@hapi/boom');
 // src/routes/authRoutes.js
 const {
     DoctorController: {
+        createDoctor,
         updateBasicDetails,
         updateAddress,
         updateAvailability,
@@ -39,6 +40,38 @@ module.exports = [
         method: 'POST',
         path: '/doctor/create',
         options: {
+            description: 'Create a new doctor',
+            tags,
+            pre: [
+                SessionValidator
+            ],
+            validate: {
+                payload: basicDetailsValidator,
+                headers: HeaderValidator,
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                },
+            },
+            payload: {
+                maxBytes: 5 * 1024 * 1024,
+                parse: true,
+                output: 'file',
+                multipart: true,
+                allow: 'multipart/form-data'
+            },
+            plugins: {
+                'hapi-swagger': {
+                    payloadType: 'form'
+                }
+            },
+        },
+        handler: createDoctor
+    },
+    {
+        method: 'POST',
+        path: '/doctor/{doctor_id}/update',
+        options: {
             description: 'Update basic details of doctor',
             tags,
             pre: [
@@ -46,6 +79,7 @@ module.exports = [
             ],
             validate: {
                 payload: basicDetailsValidator,
+                params: fetchSingleDoctorValidator,
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
@@ -140,7 +174,7 @@ module.exports = [
             ],
             validate: {
                 headers: HeaderValidator,
-                 query: fecthdoctors_admin,
+                query: fecthdoctors_admin,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
                     throw Boom.badRequest(errors.join(', '));
@@ -271,5 +305,5 @@ module.exports = [
             handler: deleteDoctor
         }
     }
-  
+
 ];  

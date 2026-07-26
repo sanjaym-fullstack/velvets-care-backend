@@ -24,7 +24,7 @@ const { ComplianceInquiriesContextImpl } = require('twilio/lib/rest/trusthub/v1/
 const { default: ClientCapability } = require('twilio/lib/jwt/ClientCapability');
 const { off } = require('../config/mailer');
 
-const updateBasicDetails = async (req, h) => {
+const createDoctor = async (req, h) => {
   const transaction = await sequelize.transaction();
   try {
     const session_user = req.headers.user;
@@ -128,6 +128,136 @@ const updateBasicDetails = async (req, h) => {
       profile_image_id: profileFileId,
       government_id: govFileId,
       pan_card_id: panFileId
+    });
+    await transaction.commit();
+    return h.response({
+      success: true,
+      message: 'Basic details updated successfully',
+      data: doctor
+    }).code(201);
+
+  } catch (err) {
+    await transaction.rollback();
+    console.error(err);
+    return h.response({ success: false, message: err.message || 'Error updating basic details' }).code(500);
+  }
+};
+
+
+const updateBasicDetails = async (req, h) => {
+  const transaction = await sequelize.transaction();
+  try {
+    const session_user = req.headers.user;
+    if (!session_user) {
+      throw new Error('Session expired');
+    }
+    const { doctor_id } = req.params;
+    const {
+      full_name, gender, date_of_birth, phone, email,
+      specialization, years_of_experience, registration_number,
+      registration_certificate, medical_degree_certificate,
+      consultation_fee, consultation_modes, languages_spoken, profile_image, government_id, pan_card
+    } = req.payload;
+    const available_doctor = await Doctors.findOne({
+      where: { id: doctor_id }
+    });
+    if (!available_doctor) {
+      throw new Error('Doctor not found');
+    }
+    const existing_doctor = await Doctors.findOne({
+      where: {
+        [Op.or]: [
+          { phone: phone },
+          { email: email }
+        ],
+        id: { [Op.ne]: doctor_id }
+      }
+    })
+
+    if (existing_doctor) {
+      throw new Error('Doctor already exists');
+    }
+    // File Uploads
+    let regCertFileId = null;
+    let degreeCertFileId = null;
+    let govFileId = null;
+    let profileFileId = null;
+    let panFileId = null;
+
+    if (profile_image) {
+      const uploadedfile = await FileFunctions.uploadToS3(profile_image.filename, 'uploads/profile_images', fs.readFileSync(profile_image.path));
+      const profileFile = await Files.create({
+        files_url: uploadedfile.key,
+        extension: uploadedfile.key.split('.').pop(),
+        original_name: uploadedfile.key,
+        size: fs.statSync(profile_image.path).size
+      }, { transaction });
+      profileFileId = profileFile.id;
+    }
+
+    if (government_id) {
+      const uploadedfile = await FileFunctions.uploadToS3(government_id.filename, 'uploads/government_ids', fs.readFileSync(government_id.path));
+      const govFile = await Files.create({
+        files_url: uploadedfile.key,
+        extension: uploadedfile.key.split('.').pop(),
+        original_name: uploadedfile.key,
+        size: fs.statSync(government_id.path).size
+      }, { transaction });
+      govFileId = govFile.id;
+    }
+
+    if (pan_card) {
+      const uploadedfile = await FileFunctions.uploadToS3(pan_card.filename, 'uploads/pan_cards', fs.readFileSync(pan_card.path));
+      const panFile = await Files.create({
+        files_url: uploadedfile.key,
+        extension: uploadedfile.key.split('.').pop(),
+        original_name: uploadedfile.key,
+        size: fs.statSync(pan_card.path).size
+      }, { transaction });
+      panFileId = panFile.id;
+    }
+
+    if (registration_certificate) {
+      const uploadedfile = await FileFunctions.uploadToS3(registration_certificate.filename, 'uploads/registration_certificates', fs.readFileSync(registration_certificate.path));
+      const regFile = await Files.create({
+        files_url: uploadedfile.key,
+        extension: uploadedfile.key.split('.').pop(),
+        original_name: uploadedfile.key,
+        size: fs.statSync(registration_certificate.path).size
+      }, { transaction });
+      regCertFileId = regFile.id;
+    }
+
+    if (medical_degree_certificate) {
+      const uploadedfile = await FileFunctions.uploadToS3(medical_degree_certificate.filename, 'uploads/medical_degree_certificates', fs.readFileSync(medical_degree_certificate.path));
+      const degreeFile = await Files.create({
+        files_url: uploadedfile.key,
+        extension: uploadedfile.key.split('.').pop(),
+        original_name: uploadedfile.key,
+        size: fs.statSync(medical_degree_certificate.path).size
+      }, { transaction });
+      degreeCertFileId = degreeFile.id;
+    }
+
+    const doctor = await Doctors.update({
+      full_name,
+      gender,
+      date_of_birth,
+      phone,
+      email,
+      specialization,
+      years_of_experience,
+      registration_number,
+      registration_certificate_id: regCertFileId,
+      medical_degree_certificate_id: degreeCertFileId,
+      consultation_fee,
+      consultation_modes: consultation_modes,
+      languages_spoken: languages_spoken,
+      profile_image_id: profileFileId,
+      government_id: govFileId,
+      pan_card_id: panFileId
+    }, {
+      where: { id: doctor_id },
     });
     await transaction.commit();
     return h.response({
@@ -939,6 +1069,7 @@ const CheckDoctorSlotsByAdmin = async (req, h) => {
 }
 
 module.exports = {
+  createDoctor,
   updateBasicDetails,
   updateAddress,
   updateAvailability,
