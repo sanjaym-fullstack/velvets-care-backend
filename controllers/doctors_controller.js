@@ -124,8 +124,8 @@ const updateBasicDetails = async (req, h) => {
       registration_certificate_id: regCertFileId,
       medical_degree_certificate_id: degreeCertFileId,
       consultation_fee,
-      consultation_modes: JSON.stringify(consultation_modes),
-      languages_spoken: JSON.stringify(languages_spoken),
+      consultation_modes: consultation_modes,
+      languages_spoken: languages_spoken,
       profile_image_id: profileFileId,
       government_id: govFileId,
       pan_card_id: panFileId
