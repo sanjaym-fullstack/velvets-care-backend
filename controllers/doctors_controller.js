@@ -37,7 +37,6 @@ const updateBasicDetails = async (req, h) => {
       registration_certificate, medical_degree_certificate,
       consultation_fee, consultation_modes, languages_spoken, profile_image, government_id, pan_card
     } = req.payload;
-    console.log(req.payload, "payload");
     const existing_doctor = await Doctors.findOne({
       where: {
         [Op.or]: [
@@ -140,7 +139,7 @@ const updateBasicDetails = async (req, h) => {
   } catch (err) {
     await transaction.rollback();
     console.error(err);
-    return h.response({ success: false, message: 'Error updating basic details' }).code(500);
+    return h.response({ success: false, message: err.message || 'Error updating basic details' }).code(500);
   }
 };
 
