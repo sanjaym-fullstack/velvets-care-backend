@@ -16,6 +16,7 @@ const {
         getuserData,
         CreateUserByAdmin,
         inactivateUser,
+        reactivateUser,
     }
 } = require('../controllers');
 const {
@@ -253,5 +254,25 @@ module.exports = [
             },
         },
         handler: inactivateUser,
+    },
+    {
+        method: 'POST',
+        path: '/admin/user/{user_id}/reactivate',
+        options: {
+            description: 'Reactivate user by admin',
+            tags,
+            pre: [
+                SessionValidator
+            ],
+            validate: {
+                headers: HeaderValidator,
+                params: singleUserValidator,
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
+            },
+        },
+        handler: reactivateUser,
     }
 ];

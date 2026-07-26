@@ -742,6 +742,49 @@ const inactivateUser = async (req, res) => {
 
 }
 
+const reactivateUser = async (req, res) => {
+    try {
+        const session_user = req.headers.user;
+        if (!session_user) {
+            return res.response({
+                success: false,
+                message: 'Session expired',
+            }).code(200);
+        }
+        const { user_id } = req.params;
+        const user = await Users.findOne({ where: { id: user_id } });
+        if (!user) {
+            return res.response({
+                success: false,
+                message: 'User not found',
+            }).code(200);
+        }
+        if (!user.inactive) {
+            return res.response({
+                success: false,
+                message: 'User is already active',
+            }).code(200);
+        }
+        await Users.update({
+            inactive: false,
+            inactive_reason: null,
+            inactive_till: null
+        }, {
+            where: { id: user_id }
+        });
+        return res.response({
+            success: true,
+            message: 'User reactivated successfully',
+        }).code(200);
+    } catch (error) {
+        console.error(error);
+        return res.response({
+            success: false,
+            message: error.message || 'An error occurred while reactivating the user',
+        }).code(500);
+    }
+}
+
 
 module.exports = {
     request_otp_login,
@@ -755,5 +798,6 @@ module.exports = {
     googleSignIn,
     getuserData,
     CreateUserByAdmin,
-    inactivateUser
+    inactivateUser,
+    reactivateUser
 }
