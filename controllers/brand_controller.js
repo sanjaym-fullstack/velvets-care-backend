@@ -54,7 +54,12 @@ const UpdateBrand = async (req, res) => {
     const brandId = req.params.id;
     const { name, slug, is_active, brand_image, description } = req.payload;
 
-    const brand = await Brands.findByPk(brandId);
+    const brand = await Brands.findOne({
+      where: {
+        id: brandId
+      },
+      raw: true
+    });
     if (!brand) throw new Error('Brand not found');
     let uploaded_files = null;
     if (brand_image) {
@@ -68,7 +73,7 @@ const UpdateBrand = async (req, res) => {
       })
     }
 
-    await brand.update({ name, slug, is_active, brand_image: uploaded_files ? uploaded_files.id : null, description },
+    await brand.update({ name, slug, is_active, brand_image: uploaded_files ? uploaded_files.id : brand.brand_image, description },
       {
         where: { id: brandId },
       }
