@@ -31,6 +31,7 @@ const UPLOAD_DIRS = [
     'subcategories',
     'brands',
     'clinic_images',
+    'specialization',
     'test'
 ];
 
@@ -42,7 +43,9 @@ UPLOAD_DIRS.forEach(dir => {
 });
 
 // Get base URL for serving files
+// Set BASE_URL in .env for VPS/production (e.g., BASE_URL=http://your-domain.com:3000)
 const getBaseUrl = () => {
+    if (process.env.BASE_URL) return process.env.BASE_URL.replace(/\/$/, '');
     const host = process.env.HOST === '0.0.0.0' ? 'localhost' : (process.env.HOST || 'localhost');
     const port = process.env.PORT || 3000;
     return `http://${host}:${port}`;

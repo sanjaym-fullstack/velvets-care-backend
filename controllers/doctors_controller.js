@@ -130,10 +130,34 @@ const createDoctor = async (req, h) => {
       pan_card_id: panFileId
     });
     await transaction.commit();
+
+    const doctor_data = await Doctors.findOne({
+      where: { id: doctor.id },
+      include: [
+        { model: Files, as: 'profile_image', required: false },
+        { model: Files, as: 'registration_certificate', required: false },
+        { model: Files, as: 'medical_degree_certificate', required: false },
+        { model: Files, as: 'government_id_file', required: false },
+        { model: Files, as: 'pan_card_file', required: false }
+      ],
+      raw: true,
+      nest: true,
+      mapToModel: true
+    });
+
+    const result = {
+      ...doctor_data,
+      profile_image: doctor_data.profile_image?.files_url ? await FileFunctions.getFromS3(doctor_data.profile_image.files_url) : null,
+      registration_certificate: doctor_data.registration_certificate?.files_url ? await FileFunctions.getFromS3(doctor_data.registration_certificate.files_url) : null,
+      medical_degree_certificate: doctor_data.medical_degree_certificate?.files_url ? await FileFunctions.getFromS3(doctor_data.medical_degree_certificate.files_url) : null,
+      government_id: doctor_data.government_id_file?.files_url ? await FileFunctions.getFromS3(doctor_data.government_id_file.files_url) : null,
+      pan_card: doctor_data.pan_card_file?.files_url ? await FileFunctions.getFromS3(doctor_data.pan_card_file.files_url) : null
+    };
+
     return h.response({
       success: true,
       message: 'Basic details updated successfully',
-      data: doctor
+      data: result
     }).code(201);
 
   } catch (err) {
@@ -260,10 +284,34 @@ const updateBasicDetails = async (req, h) => {
       where: { id: doctor_id },
     });
     await transaction.commit();
+
+    const updatedDoctor = await Doctors.findOne({
+      where: { id: doctor_id },
+      include: [
+        { model: Files, as: 'profile_image', required: false },
+        { model: Files, as: 'registration_certificate', required: false },
+        { model: Files, as: 'medical_degree_certificate', required: false },
+        { model: Files, as: 'government_id_file', required: false },
+        { model: Files, as: 'pan_card_file', required: false }
+      ],
+      raw: true,
+      nest: true,
+      mapToModel: true
+    });
+
+    const doctor_data = {
+      ...updatedDoctor,
+      profile_image: updatedDoctor.profile_image?.files_url ? await FileFunctions.getFromS3(updatedDoctor.profile_image.files_url) : null,
+      registration_certificate: updatedDoctor.registration_certificate?.files_url ? await FileFunctions.getFromS3(updatedDoctor.registration_certificate.files_url) : null,
+      medical_degree_certificate: updatedDoctor.medical_degree_certificate?.files_url ? await FileFunctions.getFromS3(updatedDoctor.medical_degree_certificate.files_url) : null,
+      government_id: updatedDoctor.government_id_file?.files_url ? await FileFunctions.getFromS3(updatedDoctor.government_id_file.files_url) : null,
+      pan_card: updatedDoctor.pan_card_file?.files_url ? await FileFunctions.getFromS3(updatedDoctor.pan_card_file.files_url) : null
+    };
+
     return h.response({
       success: true,
       message: 'Basic details updated successfully',
-      data: doctor
+      data: doctor_data
     }).code(201);
 
   } catch (err) {

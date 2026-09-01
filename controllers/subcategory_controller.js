@@ -33,10 +33,17 @@ const CreateSubCategory = async (req, res) => {
       subcategory_image: uploaded_files ? uploaded_files.id : null
     });
 
+    const imageUrl = uploaded_files?.files_url
+      ? await FileFunctions.getFromS3(uploaded_files.files_url)
+      : null;
+
     return res.response({
       success: true,
       message: 'Subcategory created successfully',
-      data: subcategory,
+      data: {
+        ...subcategory.toJSON(),
+        subcategory_image: imageUrl
+      },
     }).code(201);
   } catch (error) {
     console.error('Error creating subcategory:', error);
@@ -69,10 +76,18 @@ const UpdateSubCategory = async (req, res) => {
       { where: { id: subId } }
     );
 
+    const updatedSub = await Subcategories.findByPk(subId, { include: [{ model: Categories }, { model: Files }] });
+    const imageUrl = updatedSub.file?.files_url
+      ? await FileFunctions.getFromS3(updatedSub.file.files_url)
+      : null;
+
     return res.response({
       success: true,
       message: 'Subcategory updated successfully',
-      data: subcategory,
+      data: {
+        ...updatedSub.toJSON(),
+        subcategory_image: imageUrl
+      },
     });
   } catch (error) {
     console.error('Error updating subcategory:', error);

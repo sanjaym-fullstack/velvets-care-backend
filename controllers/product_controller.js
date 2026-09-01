@@ -575,13 +575,19 @@ const UploadProductImage = async (req, res) => {
                     fs.readFileSync(file.path)
                 );
 
-                return ProductImages.create({
+                const record = await ProductImages.create({
                     product_id,
                     file_url: uploaded.key,
                     extension: uploaded.key.split('.').pop(),
                     original_name: file.filename,
                     size: fs.statSync(file.path).size,
                 });
+
+                const url = await FileFunctions.getFromS3(uploaded.key);
+                return {
+                    ...record.toJSON(),
+                    file_url: url
+                };
             })
         );
 

@@ -97,9 +97,21 @@ const init = async () => {
         },
         handler: (request, h) => {
             const filePath = request.params.path;
-            const fullPath = path.join(__dirname, filePath);
 
-            if (fs.existsSync(fullPath)) {
+            // Prevent directory traversal
+            const normalizedPath = path.normalize(filePath);
+            if (normalizedPath.includes('..')) {
+                return h.response('Invalid file path').code(400);
+            }
+
+            const fullPath = path.join(__dirname, normalizedPath);
+
+            // Ensure the resolved path is still within the project directory
+            if (!fullPath.startsWith(path.join(__dirname))) {
+                return h.response('Invalid file path').code(400);
+            }
+
+            if (fs.existsSync(fullPath) && fs.statSync(fullPath).isFile()) {
                 return h.file(fullPath);
             } else {
                 console.error('File not found:', fullPath);
