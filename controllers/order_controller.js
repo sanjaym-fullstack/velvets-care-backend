@@ -14,6 +14,7 @@ const fetchOrdersAdmin = async (req, res) => {
         const { page = 1, limit = 10, search, status, from_date, to_date } = req.query;
         const offset = (page - 1) * limit;
 
+        
         const where = {};
         if (status) where.status = status;
         if (search) {
