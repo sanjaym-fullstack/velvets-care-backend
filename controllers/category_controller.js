@@ -34,10 +34,17 @@ const CreateCategory = async (req, res) => {
             category_image: uploaded_files ? uploaded_files.id : null
         });
 
+        const imageUrl = uploaded_files?.files_url
+            ? await FileFunctions.getFromS3(uploaded_files.files_url)
+            : null;
+
         return res.response({
             success: true,
             message: 'Category created successfully',
-            data: category,
+            data: {
+                ...category.toJSON(),
+                category_image: imageUrl
+            },
         }).code(201);
     } catch (error) {
         console.error('Error creating category:', error);
@@ -73,10 +80,22 @@ const UpdateCategory = async (req, res) => {
             
         );
 
+        const updatedCategory = await Categories.findOne({
+            where: { id },
+            include: [{ model: Files }]
+        });
+
+        const imageUrl = updatedCategory.file?.files_url
+            ? await FileFunctions.getFromS3(updatedCategory.file.files_url)
+            : null;
+
         return res.response({
             success: true,
             message: 'Category updated successfully',
-            data: category,
+            data: {
+                ...updatedCategory.toJSON(),
+                category_image: imageUrl
+            },
         });
     
     } catch (error) {

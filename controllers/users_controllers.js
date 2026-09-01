@@ -674,11 +674,11 @@ const CreateUserByAdmin = async (req, res) => {
             profile_image_id: profileFileId
         });
 
-        // Map profile image to S3 URL
+        // Map profile image to URL
         const userData = {
             ...user.get({ plain: true }),
             profile_image: profileFileId
-                ? await FileFunctions.getFromS3((await Files.findByPk(profileFileId)).file_url)
+                ? await FileFunctions.getFromS3((await Files.findByPk(profileFileId)).files_url)
                 : null
         };
 
