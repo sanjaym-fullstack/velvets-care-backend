@@ -73,11 +73,13 @@ const UpdateCategory = async (req, res) => {
                 size: fs.statSync(category_image.path).size
               });
             }
-        await category.update({ ...updates, category_image: uploaded_files ? uploaded_files.id : null },
-            {
+        const updateData = { ...updates };
+        if (uploaded_files) {
+            updateData.category_image = uploaded_files.id;
+        }
+        await category.update(updateData, {
                 where: { id },
             },
-            
         );
 
         const updatedCategory = await Categories.findOne({

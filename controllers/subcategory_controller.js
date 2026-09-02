@@ -72,7 +72,11 @@ const UpdateSubCategory = async (req, res) => {
         size: fs.statSync(subcategory_image.path).size
       });
     }
-    await subcategory.update({ name, slug, is_active, category_id, description: description || null, subcategory_image: uploaded_files ? uploaded_files.id : null },
+    const updateData = { name, slug, is_active, category_id, description: description || null };
+    if (uploaded_files) {
+      updateData.subcategory_image = uploaded_files.id;
+    }
+    await subcategory.update(updateData,
       { where: { id: subId } }
     );
 
