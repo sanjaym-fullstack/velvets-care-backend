@@ -1148,8 +1148,12 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         } = req.payload;
 
         // 2️⃣ Validate doctor & patient
-        const doctor = await Doctors.findByPk(doctor_id);
-        const patient = await Users.findByPk(patient_id);
+        const doctor = await Doctors.findOne({
+            where: { id: Number(doctor_id) }
+        });
+        const patient = await Users.findOne({
+            where: { id: Number(patient_id) }
+        });
         if (!doctor || !patient) throw new Error('Invalid doctor or patient');
 
         // 3️⃣ Check if appointment date is valid (future date)
