@@ -37,10 +37,17 @@ const createSpecialization = async (req, res) => {
             icon_id: iconStore?.id || null
         });
 
+        const iconUrl = iconStore?.files_url
+            ? await FileFunctions.getFromS3(iconStore.files_url)
+            : null;
+
         return res.response({
             success: true,
             message: 'Specialization created successfully',
-            data: specialization
+            data: {
+                ...specialization.toJSON(),
+                icon: iconUrl
+            }
         });
     } catch (error) {
         console.error('Error creating specialization:', error);
@@ -261,9 +268,18 @@ const updateSpecialization = async (req, res) => {
             { where: { id } }
         );
 
+        const updated = await Specialization.findByPk(id, { include: [{ model: Files }] });
+        const iconUrl = updated.file?.files_url
+            ? await FileFunctions.getFromS3(updated.file.files_url)
+            : null;
+
         return res.response({
             success: true,
-            message: 'Specialization updated successfully'
+            message: 'Specialization updated successfully',
+            data: {
+                ...updated.toJSON(),
+                icon: iconUrl
+            }
         });
     } catch (error) {
         console.error('Error updating specialization:', error);

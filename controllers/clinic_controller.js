@@ -62,10 +62,15 @@ const createClinic = async (req, res) => {
             description
         })
 
+        const imageUrl = await FileFunctions.getFromS3(uploaded_files.files_url);
+
         return res.response({
             success: true,
             message: 'Clinic created successfully',
-            data: clinic
+            data: {
+                ...clinic.toJSON(),
+                profile_image: imageUrl
+            }
         }).code(200);
 
     } catch (error) {

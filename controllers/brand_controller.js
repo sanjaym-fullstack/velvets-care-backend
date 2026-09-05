@@ -34,10 +34,17 @@ const CreateBrand = async (req, res) => {
       is_active: is_active ?? true,
     });
 
+    const imageUrl = uploaded_files?.files_url
+      ? await FileFunctions.getFromS3(uploaded_files.files_url)
+      : null;
+
     return res.response({
       success: true,
       message: 'Brand created successfully',
-      data: brand,
+      data: {
+        ...brand.toJSON(),
+        brand_image: imageUrl
+      },
     }).code(201);
   } catch (error) {
     console.error('Error creating brand:', error);
@@ -79,10 +86,18 @@ const UpdateBrand = async (req, res) => {
       }
     );
 
+    const updatedBrand = await Brands.findByPk(brandId, { include: [{ model: Files }] });
+    const imageUrl = updatedBrand.file?.files_url
+      ? await FileFunctions.getFromS3(updatedBrand.file.files_url)
+      : null;
+
     return res.response({
       success: true,
       message: 'Brand updated successfully',
-      data: brand,
+      data: {
+        ...updatedBrand.toJSON(),
+        brand_image: imageUrl
+      },
     });
   } catch (error) {
     console.error('Error updating brand:', error);

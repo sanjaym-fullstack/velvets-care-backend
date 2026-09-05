@@ -58,10 +58,15 @@ const uploadPrescription = async (req, res) => {
             prescription_id: generatePrescriptionId(prescription.id)
         });
 
+        const fileUrl = await FileFunctions.getFromS3(fileRecord.files_url);
+
         return res.response({
             success: true,
             message: 'Prescription uploaded successfully',
-            data: prescription
+            data: {
+                ...prescription.toJSON(),
+                file_url: fileUrl
+            }
         }).code(201);
 
     } catch (error) {

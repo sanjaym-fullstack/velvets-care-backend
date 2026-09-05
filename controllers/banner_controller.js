@@ -36,10 +36,14 @@ const banner_upload = async (req, res) => {
             banner_image_id: uploaded_files.id,
             title: title
         })
+        const imageUrl = await FileFunctions.getFromS3(uploaded_files.files_url);
         return res.response({
             success: true,
             message: 'Banner uploaded successfully',
-            data: banner
+            data: {
+                ...banner.toJSON(),
+                image: imageUrl
+            }
         }).code(200);
         
     } catch (error) {
