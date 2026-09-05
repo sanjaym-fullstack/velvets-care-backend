@@ -230,6 +230,7 @@ module.exports = {
   statusValidator,
   availabilityValidator,
   addressValidator,
+  statusAdminValidator,
   fecthdoctors_admin,
   fetchSingleDoctorValidator
 };
