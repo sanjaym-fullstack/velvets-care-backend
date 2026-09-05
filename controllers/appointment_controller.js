@@ -1271,7 +1271,9 @@ const callbackPayment = async (req, res) => {
             razorpay_signature
         } = req.query;
 
-        const appointment = await Appointments.findByPk(id);
+        const appointment = await Appointments.findOne({
+            where: { id }
+        });
         if (!appointment) throw new Error('Appointment not found');
 
         await appointment.update({
@@ -1280,6 +1282,8 @@ const callbackPayment = async (req, res) => {
             payment_signature: razorpay_signature,
             payment_status: 'paid',
             status: 'pending'
+        }, {
+            where: { id }
         });
 
         return res.response({
