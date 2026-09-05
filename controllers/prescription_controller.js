@@ -68,7 +68,7 @@ const uploadPrescription = async (req, res) => {
         console.error('Upload Prescription Error:', error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -121,7 +121,7 @@ const getUserPrescriptions = async (req, res) => {
     } catch (error) {
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -193,7 +193,7 @@ const getDoctorPrescriptions = async (req, res) => {
     } catch (error) {
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -244,7 +244,7 @@ const getAdminPrescriptions = async (req, res) => {
     } catch (error) {
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -276,7 +276,7 @@ const getPrescriptionById = async (req, res) => {
     } catch (error) {
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(404);
     }
 };
@@ -332,7 +332,7 @@ const updatePrescription = async (req, res) => {
     } catch (error) {
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -356,7 +356,7 @@ const deletePrescription = async (req, res) => {
     } catch (error) {
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };

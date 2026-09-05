@@ -29,7 +29,7 @@ const CreateDiscountedUser = async (req, res) => {
         }).code(201);
     } catch (error) {
         console.error('Error assigning discount to user:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -63,7 +63,7 @@ const UpdateDiscountedUser = async (req, res) => {
         });
     } catch (error) {
         console.error('Error updating discounted user:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -85,7 +85,7 @@ const DeleteDiscountedUser = async (req, res) => {
         });
     } catch (error) {
         console.error('Error deleting discounted user:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -114,7 +114,7 @@ const GetDiscountedUsers = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching discounted users:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 

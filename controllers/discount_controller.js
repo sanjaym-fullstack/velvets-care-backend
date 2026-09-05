@@ -32,7 +32,7 @@ const CreateDiscount = async (req, res) => {
         }).code(201);
     } catch (error) {
         console.error('Error creating discount:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -57,7 +57,7 @@ const UpdateDiscount = async (req, res) => {
         });
     } catch (error) {
         console.error('Error updating discount:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -79,7 +79,7 @@ const DeleteDiscount = async (req, res) => {
         });
     } catch (error) {
         console.error('Error deleting discount:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -123,7 +123,7 @@ const GetDiscountById = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching discount:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -164,7 +164,7 @@ const AdminDiscounts = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching discounts:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -196,7 +196,7 @@ const AssignDiscountToProduct = async (req, res) => {
         });
     } catch (error) {
         console.error('Error assigning discount to product:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -228,7 +228,7 @@ const AssignDiscountToUser = async (req, res) => {
         });
     } catch (error) {
         console.error('Error assigning discount to user:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -264,7 +264,7 @@ const ValidateDiscountUsage = async (req, res) => {
         });
     } catch (error) {
         console.error('Error validating discount:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 

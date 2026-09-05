@@ -40,7 +40,7 @@ const CreateSubCategory = async (req, res) => {
     }).code(201);
   } catch (error) {
     console.error('Error creating subcategory:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 
@@ -76,7 +76,7 @@ const UpdateSubCategory = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating subcategory:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 
@@ -98,7 +98,7 @@ const DeleteSubCategory = async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting subcategory:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 
@@ -152,7 +152,7 @@ const AdminSubCategories = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching subcategories:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 
@@ -187,7 +187,7 @@ const UserSubCategories = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching user subcategories:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 
@@ -219,7 +219,7 @@ const GetSubCategoryById = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching subcategory:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 

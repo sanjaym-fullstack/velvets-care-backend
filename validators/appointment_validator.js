@@ -2,42 +2,49 @@ const Joi = require('joi');
 
 const appointmentValidator = Joi.object({
     appointment_time: Joi.string().required().messages({
-        'string.empty': 'Date is required',
-        'any.required': 'Date is required',
+        'string.base': 'Appointment time must be a string',
+        'string.empty': 'Appointment time is required',
+        'any.required': 'Appointment time is required',
     }),
     appointment_date: Joi.string().required().messages({
-        'string.empty': 'Date is required',
-        'any.required': 'Date is required',
+        'string.base': 'Appointment date must be a string',
+        'string.empty': 'Appointment date is required',
+        'any.required': 'Appointment date is required',
     }),
     doctor_id: Joi.number().required().messages({
-        'number.empty': 'Doctor ID is required',
+        'number.base': 'Doctor ID must be a number',
         'any.required': 'Doctor ID is required',
     }),
     patient_id: Joi.number().required().messages({
-        'number.empty': 'Patient ID is required',
+        'number.base': 'Patient ID must be a number',
         'any.required': 'Patient ID is required',
     }),
     reason: Joi.string().required().messages({
+        'string.base': 'Reason must be a string',
         'string.empty': 'Reason is required',
         'any.required': 'Reason is required',
     }),
     payment_id: Joi.string().required().messages({
-        'string.empty': 'Payment status is required',
-        'any.required': 'Payment status is required',
+        'string.base': 'Payment ID must be a string',
+        'string.empty': 'Payment ID is required',
+        'any.required': 'Payment ID is required',
     }),
     payment_signature: Joi.string().required().messages({
+        'string.base': 'Payment signature must be a string',
         'string.empty': 'Payment signature is required',
         'any.required': 'Payment signature is required',
     }),
     order_id: Joi.string().required().messages({
+        'string.base': 'Order ID must be a string',
         'string.empty': 'Order ID is required',
         'any.required': 'Order ID is required',
     }),
     consultation_fee: Joi.number().required().messages({
-        'number.empty': 'Consultation fee is required',
+        'number.base': 'Consultation fee must be a number',
         'any.required': 'Consultation fee is required',
     }),
     consultation_modes: Joi.string().required().messages({
+        'string.base': 'Consultation modes must be a string',
         'string.empty': 'Consultation modes is required',
         'any.required': 'Consultation modes is required',
     }),
@@ -45,41 +52,47 @@ const appointmentValidator = Joi.object({
 
 const razorpayPaymentValidator = Joi.object({
     doctor_id: Joi.number().required().messages({
-        'number.empty': 'Doctor ID is required',
+        'number.base': 'Doctor ID must be a number',
         'any.required': 'Doctor ID is required',
     }),
     appointment_date: Joi.string().required().messages({
-        'string.empty': 'Date is required',
-        'any.required': 'Date is required',
+        'string.base': 'Appointment date must be a string',
+        'string.empty': 'Appointment date is required',
+        'any.required': 'Appointment date is required',
     }),
     appointment_time: Joi.string().required().messages({
-        'string.empty': 'Date is required',
-        'any.required': 'Date is required',
+        'string.base': 'Appointment time must be a string',
+        'string.empty': 'Appointment time is required',
+        'any.required': 'Appointment time is required',
     }),
 })
 
 const updateAppointmentValidator = Joi.object({
     appointment_time: Joi.string().required().messages({
-        'string.empty': 'Date is required',
-        'any.required': 'Date is required',
+        'string.base': 'Appointment time must be a string',
+        'string.empty': 'Appointment time is required',
+        'any.required': 'Appointment time is required',
     }),
     appointment_date: Joi.string().required().messages({
-        'string.empty': 'Date is required',
-        'any.required': 'Date is required',
+        'string.base': 'Appointment date must be a string',
+        'string.empty': 'Appointment date is required',
+        'any.required': 'Appointment date is required',
     }),
     doctor_id: Joi.number().required().messages({
-        'number.empty': 'Doctor ID is required',
+        'number.base': 'Doctor ID must be a number',
         'any.required': 'Doctor ID is required',
     }),
     patient_id: Joi.number().required().messages({
-        'number.empty': 'Patient ID is required',
+        'number.base': 'Patient ID must be a number',
         'any.required': 'Patient ID is required',
     }),
     reason: Joi.string().required().messages({
+        'string.base': 'Reason must be a string',
         'string.empty': 'Reason is required',
         'any.required': 'Reason is required',
     }),
     status: Joi.string().required().messages({
+        'string.base': 'Status must be a string',
         'string.empty': 'Status is required',
         'any.required': 'Status is required',
     }),
@@ -88,104 +101,105 @@ const updateAppointmentValidator = Joi.object({
 
 const cancelAppointmentValidator = Joi.object({
     cancel_reason: Joi.string().required().messages({
-        'string.empty': 'Reason is required',
-        'any.required': 'Reason is required',
+        'string.base': 'Cancel reason must be a string',
+        'string.empty': 'Cancel reason is required',
+        'any.required': 'Cancel reason is required',
     }),
 })
 
 const fecthAppointmentsValidator = Joi.object({
     page: Joi.number().allow(null).messages({
-        'string.empty': 'Page is required',
-        'any.required': 'Page is required',
+        'number.base': 'Page must be a number',
     }),
     date: Joi.string().allow(null).messages({
-        'string.empty': 'Date is required',
-        'any.required': 'Date is required',
+        'string.base': 'Date must be a string',
     }),
     limit: Joi.number().allow(null).messages({
-        'string.empty': 'Limit is required',
-        'any.required': 'Limit is required',
+        'number.base': 'Limit must be a number',
     }),
     doctor_id: Joi.number().allow(null).messages({
-        'string.empty': 'Doctor ID is required',
-        'any.required': 'Doctor ID is required',
+        'number.base': 'Doctor ID must be a number',
     }),
     patient_id: Joi.number().allow(null).messages({
-        'string.empty': 'Patient ID is required',
-        'any.required': 'Patient ID is required',
+        'number.base': 'Patient ID must be a number',
     }),
     status: Joi.string().allow(null).messages({
-        'string.empty': 'Status is required',
-        'any.required': 'Status is required',
+        'string.base': 'Status must be a string',
     }),
 })
 const fetchdoctorAppointmentsValidator = Joi.object({
     status: Joi.string().allow(null).messages({
-        'string.empty': 'Status is required',
-        'any.required': 'Status is required',
+        'string.base': 'Status must be a string',
     }),
     date: Joi.string().allow(null).messages({
-        'string.empty': 'Date is required',
-        'any.required': 'Date is required',
+        'string.base': 'Date must be a string',
     }),
 })
 const appointment = Joi.object({
     id: Joi.number().required().messages({
-        'number.empty': 'ID is required',
-        'any.required': 'ID is required',
+        'number.base': 'Appointment ID must be a number',
+        'any.required': 'Appointment ID is required',
     }),
 })
 
 const slotcheckingValidator = Joi.object({
     doctor_id: Joi.number().required().messages({
-        'number.empty': 'Doctor ID is required',
+        'number.base': 'Doctor ID must be a number',
         'any.required': 'Doctor ID is required',
     }),
     appointment_date: Joi.string().required().messages({
-        'string.empty': 'Date is required',
-        'any.required': 'Date is required',
+        'string.base': 'Appointment date must be a string',
+        'string.empty': 'Appointment date is required',
+        'any.required': 'Appointment date is required',
     }),
 });
 
 const updateAppointmentStatusValidator = Joi.object({
     status: Joi.string().valid('no_show', 'completed').required().messages({
+        'string.base': 'Status must be a string',
         'string.empty': 'Status is required',
         'any.required': 'Status is required',
+        'any.only': 'Status must be no_show or completed',
     }),
 
 });
 const UpdateAppointmentStatusParams = Joi.object({
     appointmentId: Joi.number().integer().required().messages({
-        'string.empty': 'Appointment ID is required',
+        'number.base': 'Appointment ID must be a number',
+        'number.integer': 'Appointment ID must be an integer',
         'any.required': 'Appointment ID is required',
     }),
 });
 const createAppointmentAdminValidator = Joi.object({
     doctor_id: Joi.number().required().messages({
-        'number.empty': 'Doctor ID is required',
+        'number.base': 'Doctor ID must be a number',
         'any.required': 'Doctor ID is required',
     }),
     patient_id: Joi.number().required().messages({
-        'number.empty': 'Patient ID is required',
+        'number.base': 'Patient ID must be a number',
         'any.required': 'Patient ID is required',
     }),
     appointment_date: Joi.string().required().messages({
+        'string.base': 'Appointment date must be a string',
         'string.empty': 'Appointment date is required',
         'any.required': 'Appointment date is required',
     }),
     appointment_time: Joi.string().required().messages({
+        'string.base': 'Appointment time must be a string',
         'string.empty': 'Appointment time is required',
         'any.required': 'Appointment time is required',
     }),
     reason: Joi.string().required().messages({
+        'string.base': 'Reason must be a string',
         'string.empty': 'Reason is required',
         'any.required': 'Reason is required',
     }),
     consultation_fee: Joi.number().required().messages({
-        'number.empty': 'Consultation fee is required',
+        'number.base': 'Consultation fee must be a number',
         'any.required': 'Consultation fee is required',
     }),
     consultation_modes: Joi.string().required().messages({
+        'string.base': 'Consultation modes must be a string',
         'string.empty': 'Consultation modes is required',
         'any.required': 'Consultation modes is required',
     }),
@@ -193,14 +207,17 @@ const createAppointmentAdminValidator = Joi.object({
 
 const callbackValidator = Joi.object({
     razorpay_payment_id: Joi.string().required().messages({
+        'string.base': 'Payment ID must be a string',
         'string.empty': 'Payment ID is required',
         'any.required': 'Payment ID is required',
     }),
     razorpay_order_id: Joi.string().required().messages({
+        'string.base': 'Order ID must be a string',
         'string.empty': 'Order ID is required',
         'any.required': 'Order ID is required',
     }),
     razorpay_signature: Joi.string().required().messages({
+        'string.base': 'Signature must be a string',
         'string.empty': 'Signature is required',
         'any.required': 'Signature is required',
     }),

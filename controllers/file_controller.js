@@ -17,7 +17,7 @@ const uploadFileFunc = async (req, res) => {
         console.error(err);
         return h.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 }
@@ -34,7 +34,7 @@ const getFile = async (req, res) => {
         console.error(err);
         return h.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 }

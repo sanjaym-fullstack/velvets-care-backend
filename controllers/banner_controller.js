@@ -46,7 +46,7 @@ const banner_upload = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
         
     }
@@ -85,7 +85,7 @@ const get_banner_users = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
         
     }
@@ -115,7 +115,7 @@ const banner_delete = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
         
     }
@@ -162,7 +162,7 @@ const get_banner_admin = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
         
     }

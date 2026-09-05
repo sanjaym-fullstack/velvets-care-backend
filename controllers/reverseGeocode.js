@@ -37,8 +37,8 @@ const getAddress = async (req, res) => {
     console.log(error);
     return res.response({
       success: false,
-      message: err.message,
-      error: err,
+      message: error.message || 'Something went wrong',
+      error: error,
   }).code(200);
 
   }

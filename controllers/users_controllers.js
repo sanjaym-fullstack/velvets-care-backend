@@ -81,7 +81,7 @@ const request_otp_login = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         })
 
     }
@@ -128,7 +128,7 @@ const request_otp_register = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         })
 
     }
@@ -225,7 +225,7 @@ const verify_otp = async (req, res) => {
         console.error(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 };
@@ -262,7 +262,7 @@ const validateusersession = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 }
@@ -309,7 +309,7 @@ const logout = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 }
@@ -396,7 +396,7 @@ const update_user = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -447,7 +447,7 @@ const user_refresh_token = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 }
@@ -511,7 +511,7 @@ const getusers = async (req, res) => {
         console.error(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(500);
     }
 };
@@ -576,7 +576,7 @@ const googleSignIn = async (request, h) => {
         console.error(err);
         return h.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(401);
     }
 };
@@ -618,7 +618,7 @@ const getuserData = async (request, h) => {
         console.error(error);
         return h.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -692,7 +692,7 @@ const CreateUserByAdmin = async (req, res) => {
         console.error(error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -736,7 +736,7 @@ const inactivateUser = async (req, res) => {
         console.error(error);
         return res.response({
             success: false,
-            message: error.message || 'An error occurred while inactivating the user',
+            message: error.message || 'Something went wrong',
         }).code(500);
     }
 
@@ -780,7 +780,7 @@ const reactivateUser = async (req, res) => {
         console.error(error);
         return res.response({
             success: false,
-            message: error.message || 'An error occurred while reactivating the user',
+            message: error.message || 'Something went wrong',
         }).code(500);
     }
 }

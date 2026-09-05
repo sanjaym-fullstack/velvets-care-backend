@@ -74,7 +74,7 @@ const getFashionShops = async (req, res) => {
     console.error('Google Places API Error:', err.response ? err.response.data : err.message);
     return res.response({
       success: false,
-      message: 'Failed to fetch shops: ' + (err.response ? err.response.data.error_message || 'An error occurred' : err.message),
+      message: err.message || 'Something went wrong',
       error: err.response ? err.response.data : { message: err.message }, // Include more error details
     }).code(500);
   }

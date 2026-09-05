@@ -40,7 +40,7 @@ const AddToCart = async (req, res) => {
         }).code(201);
     } catch (error) {
         console.error('Error adding to cart:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -62,7 +62,7 @@ const RemoveFromCart = async (req, res) => {
         });
     } catch (error) {
         console.error('Error removing from cart:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -84,7 +84,7 @@ const IncrementCartItem = async (req, res) => {
         });
     } catch (error) {
         console.error('Error incrementing cart item:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -114,7 +114,7 @@ const DecrementCartItem = async (req, res) => {
         });
     } catch (error) {
         console.error('Error decrementing cart item:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -153,7 +153,7 @@ const GetCart = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching cart:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -179,7 +179,7 @@ const AdminCartStats = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching cart stats:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 

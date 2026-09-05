@@ -70,7 +70,7 @@ const fetchOrdersAdmin = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(500);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
     }
 };
 
@@ -134,7 +134,7 @@ const fetchUserOrders = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(500);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
     }
 };
 
@@ -168,7 +168,7 @@ const updateOrderStatus = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(500);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
     }
 };
 
@@ -204,7 +204,7 @@ const fetchPaymentsAdmin = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(500);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
     }
 };
 
@@ -257,7 +257,7 @@ const fetchOrderById = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(500);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
     }
 };
 
