@@ -9,6 +9,7 @@ const bannerValidator = Joi.object({
         'string.empty': 'Image is required',
     }),
     title: Joi.string().required().messages({
+        'string.base': 'Title must be a string',
         'string.empty': 'Title is required',
         'any.required': 'Title is required',
     }),
@@ -16,23 +17,19 @@ const bannerValidator = Joi.object({
 
 const deleteBannerValidator = Joi.object({
     banner_id: Joi.number().required().messages({
-        'number.empty': 'Banner id is required',
-        'any.required': 'Banner id is required',
+        'number.base': 'Banner ID must be a number',
+        'any.required': 'Banner ID is required',
     }),
 })
 
 const allBanners = Joi.object({
     page: Joi.number().allow(null).messages({
-        'string.empty': 'Page is required',
-        'any.required': 'Page is required',
+        'number.base': 'Page must be a number',
     }),
     limit: Joi.number().allow(null).messages({
-        'string.empty': 'Limit is required',
-        'any.required': 'Limit is required',
+        'number.base': 'Limit must be a number',
     }),
 })
-
-
 
 
 module.exports = {

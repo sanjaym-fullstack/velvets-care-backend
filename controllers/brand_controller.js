@@ -48,7 +48,7 @@ const CreateBrand = async (req, res) => {
     }).code(201);
   } catch (error) {
     console.error('Error creating brand:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 
@@ -101,7 +101,7 @@ const UpdateBrand = async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating brand:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 
@@ -123,7 +123,7 @@ const DeleteBrand = async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting brand:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 
@@ -173,7 +173,7 @@ const AdminBrands = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching brands:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 
@@ -207,7 +207,7 @@ const UserBrands = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching user brands:', error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 
@@ -236,7 +236,7 @@ const GetBrandById = async (req, res) => {
     return res.response({ success: true, data });
   } catch (error) {
     console.error("Error fetching brand:", error);
-    return res.response({ success: false, message: error.message });
+    return res.response({ success: false, message: error.message || 'Something went wrong' });
   }
 };
 

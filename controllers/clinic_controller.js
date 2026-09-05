@@ -77,7 +77,7 @@ const createClinic = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 }

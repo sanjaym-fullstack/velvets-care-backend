@@ -384,7 +384,7 @@ const getDoctorDashboard = async (req, h) => {
         console.error('Doctor dashboard error:', err);
         return h.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 };

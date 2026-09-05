@@ -53,7 +53,7 @@ const createSpecialization = async (req, res) => {
         console.error('Error creating specialization:', error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         });
     }
 };
@@ -117,7 +117,7 @@ const getAllSpecializationsAdmin = async (req, res) => {
         console.error('Error fetching specializations:', error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         });
     }
 };
@@ -154,7 +154,7 @@ const getspecilaizationsUsers = async (req, res) => {
         console.error('Error fetching specialization:', error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         });
     }
 };
@@ -196,7 +196,7 @@ const getdoctorsbasedonspecialization = async (req, res) => {
         console.error('Error fetching doctors:', error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         });
     }
 };
@@ -225,7 +225,7 @@ const deleteSpecialization = async (req, res) => {
         console.error('Error deleting specialization:', error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         });
     }
 };
@@ -285,7 +285,7 @@ const updateSpecialization = async (req, res) => {
         console.error('Error updating specialization:', error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         });
     }
 };

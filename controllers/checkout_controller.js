@@ -117,7 +117,7 @@ const createCheckout = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(500);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
     }
 };
 
@@ -169,7 +169,7 @@ const verifyPayment = async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(500);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
     }
 };
 

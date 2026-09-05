@@ -163,7 +163,7 @@ const createDoctor = async (req, h) => {
   } catch (err) {
     await transaction.rollback();
     console.error(err);
-    return h.response({ success: false, message: err.message || 'Error updating basic details' }).code(500);
+    return h.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 
@@ -269,14 +269,14 @@ const updateBasicDetails = async (req, h) => {
       date_of_birth,
       phone,
       email,
-      specialization,
+      specialization: JSON.stringify(JSON.parse(specialization)),
       years_of_experience,
       registration_number,
       registration_certificate_id: regCertFileId,
       medical_degree_certificate_id: degreeCertFileId,
       consultation_fee,
-      consultation_modes: consultation_modes,
-      languages_spoken: languages_spoken,
+      consultation_modes: JSON.stringify(JSON.parse(consultation_modes)),
+      languages_spoken: JSON.stringify(JSON.parse(languages_spoken)),
       profile_image_id: profileFileId,
       government_id: govFileId,
       pan_card_id: panFileId
@@ -317,7 +317,7 @@ const updateBasicDetails = async (req, h) => {
   } catch (err) {
     await transaction.rollback();
     console.error(err);
-    return h.response({ success: false, message: err.message || 'Error updating basic details' }).code(500);
+    return h.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 
@@ -388,7 +388,7 @@ const updateAddress = async (req, h) => {
     console.error(err);
     return h.response({
       success: false,
-      message: 'Error saving address'
+      message: err.message || 'Something went wrong'
     }).code(200);
   }
 };
@@ -450,7 +450,7 @@ const updateAvailability = async (req, h) => {
     console.error(err);
     return h.response({
       success: false,
-      message: err.message || 'Error updating availability'
+      message: err.message || 'Something went wrong'
     }).code(500);
   }
 };
@@ -483,7 +483,7 @@ const updateStatus = async (req, h) => {
     console.error(err);
     return h.response({
       success: false,
-      message: 'Error updating status'
+      message: err.message || 'Something went wrong'
     }).code(200);
   }
 };
@@ -563,7 +563,7 @@ const doctorlist_user = async (req, h) => {
     console.error('Doctor list user error:', error);
     return h.response({
       success: false,
-      message: error.message
+      message: error.message || 'Something went wrong'
     }).code(500);
   }
 };
@@ -654,7 +654,7 @@ const doctorlist = async (req, h) => {
     console.error('Doctor list error:', err);
     return h.response({
       success: false,
-      message: err.message
+      message: err.message || 'Something went wrong'
     }).code(500);
   }
 };
@@ -718,7 +718,7 @@ const fetch_single_doctor = async (req, h) => {
 
   } catch (err) {
     console.error('Fetch single doctor error:', err);
-    return h.response({ success: false, message: err.message }).code(500);
+    return h.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 
@@ -814,7 +814,7 @@ const fetch_popular_doctors = async (req, h) => {
 
   } catch (err) {
     console.error(err);
-    return h.response({ success: false, message: err.message }).code(400);
+    return h.response({ success: false, message: err.message || 'Something went wrong' }).code(400);
   }
 };
 
@@ -916,7 +916,7 @@ const fetch_popular_doctors_admin = async (req, h) => {
 
   } catch (err) {
     console.error("Error fetching popular doctors (admin):", err);
-    return h.response({ success: false, message: err.message }).code(500);
+    return h.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 
@@ -1052,7 +1052,7 @@ const updateDoctoreDetailsByAdmin = async (req, h) => {
 
   } catch (err) {
     console.error(err);
-    return h.response({ success: false, message: err.message }).code(500);
+    return h.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 
@@ -1081,7 +1081,7 @@ const deleteDoctor = async (req, h) => {
     console.error(err);
     return h.response({
       success: false,
-      message: err.message
+      message: err.message || 'Something went wrong'
     });
   }
 };
@@ -1110,7 +1110,7 @@ const CheckDoctorSlotsByAdmin = async (req, h) => {
     console.error(error);
     return h.response({
       success: false,
-      message: error.message
+      message: error.message || 'Something went wrong'
     });
 
   }

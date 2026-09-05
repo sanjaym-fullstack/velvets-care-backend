@@ -59,7 +59,7 @@ const getDashboardStats = async (req, res) => {
 
     } catch (err) {
         console.error(err);
-        return res.response({ success: false, message: err.message }).code(200);
+        return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
     }
 };
 const getYearlyDashboardStats = async (req, res) => {
@@ -108,7 +108,7 @@ const getYearlyDashboardStats = async (req, res) => {
 
     } catch (err) {
         console.error(err);
-        return res.response({ success: false, message: err.message }).code(200);
+        return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
     }
 };
 module.exports = { getDashboardStats, getYearlyDashboardStats };

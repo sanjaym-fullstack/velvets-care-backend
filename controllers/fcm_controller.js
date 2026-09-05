@@ -20,7 +20,7 @@ const saveFcmToken = async (req, res) => {
   return res.response({ success: true, message: 'Token saved' }).code(200);
 } catch (error) {
   console.error('Error saving FCM token:', error);
-  return res.response({ success: false, message: error.message }).code(500);
+  return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
 }
 };
 
@@ -48,7 +48,7 @@ const testNotification = async (req, h) => {
         console.error('Error sending test notification:', err);
         return h.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(500);
     }
 };

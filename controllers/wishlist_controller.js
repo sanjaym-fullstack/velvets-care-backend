@@ -39,7 +39,7 @@ const AddToWishlist = async (req, res) => {
         }).code(201);
     } catch (error) {
         console.error('Error adding to wishlist:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -61,7 +61,7 @@ const RemoveFromWishlist = async (req, res) => {
         });
     } catch (error) {
         console.error('Error removing from wishlist:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -101,7 +101,7 @@ const GetWishlist = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching wishlist:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -126,7 +126,7 @@ const AdminWishlistStats = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching wishlist stats:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 

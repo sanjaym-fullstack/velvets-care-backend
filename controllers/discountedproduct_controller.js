@@ -30,7 +30,7 @@ const CreateDiscountedProduct = async (req, res) => {
         }).code(201);
     } catch (error) {
         console.error('Error creating discounted product:', error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(400);
     }
 };
 
@@ -64,7 +64,7 @@ const UpdateDiscountedProduct = async (req, res) => {
         });
     } catch (error) {
         console.error('Error updating discounted product:', error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(400);
     }
 };
 
@@ -86,7 +86,7 @@ const DeleteDiscountedProduct = async (req, res) => {
         });
     } catch (error) {
         console.error('Error deleting discounted product:', error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(400);
     }
 };
 
@@ -130,7 +130,7 @@ const GetDiscountedProducts = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching discounted products:', error);
-        return res.response({ success: false, message: error.message }).code(400);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(400);
     }
 };
 

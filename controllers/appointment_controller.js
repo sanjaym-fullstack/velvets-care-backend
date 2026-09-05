@@ -83,7 +83,7 @@ const precheckAndCreateOrder = async (req, res) => {
         });
     } catch (error) {
         console.log(error);
-        return res.response({ success: false, message: error.message }).code(200);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(200);
     }
 };
 
@@ -150,7 +150,7 @@ const confirmAppointment = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -249,7 +249,7 @@ const getDoctorAppointments = async (req, h) => {
         console.error('Fetch doctor appointments error:', error);
         return h.response({
             success: false,
-            message: error.message || 'Failed to fetch appointments'
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -293,7 +293,7 @@ const DoctorApproval = async (req, h) => {
         console.error(error);
         return h.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -346,7 +346,7 @@ const UpdateAppointmentStatus = async (req, h) => {
         console.error(error);
         return h.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -393,7 +393,7 @@ const doctoreject = async (req, h) => {
         console.error(error);
         return h.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(200);
     }
 }
@@ -450,7 +450,7 @@ const cancelAppointmentByUser = async (req, h) => {
         console.error(error);
         return h.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -570,7 +570,7 @@ const getadminAppointments = async (req, res) => {
         console.error(error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -606,7 +606,7 @@ const getRtcToken = async (req, h) => {
         console.error(err);
         return h.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         });
     }
 };
@@ -705,7 +705,7 @@ const getUserAppointments = async (req, res) => {
         console.error(error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -772,7 +772,7 @@ const checkDoctorAvailability = async (req, res) => {
         console.log(err);
         return res.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -886,7 +886,7 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
         console.error(err);
         return res.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -952,7 +952,7 @@ const getTodaysAppointmentsDoctor = async (req, res) => {
         console.error(err);
         return res.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -1006,7 +1006,7 @@ const adminCheckDoctorSlot = async (req, res) => {
         console.error(err);
         return res.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -1083,7 +1083,7 @@ const adminGetDoctorAvailableSlots = async (req, res) => {
         console.error(err);
         return res.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -1123,7 +1123,7 @@ const adminGetTodaysAppointments = async (req, res) => {
         console.error(err);
         return res.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -1253,7 +1253,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         console.error(err);
         return res.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 };
@@ -1288,7 +1288,7 @@ const callbackPayment = async (req, res) => {
         console.error(err);
         return res.response({
             success: false,
-            message: err.message
+            message: err.message || 'Something went wrong'
         }).code(200);
     }
 }

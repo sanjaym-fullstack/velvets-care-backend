@@ -23,7 +23,7 @@ const addAddress = async (req, h) => {
         }).code(201);
     } catch (err) {
         console.error(err);
-        return h.response({ success: false, message: err.message }).code(400);
+        return h.response({ success: false, message: err.message || 'Something went wrong' }).code(400);
     }
 };
 
@@ -43,7 +43,7 @@ const getAddresses = async (req, h) => {
         }).code(200);
     } catch (err) {
         console.error(err);
-        return h.response({ success: false, message: err.message }).code(400);
+        return h.response({ success: false, message: err.message || 'Something went wrong' }).code(400);
     }
 };
 
@@ -69,7 +69,7 @@ const updateAddress = async (req, h) => {
         }).code(200);
     } catch (err) {
         console.error(err);
-        return h.response({ success: false, message: err.message }).code(400);
+        return h.response({ success: false, message: err.message || 'Something went wrong' }).code(400);
     }
 };
 
@@ -93,7 +93,7 @@ const deleteAddress = async (req, h) => {
         }).code(200);
     } catch (err) {
         console.error(err);
-        return h.response({ success: false, message: err.message }).code(400);
+        return h.response({ success: false, message: err.message || 'Something went wrong' }).code(400);
     }
 };
 

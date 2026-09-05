@@ -65,7 +65,7 @@ const send_otp_admin = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
 
     }
@@ -130,7 +130,7 @@ const verify_otp_admin = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
 
     }
@@ -161,7 +161,7 @@ const validateSession = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 }
@@ -183,7 +183,7 @@ const fetchAdmins = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 }
@@ -212,7 +212,7 @@ const createAdmin = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 }
@@ -242,7 +242,7 @@ const sendNotification = async (req, res) => {
         return res.response({ success: true, message: 'Notification sent successfully' }).code(200);
     } catch (error) {
         console.error(error);
-        return res.response({ success: false, message: error.message }).code(500);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
     }
 };
 

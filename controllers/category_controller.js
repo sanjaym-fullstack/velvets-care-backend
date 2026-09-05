@@ -48,7 +48,7 @@ const CreateCategory = async (req, res) => {
         }).code(201);
     } catch (error) {
         console.error('Error creating category:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -102,7 +102,7 @@ const UpdateCategory = async (req, res) => {
     
     } catch (error) {
         console.error('Error updating category:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -124,7 +124,7 @@ const DeleteCategory = async (req, res) => {
         });
     } catch (error) {
         console.error('Error deleting category:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -156,7 +156,7 @@ const GetCategoryById = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching category by id:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -207,7 +207,7 @@ const AdminCategories = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching admin categories:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 
@@ -254,7 +254,7 @@ const UserCategories = async (req, res) => {
         });
     } catch (error) {
         console.error('Error fetching user categories:', error);
-        return res.response({ success: false, message: error.message });
+        return res.response({ success: false, message: error.message || 'Something went wrong' });
     }
 };
 

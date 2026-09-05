@@ -77,7 +77,7 @@ const doctor_request_otp = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         });
     }
 };
@@ -176,7 +176,7 @@ const doctor_verify_otp = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         });
     }
 };
@@ -208,7 +208,7 @@ const doctor_validate_session = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 };
@@ -249,7 +249,7 @@ const doctor_logout = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 };
@@ -326,7 +326,7 @@ const doctor_update_profile = async (req, res) => {
         console.error(error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };
@@ -375,7 +375,7 @@ const doctor_refresh_token = async (req, res) => {
         console.log(error);
         return res.response({
             success: false,
-            message: error.message,
+            message: error.message || 'Something went wrong',
         }).code(200);
     }
 };
@@ -429,7 +429,7 @@ const getDoctorProfile = async (req, res) => {
         console.error(error);
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(500);
     }
 };

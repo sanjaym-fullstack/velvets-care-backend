@@ -114,7 +114,7 @@ const CreateProduct = async (req, res) => {
 
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(400);
     }
 };
@@ -194,7 +194,7 @@ const UpdateProduct = async (req, res) => {
 
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(400);
     }
 };
@@ -235,7 +235,7 @@ const DeleteProduct = async (req, res) => {
 
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(400);
     }
 };
@@ -300,7 +300,7 @@ const GetProductById = async (req, res) => {
 
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(400);
     }
 };
@@ -412,7 +412,7 @@ const AdminProducts = async (req, res) => {
 
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(400);
     }
 };
@@ -528,7 +528,7 @@ const UserProducts = async (req, res) => {
 
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(400);
     }
 };
@@ -603,7 +603,7 @@ const UploadProductImage = async (req, res) => {
 
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(400);
     }
 };
@@ -647,7 +647,7 @@ const DeleteProductImage = async (req, res) => {
 
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(400);
     }
 };
@@ -695,7 +695,7 @@ const GetImagesByProduct = async (req, res) => {
 
         return res.response({
             success: false,
-            message: error.message
+            message: error.message || 'Something went wrong'
         }).code(400);
     }
 };

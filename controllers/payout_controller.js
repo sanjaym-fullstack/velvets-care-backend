@@ -9,7 +9,7 @@ const getSettings = async (req, res) => {
     return res.response({ success: true, message: 'Payout settings fetched', data: settings }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -34,7 +34,7 @@ const updateSetting = async (req, res) => {
     return res.response({ success: true, message: 'Setting updated', data: setting }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -59,7 +59,7 @@ const addBankAccount = async (req, res) => {
     return res.response({ success: true, message: 'Bank account added', data: bankAccount }).code(201);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 const addBankAccountAdmin = async (req, res) => {
@@ -88,7 +88,7 @@ const addBankAccountAdmin = async (req, res) => {
     return res.response({ success: true, message: 'Bank account added', data: bankAccount }).code(201);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -111,7 +111,7 @@ const updateBankAccount = async (req, res) => {
     return res.response({ success: true, message: 'Bank account updated', data: bankAccount }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -140,7 +140,7 @@ const updateBankAccountAdmin = async (req, res) => {
     return res.response({ success: true, message: 'Bank account updated', data: bankAccount }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -162,7 +162,7 @@ const getBankAccount = async (req, res) => {
     }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 const getBankAccountAdmin = async (req, res) => {
@@ -186,7 +186,7 @@ const getBankAccountAdmin = async (req, res) => {
     }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -319,7 +319,7 @@ const calculatePayouts = async (req, res) => {
     return res.response({ success: true, message: 'Payouts fetched', data: payoutData }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -350,7 +350,7 @@ const getAdminPayouts = async (req, res) => {
     return res.response({ success: true, message: 'Payouts fetched', data: payouts }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -375,7 +375,7 @@ const getDoctorPayouts = async (req, res) => {
     }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -484,7 +484,7 @@ const getPayoutPlan = async (req, res) => {
     }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -535,7 +535,7 @@ const markAsPaid = async (req, res) => {
     }).code(201);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
@@ -573,7 +573,7 @@ const getPayoutHistory = async (req, res) => {
     }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
   }
 };
 
