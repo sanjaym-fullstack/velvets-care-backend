@@ -207,10 +207,12 @@ const getDoctorPrescriptions = async (req, res) => {
 
 const getAdminPrescriptions = async (req, res) => {
     try {
-        const { page = 1, limit = 10, search } = req.query;
+        const { page = 1, limit = 10, search, user_id, doctor_id } = req.query;
         const offset = (page - 1) * limit;
 
         let where = {};
+        if (user_id) where.user_id = user_id;
+        if (doctor_id) where.doctor_id = doctor_id;
         if (search) {
             where[Op.or] = [
                 { prescription_id: { [Op.like]: `%${search}%` } },
