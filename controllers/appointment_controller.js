@@ -1267,7 +1267,7 @@ const callbackPayment = async (req, res) => {
         const { id } = req.params;
         const {
             razorpay_payment_id,
-            razorpay_order_id,
+            razorpay_payment_link_id,
             razorpay_signature
         } = req.query;
 
@@ -1278,7 +1278,7 @@ const callbackPayment = async (req, res) => {
 
         await appointment.update({
             payment_id: razorpay_payment_id,
-            order_id: razorpay_order_id,
+            order_id: razorpay_payment_link_id,
             payment_signature: razorpay_signature,
             payment_status: 'paid',
             status: 'pending'

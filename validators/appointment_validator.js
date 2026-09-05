@@ -211,7 +211,7 @@ const callbackValidator = Joi.object({
         'string.empty': 'Payment ID is required',
         'any.required': 'Payment ID is required',
     }),
-    razorpay_order_id: Joi.string().required().messages({
+    razorpay_payment_link_id: Joi.string().required().messages({
         'string.base': 'Order ID must be a string',
         'string.empty': 'Order ID is required',
         'any.required': 'Order ID is required',
