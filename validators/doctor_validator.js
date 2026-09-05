@@ -101,6 +101,20 @@ const statusValidator = Joi.object({
     'any.required': 'Verified is required',
   }),
 });
+const statusAdminValidator = Joi.object({
+  doctor_id: Joi.number().required().messages({
+    'number.base': 'Doctor ID must be a number',
+    'any.required': 'Doctor ID is required',
+  }),
+  status: Joi.boolean().required().messages({
+    'boolean.base': 'Status must be true or false',
+    'any.required': 'Status is required',
+  }),
+  verified: Joi.boolean().required().messages({
+    'boolean.base': 'Verified must be true or false',
+    'any.required': 'Verified is required',
+  }),
+});
 
 const availabilityValidator = Joi.object({
   availability: Joi.array().items(

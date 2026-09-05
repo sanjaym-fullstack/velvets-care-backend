@@ -456,6 +456,37 @@ const updateAvailability = async (req, h) => {
 };
 
 
+const updateStatusByAdmin = async (req, h) => {
+  try {
+    const session_user = req.headers.user;
+    if (!session_user) {
+      throw new Error('Session expired');
+    }
+    const { doctor_id, status, verified } = req.payload;
+
+    await Doctors.update({
+      status: status,
+      verified: verified
+    },
+      {
+        where: {
+          id: doctor_id
+        }
+      });
+
+    return h.response({
+      success: true,
+      message: 'Status updated'
+
+    }).code(200);
+  } catch (err) {
+    console.error(err);
+    return h.response({
+      success: false,
+      message: err.message || 'Something went wrong'
+    }).code(200);
+  }
+};
 const updateStatus = async (req, h) => {
   try {
     const session_user = req.headers.user;
@@ -1122,6 +1153,7 @@ module.exports = {
   updateAddress,
   updateAvailability,
   updateStatus,
+  updateStatusByAdmin,
   doctorlist_user,
   doctorlist,
   fetch_single_doctor,

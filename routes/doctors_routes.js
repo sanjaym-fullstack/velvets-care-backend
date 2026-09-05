@@ -10,6 +10,7 @@ const {
         updateAddress,
         updateAvailability,
         updateStatus,
+        updateStatusByAdmin,
         doctorlist_user,
         doctorlist,
         fetch_single_doctor,
@@ -26,6 +27,7 @@ const {
         statusValidator,
         availabilityValidator,
         addressValidator,
+        statusAdminValidator,
         fecthdoctors_admin,
         fetchSingleDoctorValidator
     },
@@ -161,6 +163,27 @@ module.exports = [
 
             },
             handler: updateStatus
+        }
+    },
+    {
+        method: 'POST',
+        path: '/doctor/update-status-by-admin',
+        options: {
+            description: 'Update status of doctor by admin',
+            tags,
+            pre: [
+                SessionValidator
+            ],
+            validate: {
+                payload: statusAdminValidator,
+                headers: HeaderValidator,
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                },
+
+            },
+            handler: updateStatusByAdmin
         }
     },
     {
