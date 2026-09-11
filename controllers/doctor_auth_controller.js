@@ -27,12 +27,25 @@ const doctor_request_otp = async (req, res) => {
         });
 
         const otp = await OTPFunctions.getOTPByLength(4);
-        console.log("login otp:", otp);
         if (!doctor) {
+            // const otpCode = await Otps.create({
+            //     otp: otp,
+            //     otp_time: Date.now()
+            // });
+
+            // const sent = await TwilioFunctions.sendOtpViaTwilio(phone, otpCode.otp);
+            // if (!sent) {
+            //     throw new Error('OTP not sent');
+            // }
+            // await Doctors.create({
+            //     phone: phone,
+            //     otp_id: otpCode.id
+            // });
+
             return res.response({
                 success: false,
-                message: 'Doctor not exist'
-            }).code(404);
+                message: 'Doctor not found. Please register by contacting the velvets care team first.',
+            });
         }
 
         const otpCode = await Otps.create({
