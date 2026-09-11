@@ -6,7 +6,7 @@ const {
     Files
 } = require('../models');
 
-const { FileFunctions } = require('../helpers');
+const { FileFunctions, stripSensitive } = require('../helpers');
 const fs = require('fs');
 
 /* ----------------- HELPERS ----------------- */
@@ -245,7 +245,7 @@ const getAdminPrescriptions = async (req, res) => {
         return res.response({
             success: true,
             total: prescriptions.count,
-            data: mapped
+            data: stripSensitive(mapped)
         }).code(200);
 
     } catch (error) {
@@ -277,7 +277,7 @@ const getPrescriptionById = async (req, res) => {
 
         return res.response({
             success: true,
-            data: json
+            data: stripSensitive(json)
         }).code(200);
 
     } catch (error) {

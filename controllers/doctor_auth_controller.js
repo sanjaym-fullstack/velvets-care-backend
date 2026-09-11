@@ -4,7 +4,8 @@ const {
     OTPFunctions,
     JWTFunctions,
     TwilioFunctions,
-    FileFunctions
+    FileFunctions,
+    stripSensitive
 } = require('../helpers')
 
 const DEMO_OTP = '1234'
@@ -26,26 +27,24 @@ const doctor_request_otp = async (req, res) => {
         });
 
         const otp = await OTPFunctions.getOTPByLength(4);
-        console.log("login otp:", otp);
         if (!doctor) {
-            const otpCode = await Otps.create({
-                otp: otp,
-                otp_time: Date.now()
-            });
+            // const otpCode = await Otps.create({
+            //     otp: otp,
+            //     otp_time: Date.now()
+            // });
 
             // const sent = await TwilioFunctions.sendOtpViaTwilio(phone, otpCode.otp);
             // if (!sent) {
             //     throw new Error('OTP not sent');
             // }
-            await Doctors.create({
-                phone: phone,
-                otp_id: otpCode.id
-            });
+            // await Doctors.create({
+            //     phone: phone,
+            //     otp_id: otpCode.id
+            // });
 
             return res.response({
-                success: true,
-                otp: otpCode.otp,
-                message: 'OTP sent successfully',
+                success: false,
+                message: 'Doctor not found. Please register by contacting the velvets care team first.',
             });
         }
 
@@ -319,7 +318,7 @@ const doctor_update_profile = async (req, res) => {
         return res.response({
             success: true,
             message: 'Doctor profile updated successfully',
-            data: doctor_data
+            data: stripSensitive(doctor_data)
         }).code(200);
 
     } catch (error) {
