@@ -15,7 +15,7 @@ const {
 } = require('sequelize')
 const sequelize = require('../config/sequelize')
 const {
-  OTPFunctions, JWTFunctions
+  OTPFunctions, JWTFunctions, stripSensitive
 } = require('../helpers')
 const fs = require('fs')
 
@@ -157,7 +157,7 @@ const createDoctor = async (req, h) => {
     return h.response({
       success: true,
       message: 'Basic details updated successfully',
-      data: result
+      data: stripSensitive(result)
     }).code(201);
 
   } catch (err) {
@@ -311,7 +311,7 @@ const updateBasicDetails = async (req, h) => {
     return h.response({
       success: true,
       message: 'Basic details updated successfully',
-      data: doctor_data
+      data: stripSensitive(doctor_data)
     }).code(201);
 
   } catch (err) {
@@ -553,7 +553,7 @@ const doctorlist_user = async (req, h) => {
     return h.response({
       success: true,
       message: 'Doctor list fetched successfully',
-      data: Object.values(doctorMap),
+      data: stripSensitive(Object.values(doctorMap)),
       total,
       page: Number(page),
       limit: Number(limit)
@@ -644,7 +644,7 @@ const doctorlist = async (req, h) => {
     return h.response({
       success: true,
       message: 'Doctors fetched successfully',
-      data: mapped_doctors,
+      data: stripSensitive(mapped_doctors),
       total,
       page: Number(page),
       limit: Number(limit)
@@ -713,7 +713,7 @@ const fetch_single_doctor = async (req, h) => {
     return h.response({
       success: true,
       message: 'Doctor fetched successfully',
-      data: doctor_mapped[0]  // return single doctor object
+      data: stripSensitive(doctor_mapped[0])  // return single doctor object
     }).code(200);
 
   } catch (err) {
@@ -809,7 +809,7 @@ const fetch_popular_doctors = async (req, h) => {
     return h.response({
       success: true,
       message: "Popular doctors fetched successfully",
-      data: finalList.filter(Boolean), // remove nulls
+      data: stripSensitive(finalList.filter(Boolean)), // remove nulls
     });
 
   } catch (err) {
@@ -910,7 +910,7 @@ const fetch_popular_doctors_admin = async (req, h) => {
       .response({
         success: true,
         message: "Popular doctors (admin) fetched successfully",
-        data: mapped.filter(Boolean), // null check
+        data: stripSensitive(mapped.filter(Boolean)), // null check
       })
       .code(200);
 
@@ -1047,7 +1047,7 @@ const updateDoctoreDetailsByAdmin = async (req, h) => {
     return h.response({
       success: true,
       message: 'Doctor details updated successfully',
-      data: doctor_data
+      data: stripSensitive(doctor_data)
     }).code(200);
 
   } catch (err) {
@@ -1074,7 +1074,7 @@ const deleteDoctor = async (req, h) => {
     return h.response({
       success: true,
       message: 'Doctor deleted successfully',
-      data: doctor
+      data: stripSensitive(doctor)
     }).code(200);
 
   } catch (err) {

@@ -1,3 +1,16 @@
+const SENSITIVE_FIELDS = ['access_token', 'refresh_token', 'otp_id'];
+
+const stripSensitive = (data) => {
+    if (!data) return data;
+    if (Array.isArray(data)) return data.map(item => stripSensitive(item));
+    if (typeof data === 'object' && data !== null) {
+        const cleaned = { ...data };
+        SENSITIVE_FIELDS.forEach(field => delete cleaned[field]);
+        return cleaned;
+    }
+    return data;
+};
+
 module.exports = {
     HashFunctions: require('./hash_functions'),
     JWTFunctions: require('./jwt_functions'),
@@ -11,4 +24,5 @@ module.exports = {
     AgoraFunctions: require('./agora'),
     PushNotificationFunctions: require('./pushNotification'),
     NotificationHelper: require('./notification_helper'),
+    stripSensitive,
 }

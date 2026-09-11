@@ -4,7 +4,8 @@ const {
     OTPFunctions,
     JWTFunctions,
     TwilioFunctions,
-    FileFunctions
+    FileFunctions,
+    stripSensitive
 } = require('../helpers')
 
 const DEMO_OTP = '1234'
@@ -319,7 +320,7 @@ const doctor_update_profile = async (req, res) => {
         return res.response({
             success: true,
             message: 'Doctor profile updated successfully',
-            data: doctor_data
+            data: stripSensitive(doctor_data)
         }).code(200);
 
     } catch (error) {

@@ -7,7 +7,7 @@ const {
     Op
 } = require('sequelize')
 const {
-    OTPFunctions, JWTFunctions, GoogleAuthFunctions
+    OTPFunctions, JWTFunctions, GoogleAuthFunctions, stripSensitive
 } = require('../helpers')
 const fs = require('fs')
 
@@ -389,7 +389,7 @@ const update_user = async (req, res) => {
         return res.response({
             success: true,
             message: 'User updated successfully',
-            data: user_data
+            data: stripSensitive(user_data)
         }).code(200);
 
     } catch (error) {
@@ -501,7 +501,7 @@ const getusers = async (req, res) => {
         return res.response({
             success: true,
             message: 'Users fetched successfully',
-            data: users_mapped,
+            data: stripSensitive(users_mapped),
             total: user_count,
             page: parseInt(page),
             limit: parseInt(limit)
@@ -685,7 +685,7 @@ const CreateUserByAdmin = async (req, res) => {
         return res.response({
             success: true,
             message: 'User created successfully',
-            data: userData
+            data: stripSensitive(userData)
         }).code(201);
 
     } catch (error) {

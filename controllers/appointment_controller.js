@@ -11,7 +11,7 @@ const {
     Op
 } = require('sequelize')
 const {
-    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper
+    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, stripSensitive
 } = require('../helpers');
 const Razorpay = require('razorpay');
 require('dotenv/config');
@@ -625,6 +625,7 @@ const getUserAppointments = async (req, res) => {
             include: [
                 {
                     model: Doctors,
+                    attributes: { exclude: ['access_token', 'refresh_token'] },
                     include: [{ model: Files, as: 'profile_image' }, { model: Specialization }]
                 }
             ],

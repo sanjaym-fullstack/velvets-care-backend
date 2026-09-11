@@ -2,7 +2,7 @@
 
 const { Orders, OrderItems, Adresses, Users, Payments, Products, ProductImages } = require('../models');
 const { Op } = require('sequelize');
-const { MailFunctions, FileFunctions, NotificationHelper } = require('../helpers');
+const { MailFunctions, FileFunctions, NotificationHelper, stripSensitive } = require('../helpers');
 
 // ================= Order Controllers =================
 
@@ -33,7 +33,7 @@ const fetchOrdersAdmin = async (req, res) => {
             offset,
             include: [
                 { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
-                { model: Users, exclude: ['password', 'access_token', 'refresh_token'] },
+                { model: Users, attributes: { exclude: ['password', 'access_token', 'refresh_token'] } },
                 { model: Payments },
                 { model: Adresses }
             ],
@@ -63,7 +63,7 @@ const fetchOrdersAdmin = async (req, res) => {
         return res.response({
             success: true,
             message: 'Orders fetched successfully',
-            data: mappedOrders,
+            data: stripSensitive(mappedOrders),
             total: orders.count,
             page,
             limit
@@ -190,14 +190,14 @@ const fetchPaymentsAdmin = async (req, res) => {
             where,
             limit,
             offset,
-            include: [{ model: Orders, include: [Users] }],
+            include: [{ model: Orders, include: [{ model: Users, attributes: { exclude: ['access_token', 'refresh_token'] } }] }],
             order: [['createdAt', 'DESC']]
         });
 
         return res.response({
             success: true,
             message: 'Payments fetched successfully',
-            data: payments.rows,
+            data: stripSensitive(payments.rows),
             total: payments.count,
             page,
             limit
@@ -227,7 +227,7 @@ const fetchOrderById = async (req, res) => {
             include: [
                 { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
                 { model: Payments },
-                { model: Users }
+                { model: Users, attributes: { exclude: ['access_token', 'refresh_token'] } }
             ]
         });
 
@@ -253,7 +253,7 @@ const fetchOrderById = async (req, res) => {
         return res.response({
             success: true,
             message: 'Order fetched successfully',
-            data: orderJSON
+            data: stripSensitive(orderJSON)
         }).code(200);
 
     } catch (error) {
