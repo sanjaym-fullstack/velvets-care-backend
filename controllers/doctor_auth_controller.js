@@ -47,7 +47,12 @@ const doctor_request_otp = async (req, res) => {
                 message: 'Doctor not found. Please register by contacting the velvets care team first.',
             });
         }
-
+        if (doctor.status == 'INACTIVE' || doctor.verified == false) {
+            return res.response({
+                success: false,
+                message: 'Your account is inactive. Please contact the velvets care team.',
+            });
+        }
         const otpCode = await Otps.create({
             otp: otp,
             otp_time: Date.now()
