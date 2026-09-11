@@ -74,7 +74,6 @@ const doctor_request_otp = async (req, res) => {
         return res.response({
             success: true,
             message: 'OTP sent successfully',
-            otp: otpCode.otp
         });
 
     } catch (error) {
