@@ -30,6 +30,12 @@ const request_otp_login = async (req, res) => {
             },
             raw: true
         })
+        if (!user) {
+            return res.response({
+                success: false,
+                message: 'User not found, please register',
+            });
+        }
         if (user.inactive && user.inactive_reason && user.inactive_till && new Date(user.inactive_till) > new Date()) {
             return res.response({
                 success: false,
@@ -50,12 +56,6 @@ const request_otp_login = async (req, res) => {
         }
         const otp = await OTPFunctions.getOTPByLength(4);
         console.log("login otp:", otp);
-        if (!user) {
-            return res.response({
-                success: false,
-                message: 'User not found, please register',
-            });
-        }
         const otpCode = await Otps.create({
             otp: otp,
             otp_time: Date.now()
