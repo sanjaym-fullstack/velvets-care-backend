@@ -1,6 +1,6 @@
 'use strict';
 
-const { Orders, OrderItems, Adresses, Users, Payments, Products, ProductImages } = require('../models');
+const { Orders, OrderItems, Adresses, Users, Payments, Products, ProductImages, Categories, Brands, Subcategories } = require('../models');
 const { Op } = require('sequelize');
 const { MailFunctions, FileFunctions, NotificationHelper, stripSensitive } = require('../helpers');
 
@@ -32,7 +32,7 @@ const fetchOrdersAdmin = async (req, res) => {
             limit,
             offset,
             include: [
-                { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
+                { model: OrderItems, include: [{ model: Products, include: [ProductImages, Categories, Brands, Subcategories] }] },
                 { model: Users, attributes: { exclude: ['password', 'access_token', 'refresh_token'] } },
                 { model: Payments },
                 { model: Adresses }
@@ -42,8 +42,8 @@ const fetchOrdersAdmin = async (req, res) => {
 
         const mappedOrders = await Promise.all(orders.rows.map(async (order) => {
             const json = order.toJSON();
-            if (json.OrderItems) {
-                json.OrderItems = await Promise.all(json.OrderItems.map(async (item) => {
+            if (json.order_items) {
+                json.order_items = await Promise.all(json.order_items.map(async (item) => {
                     if (item.product?.product_images) {
                         item.product.product_images = await Promise.all(
                             item.product.product_images.map(async (img) => ({
@@ -97,7 +97,7 @@ const fetchUserOrders = async (req, res) => {
             limit,
             offset,
             include: [
-                { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
+                { model: OrderItems, include: [{ model: Products, include: [ProductImages, Categories, Brands, Subcategories] }] },
                 { model: Payments },
                 { model: Adresses }
             ],
@@ -106,8 +106,8 @@ const fetchUserOrders = async (req, res) => {
 
         const mappedOrders = await Promise.all(orders.rows.map(async (order) => {
             const json = order.toJSON();
-            if (json.OrderItems) {
-                json.OrderItems = await Promise.all(json.OrderItems.map(async (item) => {
+            if (json.order_items) {
+                json.order_items = await Promise.all(json.order_items.map(async (item) => {
                     if (item.product?.product_images) {
                         item.product.product_images = await Promise.all(
                             item.product.product_images.map(async (img) => ({
@@ -225,7 +225,7 @@ const fetchOrderById = async (req, res) => {
         const order = await Orders.findOne({
             where,
             include: [
-                { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
+                { model: OrderItems, include: [{ model: Products, include: [ProductImages, Categories, Brands, Subcategories] }] },
                 { model: Payments },
                 { model: Users, attributes: { exclude: ['access_token', 'refresh_token'] } }
             ]
@@ -234,8 +234,8 @@ const fetchOrderById = async (req, res) => {
         if (!order) return res.response({ success: false, message: 'Order not found' }).code(404);
 
         const orderJSON = order.toJSON();
-        if (orderJSON.OrderItems) {
-            orderJSON.OrderItems = await Promise.all(orderJSON.OrderItems.map(async (item) => {
+        if (orderJSON.order_items) {
+            orderJSON.order_items = await Promise.all(orderJSON.order_items.map(async (item) => {
                 if (item.product?.product_images) {
                     item.product.product_images = await Promise.all(
                         item.product.product_images.map(async (img) => ({
