@@ -337,6 +337,24 @@ const updatePrescription = async (req, res) => {
 
         await prescription.update(updates);
 
+        // Notify user if prescription was updated by doctor
+        if (prescription.user_id) {
+            NotificationHelper.sendToUser(prescription.user_id,
+                'Prescription Updated',
+                `Your prescription "${prescription_name || prescription.prescription_name}" has been updated.`,
+                { prescription_id: prescription.id }
+            );
+        }
+
+        // Notify doctor if prescription was updated by user
+        if (prescription.doctor_id) {
+            NotificationHelper.sendToDoctor(prescription.doctor_id,
+                'Prescription Updated',
+                `Prescription "${prescription_name || prescription.prescription_name}" has been updated by the patient.`,
+                { prescription_id: prescription.id }
+            );
+        }
+
         const updated = await Prescriptions.findByPk(id, {
             include: [Files]
         });

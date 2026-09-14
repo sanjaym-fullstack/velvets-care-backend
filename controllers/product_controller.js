@@ -9,10 +9,12 @@ const {
     Categories,
     Subcategories,
     Brands,
+    Wishlists,
 } = require('../models');
 
 const {
     FileFunctions,
+    NotificationHelper,
 } = require('../helpers');
 
 
@@ -181,6 +183,32 @@ const UpdateProduct = async (req, res) => {
         }
 
         await product.update(updates);
+
+        // Low stock alert to admin
+        const newStock = updates.stock !== undefined ? updates.stock : product.stock;
+        if (newStock !== undefined && newStock <= 5 && newStock >= 0) {
+            NotificationHelper.sendToAllAdmins(
+                'Low Stock Alert',
+                `Product "${product.name}" (SKU: ${product.sku}) has only ${newStock} units left in stock.`,
+                { product_id: product.id, name: product.name, sku: product.sku, stock: newStock }
+            );
+        }
+
+        // Back in stock — notify wishlist users
+        const oldStock = product.stock;
+        if (oldStock === 0 && newStock > 0) {
+            const wishlistUsers = await Wishlists.findAll({
+                where: { product_id: product.id },
+                raw: true,
+            });
+            for (const entry of wishlistUsers) {
+                NotificationHelper.sendToUser(entry.user_id,
+                    'Back in Stock!',
+                    `Good news! "${product.name}" is back in stock. Order now before it runs out again!`,
+                    { product_id: product.id, name: product.name }
+                );
+            }
+        }
 
         return res.response({
             success: true,

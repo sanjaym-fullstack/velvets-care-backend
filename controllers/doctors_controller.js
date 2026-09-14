@@ -131,6 +131,13 @@ const createDoctor = async (req, h) => {
     });
     await transaction.commit();
 
+    // Notify admin about new doctor registration
+    NotificationHelper.sendToAllAdmins(
+      'New Doctor Registered',
+      `Dr. ${full_name} (${specialization || 'General'}) has registered on Velvets Care. Phone: ${phone}`,
+      { doctor_id: doctor.id, full_name, phone, specialization }
+    );
+
     const doctor_data = await Doctors.findOne({
       where: { id: doctor.id },
       include: [
@@ -519,6 +526,21 @@ const updateStatus = async (req, h) => {
           id: doctor_id
         }
       });
+
+    // Notify doctor about status change
+    if (verified === true) {
+      NotificationHelper.sendToDoctor(doctor_id,
+        'Account Verified',
+        'Your account has been verified. You can now start receiving appointments.',
+        { doctor_id, verified: true }
+      );
+    } else if (verified === false) {
+      NotificationHelper.sendToDoctor(doctor_id,
+        'Account Rejected',
+        'Your account verification was rejected. Please contact support for details.',
+        { doctor_id, verified: false }
+      );
+    }
 
     return h.response({
       success: true,
@@ -1192,6 +1214,55 @@ const toggleDoctorPopular = async (req, h) => {
   }
 }
 
+const uploadDoctorProfilePicture = async (req, h) => {
+  try {
+    const session_user = req.headers.user;
+    if (!session_user) throw new Error('Session expired');
+
+    const doctor_id = session_user.doctor_id;
+    const file = req.payload.profile_image;
+    if (!file) throw new Error('Profile image is required');
+
+    const doctor = await Doctors.findByPk(doctor_id);
+    if (!doctor) throw new Error('Doctor not found');
+
+    // Upload to S3
+    const uploaded = await FileFunctions.uploadToS3(
+      file.filename,
+      'uploads/doctor_profiles',
+      fs.readFileSync(file.path)
+    );
+
+    // Create file record
+    const fileRecord = await Files.create({
+      files_url: uploaded.key,
+      extension: uploaded.key.split('.').pop(),
+      original_name: file.filename,
+      size: fs.statSync(file.path).size
+    });
+
+    // Update doctor profile_image_id
+    await doctor.update({ profile_image_id: fileRecord.id });
+
+    const fileUrl = await FileFunctions.getFromS3(fileRecord.files_url);
+
+    return h.response({
+      success: true,
+      message: 'Profile picture uploaded successfully',
+      data: {
+        profile_image_id: fileRecord.id,
+        file_url: fileUrl
+      }
+    }).code(200);
+  } catch (err) {
+    console.error(err);
+    return h.response({
+      success: false,
+      message: err.message || 'Something went wrong'
+    }).code(500);
+  }
+};
+
 module.exports = {
   createDoctor,
   updateBasicDetails,
@@ -1207,7 +1278,8 @@ module.exports = {
   deleteDoctor,
   CheckDoctorSlotsByAdmin,
   fetch_popular_doctors_admin,
-  toggleDoctorPopular
+  toggleDoctorPopular,
+  uploadDoctorProfilePicture
 }
 
 

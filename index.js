@@ -154,6 +154,10 @@ const init = async () => {
     // console.clear()
     console.log('Velvets Care API running on \x1b[34m%s\x1b[0m', server.info.uri);
     console.log('Swagger documentation is available at: \x1b[34m%s/documentation\x1b[0m', server.info.uri);
+
+    // Start notification schedulers
+    const { startSchedulers } = require('./helpers/scheduler');
+    startSchedulers();
 };
 
 // Error handling

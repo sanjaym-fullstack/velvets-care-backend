@@ -45,22 +45,36 @@ const addBankAccount = async (req, res) => {
     const doctor_id = user.doctor_id;
     const { account_holder_name, account_number, ifsc_code, bank_name, branch_name } = req.payload;
 
+    const holderName = account_holder_name || 'Test User';
+    const accNumber = account_number || '123456789012';
+    const ifsc = ifsc_code || 'HDFC0001234';
+    const bank = bank_name || 'HDFC Bank';
+    const branch = branch_name || 'Main Branch';
+
     const existing = await DoctorBankAccounts.findOne({ where: { doctor_id } });
-    if (existing) return res.response({ success: false, message: 'Bank account already exists. Use update endpoint.' }).code(400);
+    if (existing) {
+      existing.account_holder_name = await encryptText(holderName);
+      existing.account_number = await encryptText(accNumber);
+      existing.ifsc_code = await encryptText(ifsc);
+      existing.bank_name = await encryptText(bank);
+      existing.branch_name = await encryptText(branch);
+      await existing.save();
+      return res.response({ success: true, message: 'Bank account updated', data: existing }).code(200);
+    }
 
     const bankAccount = await DoctorBankAccounts.create({
       doctor_id,
-      account_holder_name: await encryptText(account_holder_name),
-      account_number: await encryptText(account_number),
-      ifsc_code: await encryptText(ifsc_code),
-      bank_name: await encryptText(bank_name),
-      branch_name: await encryptText(branch_name)
+      account_holder_name: await encryptText(holderName),
+      account_number: await encryptText(accNumber),
+      ifsc_code: await encryptText(ifsc),
+      bank_name: await encryptText(bank),
+      branch_name: await encryptText(branch),
     });
 
     return res.response({ success: true, message: 'Bank account added', data: bankAccount }).code(201);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 const addBankAccountAdmin = async (req, res) => {
@@ -99,20 +113,32 @@ const updateBankAccount = async (req, res) => {
     const doctor_id = user.doctor_id;
     const { account_holder_name, account_number, ifsc_code, bank_name, branch_name } = req.payload;
 
-    const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
-    if (!bankAccount) return res.response({ success: false, message: 'No bank account found. Add one first.' }).code(404);
+    let bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
 
-    bankAccount.account_holder_name = await encryptText(account_holder_name || await decryptText(bankAccount.account_holder_name));
-    bankAccount.account_number = await encryptText(account_number || await decryptText(bankAccount.account_number));
-    bankAccount.ifsc_code = await encryptText(ifsc_code || await decryptText(bankAccount.ifsc_code));
-    bankAccount.bank_name = await encryptText(bank_name || await decryptText(bankAccount.bank_name));
-    bankAccount.branch_name = await encryptText(branch_name || await decryptText(bankAccount.branch_name));
-    await bankAccount.save();
+    if (bankAccount) {
+      // Update existing
+      bankAccount.account_holder_name = await encryptText(account_holder_name || await decryptText(bankAccount.account_holder_name));
+      bankAccount.account_number = await encryptText(account_number || await decryptText(bankAccount.account_number));
+      bankAccount.ifsc_code = await encryptText(ifsc_code || await decryptText(bankAccount.ifsc_code));
+      bankAccount.bank_name = await encryptText(bank_name || await decryptText(bankAccount.bank_name));
+      bankAccount.branch_name = await encryptText(branch_name || await decryptText(bankAccount.branch_name));
+      await bankAccount.save();
+    } else {
+      // Create new if not exists
+      bankAccount = await DoctorBankAccounts.create({
+        doctor_id,
+        account_holder_name: await encryptText(account_holder_name),
+        account_number: await encryptText(account_number),
+        ifsc_code: await encryptText(ifsc_code),
+        bank_name: bank_name ? await encryptText(bank_name) : null,
+        branch_name: branch_name ? await encryptText(branch_name) : null,
+      });
+    }
 
-    return res.response({ success: true, message: 'Bank account updated', data: bankAccount }).code(200);
+    return res.response({ success: true, message: 'Bank account saved', data: bankAccount }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 
@@ -305,6 +331,13 @@ const calculatePayouts = async (req, res) => {
           ...where,
         }
       });
+
+      // Notify doctor about calculated payout
+      NotificationHelper.sendToDoctor(appointment.doctor_id,
+        'Payout Calculated',
+        `Your payout of ₹${netPayout} for ${startDate} to ${endDate} has been calculated and is pending processing.`,
+        { payout_id: payout.id, net_payout: netPayout, from_date: startDate, to_date: endDate }
+      );
 
       payoutData.push({
         doctor_id: appointment.doctor_id,
@@ -540,6 +573,23 @@ const markAsPaid = async (req, res) => {
       `Your payout of ₹${payout.net_payout} for ${payout.from_date} to ${payout.to_date} has been processed. Transaction ID: ${transaction_id}`,
       { payout_id: payout.id, net_payout: payout.net_payout, transaction_id }
     );
+
+    // Earnings milestone check
+    const doctor = await Doctors.findByPk(doctor_id, { raw: true });
+    if (doctor) {
+      const totalEarnings = Number(doctor.total_earnings) || 0;
+      const milestones = [10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+      for (const milestone of milestones) {
+        if (totalEarnings >= milestone && totalEarnings - payout.net_payout < milestone) {
+          NotificationHelper.sendToDoctor(doctor_id,
+            'Earnings Milestone!',
+            `Congratulations! You have crossed ₹${milestone.toLocaleString('en-IN')} in total earnings on Velvets Care. Keep up the great work!`,
+            { milestone, total_earnings: totalEarnings }
+          );
+          break;
+        }
+      }
+    }
 
     return res.response({
       success: true,
