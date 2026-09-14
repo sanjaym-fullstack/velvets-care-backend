@@ -40,6 +40,7 @@ const Specialization = require('./specialization');
     access_token: DataTypes.STRING,
     refresh_token: DataTypes.STRING,
     fcm_token: DataTypes.TEXT,
+    is_popular: DataTypes.BOOLEAN,
   }, {
     sequelize,
     paranoid: true,

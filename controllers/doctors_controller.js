@@ -759,6 +759,15 @@ const fetch_popular_doctors = async (req, h) => {
     const session_user = req.headers.user;
     if (!session_user) throw new Error("Session expired");
 
+    // Get doctors manually marked as popular
+    const manuallyPopular = await Doctors.findAll({
+      where: { is_popular: true },
+      attributes: ['id'],
+      raw: true
+    });
+    const manualIds = manuallyPopular.map(d => d.id);
+
+    // Get top doctors by completed appointments
     const popularDoctors = await Appointments.findAll({
       where: { status: "completed" },
       attributes: [
@@ -771,7 +780,11 @@ const fetch_popular_doctors = async (req, h) => {
       raw: true,
     });
 
-    if (!popularDoctors.length) {
+    // Merge: manual popular first, then appointment-based, deduplicated
+    const appointmentIds = popularDoctors.map((d) => d.doctor_id);
+    const allIds = [...new Set([...manualIds, ...appointmentIds])];
+
+    if (!allIds.length) {
       return h.response({
         success: true,
         message: "No popular doctors found",
@@ -779,10 +792,8 @@ const fetch_popular_doctors = async (req, h) => {
       });
     }
 
-    const doctorIds = popularDoctors.map((d) => d.doctor_id);
-
     const doctors = await Doctors.findAll({
-      where: { id: { [Op.in]: doctorIds } },
+      where: { id: { [Op.in]: allIds } },
       include: [
         { model: Files, as: "profile_image", required: false },
         { model: Files, as: "registration_certificate", required: false },
@@ -793,43 +804,38 @@ const fetch_popular_doctors = async (req, h) => {
         { model: Doctorsavailability },
         { model: Specialization }
       ],
-      distinct: true,  // 🔥 avoids duplicates caused by joins
+      distinct: true,
       nest: true,
     });
 
-    // Convert to map for quick lookup
     const doctorsMap = {};
     for (let d of doctors) {
       doctorsMap[d.id] = d;
     }
 
-    // Preserve sorted order based on completed count
+    const countMap = {};
+    popularDoctors.forEach(p => { countMap[p.doctor_id] = p.completed_count; });
+
     const finalList = await Promise.all(
-      popularDoctors.map(async (pop) => {
-        const doc = doctorsMap[pop.doctor_id];
+      allIds.map(async (id) => {
+        const doc = doctorsMap[id];
         if (!doc) return null;
 
         return {
           ...doc.toJSON(),
-
-          completed_appointments: pop.completed_count,
-
+          completed_appointments: countMap[id] || 0,
           profile_image: doc.profile_image?.files_url
             ? await FileFunctions.getFromS3(doc.profile_image.files_url)
             : null,
-
           registration_certificate: doc.registration_certificate?.files_url
             ? await FileFunctions.getFromS3(doc.registration_certificate.files_url)
             : null,
-
           medical_degree_certificate: doc.medical_degree_certificate?.files_url
             ? await FileFunctions.getFromS3(doc.medical_degree_certificate.files_url)
             : null,
-
           government_id: doc.government_id_file?.files_url
             ? await FileFunctions.getFromS3(doc.government_id_file.files_url)
             : null,
-
           pan_card: doc.pan_card_file?.files_url
             ? await FileFunctions.getFromS3(doc.pan_card_file.files_url)
             : null,
@@ -840,7 +846,7 @@ const fetch_popular_doctors = async (req, h) => {
     return h.response({
       success: true,
       message: "Popular doctors fetched successfully",
-      data: stripSensitive(finalList.filter(Boolean)), // remove nulls
+      data: stripSensitive(finalList.filter(Boolean)),
     });
 
   } catch (err) {
@@ -1147,6 +1153,30 @@ const CheckDoctorSlotsByAdmin = async (req, h) => {
   }
 }
 
+const toggleDoctorPopular = async (req, h) => {
+  try {
+    const session_user = req.headers.user;
+    if (!session_user) throw new Error('Session expired');
+
+    const { doctor_id } = req.params;
+    const { is_popular } = req.payload;
+
+    const doctor = await Doctors.findOne({ where: { id: doctor_id } });
+    if (!doctor) throw new Error('Doctor not found');
+
+    await Doctors.update({ is_popular }, { where: { id: doctor_id } });
+
+    return h.response({
+      success: true,
+      message: is_popular ? 'Doctor marked as popular' : 'Doctor removed from popular',
+      data: { doctor_id, is_popular }
+    }).code(200);
+  } catch (err) {
+    console.error(err);
+    return h.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
+  }
+}
+
 module.exports = {
   createDoctor,
   updateBasicDetails,
@@ -1161,7 +1191,8 @@ module.exports = {
   updateDoctoreDetailsByAdmin,
   deleteDoctor,
   CheckDoctorSlotsByAdmin,
-  fetch_popular_doctors_admin
+  fetch_popular_doctors_admin,
+  toggleDoctorPopular
 }
 
 
