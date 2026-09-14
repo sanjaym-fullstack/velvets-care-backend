@@ -116,13 +116,19 @@ const getUserPrescriptions = async (req, res) => {
             ];
         }
 
-        const { rows, count } = await Prescriptions.findAndCountAll({
-            where,
-            include: [{ model: Files }],
-            limit,
-            offset,
-            order: [['createdAt', 'DESC']]
-        });
+        const [rows, count] = await Promise.all([
+            Prescriptions.findAll({
+                where,
+                include: [{ model: Files }],
+                limit,
+                offset,
+                order: [['createdAt', 'DESC']]
+            }),
+            Prescriptions.count({
+                where,
+                include: [{ model: Files }],
+            }),
+        ]);
 
         const mapped = await Promise.all(rows.map(async (row) => {
             const json = row.toJSON();
@@ -163,18 +169,27 @@ const getDoctorPrescriptions = async (req, res) => {
         let where = { doctor_id };
         if (user_id) where.user_id = user_id;
 
-        const prescriptions = await Prescriptions.findAndCountAll({
-            where,
-            include: [
-                { model: Users, attributes: ['id', 'name', 'email', 'phone'] },
-                { model: Files }
-            ],
-            limit,
-            offset,
-            order: [['createdAt', 'DESC']]
-        });
+        const [prescriptionRows, prescriptionCount] = await Promise.all([
+            Prescriptions.findAll({
+                where,
+                include: [
+                    { model: Users, attributes: ['id', 'name', 'email', 'phone'] },
+                    { model: Files }
+                ],
+                limit,
+                offset,
+                order: [['createdAt', 'DESC']]
+            }),
+            Prescriptions.count({
+                where,
+                include: [
+                    { model: Users, attributes: ['id', 'name', 'email', 'phone'] },
+                    { model: Files }
+                ],
+            }),
+        ]);
 
-        const mapped = await Promise.all(prescriptions.rows.map(async (row) => {
+        const mapped = await Promise.all(prescriptionRows.map(async (row) => {
             const json = row.toJSON();
             if (json.File) {
                 json.file_url = json.File.files_url
@@ -209,7 +224,7 @@ const getDoctorPrescriptions = async (req, res) => {
                 today: todayCount,
                 yearly: yearCount
             },
-            total: prescriptions.count,
+            total: prescriptionCount,
             data: mapped
         }).code(200);
 
@@ -238,19 +253,29 @@ const getAdminPrescriptions = async (req, res) => {
             ];
         }
 
-        const prescriptions = await Prescriptions.findAndCountAll({
-            where,
-            include: [
-                { model: Users },
-                { model: Doctors },
-                { model: Files }
-            ],
-            limit,
-            offset,
-            order: [['createdAt', 'DESC']]
-        });
+        const [adminPrescriptionRows, adminPrescriptionCount] = await Promise.all([
+            Prescriptions.findAll({
+                where,
+                include: [
+                    { model: Users },
+                    { model: Doctors },
+                    { model: Files }
+                ],
+                limit,
+                offset,
+                order: [['createdAt', 'DESC']]
+            }),
+            Prescriptions.count({
+                where,
+                include: [
+                    { model: Users },
+                    { model: Doctors },
+                    { model: Files }
+                ],
+            }),
+        ]);
 
-        const mapped = await Promise.all(prescriptions.rows.map(async (row) => {
+        const mapped = await Promise.all(adminPrescriptionRows.map(async (row) => {
             const json = row.toJSON();
             if (json.File) {
                 json.file_url = json.File.files_url
@@ -262,8 +287,8 @@ const getAdminPrescriptions = async (req, res) => {
 
         return res.response({
             success: true,
-            total: prescriptions.count,
-            data: stripSensitive(mapped)
+            total: adminPrescriptionCount,
+            data: mapped
         }).code(200);
 
     } catch (error) {

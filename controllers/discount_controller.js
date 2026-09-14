@@ -144,15 +144,24 @@ const AdminDiscounts = async (req, res) => {
             ];
         }
 
-        const { rows, count } = await Discount.findAndCountAll({
-            where,
-            limit,
-            offset,
-            include: [
-                { model: DiscountedProduct, include: [Products] },
-                { model: DiscountedUser, include: [Users] }
-            ]
-        });
+        const [rows, count] = await Promise.all([
+            Discount.findAll({
+                where,
+                limit,
+                offset,
+                include: [
+                    { model: DiscountedProduct, include: [Products] },
+                    { model: DiscountedUser, include: [Users] }
+                ]
+            }),
+            Discount.count({
+                where,
+                include: [
+                    { model: DiscountedProduct, include: [Products] },
+                    { model: DiscountedUser, include: [Users] }
+                ]
+            }),
+        ]);
 
         return res.response({
             success: true,
