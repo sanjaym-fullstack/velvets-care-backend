@@ -243,7 +243,20 @@ const calculatePayouts = async (req, res) => {
     const platformFeePercentage = await PayoutSettings.findOne({ where: { key: 'platform_fee_percentage' }, raw: true }).then(s => parseFloat(s.value) || 10);
     const gstPercentage = await PayoutSettings.findOne({ where: { key: 'gst_percentage' }, raw: true }).then(s => parseFloat(s.value) || 18);
 
-    const payouts = appointments.map(async (appointment) => {
+    const payoutData = [];
+
+    for (const appointment of appointments) {
+      // Check for duplicate payout already existing for this doctor + date range
+      const existingPayout = await Payouts.findOne({
+        where: {
+          doctor_id: appointment.doctor_id,
+          from_date: startDate,
+          to_date: endDate,
+          status: 'pending'
+        }
+      });
+      if (existingPayout) continue; // skip — already calculated
+
       const totalEarnings = Number(appointment.get('total_consultation_fee'));
 
       const platformFeeAmount =
@@ -292,7 +305,7 @@ const calculatePayouts = async (req, res) => {
         }
       });
 
-      return {
+      payoutData.push({
         doctor_id: appointment.doctor_id,
         total_earnings: totalEarnings,
         platform_fee_percentage: platformFeePercentage,
@@ -302,21 +315,12 @@ const calculatePayouts = async (req, res) => {
         total_deductions: totalDeductions,
         net_payout: netPayout,
         status: 'pending',
-        payout_type: 'bank_transfer', // or 'manual'
-        comment: null,
-        transaction_id: null,
-        processed_by: session_user.id, // Logged in admin id
-        razorpay_payout_id: null,
-        utr: null,
         from_date: startDate,
         to_date: endDate,
-        processed_at: null,
-      };
-    });
+      });
+    }
 
-    const payoutData = await Promise.all(payouts);
-
-    return res.response({ success: true, message: 'Payouts fetched', data: payoutData }).code(200);
+    return res.response({ success: true, message: 'Payouts calculated', data: payoutData }).code(200);
   } catch (err) {
     console.error(err);
     return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
@@ -357,25 +361,30 @@ const getAdminPayouts = async (req, res) => {
 const getDoctorPayouts = async (req, res) => {
   try {
     const user = req.headers.user;
-    const doctor_id = user.id;
+    const doctor_id = user.doctor_id;
 
     const payouts = await Payouts.findAll({
       where: { doctor_id },
+      include: [{ model: Doctors, attributes: ['id', 'full_name', 'email', 'phone'] }],
       order: [['createdAt', 'DESC']]
     });
 
     const totalPaid = payouts
       .filter(p => p.status === 'processed')
-      .reduce((sum, p) => sum + p.net_payout, 0);
+      .reduce((sum, p) => sum + Number(p.net_payout), 0);
+
+    const totalPending = payouts
+      .filter(p => p.status === 'pending')
+      .reduce((sum, p) => sum + Number(p.net_payout), 0);
 
     return res.response({
       success: true,
       message: 'Your payouts fetched',
-      data: { payouts, totalPaid }
+      data: { payouts, totalPaid, totalPending }
     }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 
@@ -438,6 +447,7 @@ const getPayoutPlan = async (req, res) => {
           doctor_id: doctor.id,
           status: 'completed',
           payment_status: 'paid',
+          payout_id: null,
           appointment_date: {
             [Op.between]: [
               startDate.toISOString().split('T')[0],
@@ -508,7 +518,6 @@ const markAsPaid = async (req, res) => {
     });
 
     if (!payout) throw new Error('Payout not found');
-
     if (payout.status === 'processed') throw new Error('Payout is already marked as paid');
 
     payout.status = 'processed';
@@ -517,25 +526,21 @@ const markAsPaid = async (req, res) => {
     payout.processed_by = session_user.id;
     payout.processed_at = new Date();
 
+    await payout.save();
+
     await Appointments.update(
       { payout_processed: true },
-      {
-        where: {
-          payout_id: payout.id,
-        }
-      }
+      { where: { payout_id: payout.id } }
     );
-
-    await payout.save();
 
     return res.response({
       success: true,
       message: 'Payout marked as paid successfully',
       data: payout
-    }).code(201);
+    }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 
@@ -573,7 +578,99 @@ const getPayoutHistory = async (req, res) => {
     }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
+  }
+};
+
+const getDoctorEarnings = async (req, res) => {
+  try {
+    const user = req.headers.user;
+    const doctor_id = user.doctor_id;
+
+    // 1️⃣ All-time totals from completed+paid appointments
+    const allTimeEarnings = await Appointments.findAll({
+      where: { doctor_id, status: 'completed', payment_status: 'paid' },
+      attributes: [
+        [fn('SUM', col('consultation_fee')), 'total_earnings'],
+        [fn('COUNT', col('id')), 'total_appointments'],
+      ],
+      raw: true,
+    });
+
+    // 2️⃣ Pending earnings (not yet in any payout)
+    const pendingEarnings = await Appointments.findAll({
+      where: { doctor_id, status: 'completed', payment_status: 'paid', payout_id: null },
+      attributes: [
+        [fn('SUM', col('consultation_fee')), 'pending_earnings'],
+        [fn('COUNT', col('id')), 'pending_appointments'],
+      ],
+      raw: true,
+    });
+
+    // 3️⃣ Total paid out via processed payouts
+    const paidOut = await Payouts.findAll({
+      where: { doctor_id, status: 'processed' },
+      attributes: [
+        [fn('SUM', col('net_payout')), 'total_paid_out'],
+      ],
+      raw: true,
+    });
+
+    // 4️⃣ Pending payouts (calculated but not paid)
+    const pendingPayouts = await Payouts.findAll({
+      where: { doctor_id, status: 'pending' },
+      attributes: [
+        [fn('SUM', col('net_payout')), 'total_pending_payout'],
+      ],
+      raw: true,
+    });
+
+    // 5️⃣ Recent transactions (last 20 appointments)
+    const recentTransactions = await Appointments.findAll({
+      where: { doctor_id, status: 'completed', payment_status: 'paid' },
+      attributes: ['id', 'appointment_date', 'appointment_time', 'consultation_fee', 'payment_id', 'createdAt'],
+      order: [['createdAt', 'DESC']],
+      limit: 20,
+      raw: true,
+    });
+
+    // 6️⃣ Monthly earnings breakdown (last 12 months)
+    const monthlyEarnings = await Appointments.findAll({
+      where: {
+        doctor_id,
+        status: 'completed',
+        payment_status: 'paid',
+      },
+      attributes: [
+        [Sequelize.fn('DATE_FORMAT', col('appointment_date'), '%Y-%m'), 'month'],
+        [fn('SUM', col('consultation_fee')), 'earnings'],
+        [fn('COUNT', col('id')), 'appointments'],
+      ],
+      group: [Sequelize.fn('DATE_FORMAT', col('appointment_date'), '%Y-%m')],
+      order: [[Sequelize.fn('DATE_FORMAT', col('appointment_date'), '%Y-%m'), 'DESC']],
+      limit: 12,
+      raw: true,
+    });
+
+    return res.response({
+      success: true,
+      message: 'Doctor earnings fetched',
+      data: {
+        summary: {
+          total_earnings: Number(allTimeEarnings[0]?.total_earnings) || 0,
+          total_appointments: Number(allTimeEarnings[0]?.total_appointments) || 0,
+          pending_earnings: Number(pendingEarnings[0]?.pending_earnings) || 0,
+          pending_appointments: Number(pendingEarnings[0]?.pending_appointments) || 0,
+          total_paid_out: Number(paidOut[0]?.total_paid_out) || 0,
+          total_pending_payout: Number(pendingPayouts[0]?.total_pending_payout) || 0,
+        },
+        recent_transactions: recentTransactions,
+        monthly_earnings: monthlyEarnings,
+      }
+    }).code(200);
+  } catch (err) {
+    console.error(err);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 
@@ -591,5 +688,6 @@ module.exports = {
   getDoctorPayouts,
   getPayoutPlan,
   markAsPaid,
-  getPayoutHistory
+  getPayoutHistory,
+  getDoctorEarnings
 };
