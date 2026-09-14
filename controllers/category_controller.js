@@ -174,16 +174,26 @@ const AdminCategories = async (req, res) => {
             where.name = { [Op.like]: `%${search}%` };
         }
 
-        const { rows, count } = await Categories.findAndCountAll({
-            include:[
-                {
-                    model: Files,
-                }
-            ],
-            where,
-            limit,
-            offset,
-        });
+        const [rows, count] = await Promise.all([
+            Categories.findAll({
+                include:[
+                    {
+                        model: Files,
+                    }
+                ],
+                where,
+                limit,
+                offset,
+            }),
+            Categories.count({
+                include:[
+                    {
+                        model: Files,
+                    }
+                ],
+                where,
+            }),
+        ]);
 
        
       const category_mapped = rows.map(async (category) => {
@@ -222,16 +232,26 @@ const UserCategories = async (req, res) => {
             where.name = { [Op.like]: `%${search}%` };
         }
 
-        const { rows, count } = await Categories.findAndCountAll({
-            include:[
-                {
-                    model: Files,
-                }
-            ],
-            where,
-            limit,
-            offset,
-        });
+        const [rows, count] = await Promise.all([
+            Categories.findAll({
+                include:[
+                    {
+                        model: Files,
+                    }
+                ],
+                where,
+                limit,
+                offset,
+            }),
+            Categories.count({
+                include:[
+                    {
+                        model: Files,
+                    }
+                ],
+                where,
+            }),
+        ]);
 
         const category_mapped = rows.map(async (category) => {
           return {

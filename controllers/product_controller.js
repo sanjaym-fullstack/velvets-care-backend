@@ -367,20 +367,31 @@ const AdminProducts = async (req, res) => {
             where.brand_id = parseInt(brand_id);
         }
 
-        const { rows, count } = await Products.findAndCountAll({
-            where,
-            limit: limitNumber,
-            offset,
+        const [rows, count] = await Promise.all([
+            Products.findAll({
+                where,
+                limit: limitNumber,
+                offset,
 
-            include: [
-                Brands,
-                Categories,
-                Subcategories,
-                ProductImages
-            ],
+                include: [
+                    Brands,
+                    Categories,
+                    Subcategories,
+                    ProductImages
+                ],
 
-            order: [['id', 'DESC']]
-        });
+                order: [['id', 'DESC']]
+            }),
+            Products.count({
+                where,
+                include: [
+                    Brands,
+                    Categories,
+                    Subcategories,
+                    ProductImages
+                ],
+            }),
+        ]);
 
         const mappedRows = await Promise.all(rows.map(async (row) => {
             const json = row.toJSON();
@@ -480,23 +491,34 @@ const UserProducts = async (req, res) => {
             where.brand_id = parseInt(brand_id);
         }
 
-        const { rows, count } = await Products.findAndCountAll({
+        const [rows, count] = await Promise.all([
+            Products.findAll({
 
-            where,
+                where,
 
-            limit: limitNumber,
+                limit: limitNumber,
 
-            offset,
+                offset,
 
-            include: [
-                Brands,
-                Categories,
-                Subcategories,
-                ProductImages
-            ],
+                include: [
+                    Brands,
+                    Categories,
+                    Subcategories,
+                    ProductImages
+                ],
 
-            order: [['id', 'DESC']]
-        });
+                order: [['id', 'DESC']]
+            }),
+            Products.count({
+                where,
+                include: [
+                    Brands,
+                    Categories,
+                    Subcategories,
+                    ProductImages
+                ],
+            }),
+        ]);
 
         const mappedRows = await Promise.all(rows.map(async (row) => {
             const json = row.toJSON();

@@ -27,20 +27,31 @@ const fetchOrdersAdmin = async (req, res) => {
             where.createdAt = { [Op.between]: [from_date, endDate] };
         }
 
-        const orders = await Orders.findAndCountAll({
-            where,
-            limit,
-            offset,
-            include: [
-                { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
-                { model: Users, exclude: ['password', 'access_token', 'refresh_token'] },
-                { model: Payments },
-                { model: Adresses }
-            ],
-            order: [['createdAt', 'DESC']]
-        });
+        const [orderRows, orderCount] = await Promise.all([
+            Orders.findAll({
+                where,
+                limit,
+                offset,
+                include: [
+                    { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
+                    { model: Users, exclude: ['password', 'access_token', 'refresh_token'] },
+                    { model: Payments },
+                    { model: Adresses }
+                ],
+                order: [['createdAt', 'DESC']]
+            }),
+            Orders.count({
+                where,
+                include: [
+                    { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
+                    { model: Users, exclude: ['password', 'access_token', 'refresh_token'] },
+                    { model: Payments },
+                    { model: Adresses }
+                ],
+            }),
+        ]);
 
-        const mappedOrders = await Promise.all(orders.rows.map(async (order) => {
+        const mappedOrders = await Promise.all(orderRows.map(async (order) => {
             const json = order.toJSON();
             if (json.OrderItems) {
                 json.OrderItems = await Promise.all(json.OrderItems.map(async (item) => {
@@ -64,7 +75,7 @@ const fetchOrdersAdmin = async (req, res) => {
             success: true,
             message: 'Orders fetched successfully',
             data: mappedOrders,
-            total: orders.count,
+            total: orderCount,
             page,
             limit
         }).code(200);
@@ -92,19 +103,29 @@ const fetchUserOrders = async (req, res) => {
             where.createdAt = { [Op.between]: [from_date, endDate] };
         }
 
-        const orders = await Orders.findAndCountAll({
-            where,
-            limit,
-            offset,
-            include: [
-                { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
-                { model: Payments },
-                { model: Adresses }
-            ],
-            order: [['createdAt', 'DESC']]
-        });
+        const [userOrderRows, userOrderCount] = await Promise.all([
+            Orders.findAll({
+                where,
+                limit,
+                offset,
+                include: [
+                    { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
+                    { model: Payments },
+                    { model: Adresses }
+                ],
+                order: [['createdAt', 'DESC']]
+            }),
+            Orders.count({
+                where,
+                include: [
+                    { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
+                    { model: Payments },
+                    { model: Adresses }
+                ],
+            }),
+        ]);
 
-        const mappedOrders = await Promise.all(orders.rows.map(async (order) => {
+        const mappedOrders = await Promise.all(userOrderRows.map(async (order) => {
             const json = order.toJSON();
             if (json.OrderItems) {
                 json.OrderItems = await Promise.all(json.OrderItems.map(async (item) => {
@@ -128,7 +149,7 @@ const fetchUserOrders = async (req, res) => {
             success: true,
             message: 'User orders fetched successfully',
             data: mappedOrders,
-            total: orders.count,
+            total: userOrderCount,
             page,
             limit
         }).code(200);
@@ -186,19 +207,25 @@ const fetchPaymentsAdmin = async (req, res) => {
         if (method) where.payment_method = method;
         if (user_id) where['$Order.user_id$'] = user_id;
 
-        const payments = await Payments.findAndCountAll({
-            where,
-            limit,
-            offset,
-            include: [{ model: Orders, include: [Users] }],
-            order: [['createdAt', 'DESC']]
-        });
+        const [paymentRows, paymentCount] = await Promise.all([
+            Payments.findAll({
+                where,
+                limit,
+                offset,
+                include: [{ model: Orders, include: [Users] }],
+                order: [['createdAt', 'DESC']]
+            }),
+            Payments.count({
+                where,
+                include: [{ model: Orders, include: [Users] }],
+            }),
+        ]);
 
         return res.response({
             success: true,
             message: 'Payments fetched successfully',
-            data: payments.rows,
-            total: payments.count,
+            data: paymentRows,
+            total: paymentCount,
             page,
             limit
         }).code(200);

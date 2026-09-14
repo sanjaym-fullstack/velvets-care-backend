@@ -99,11 +99,16 @@ const GetDiscountedProducts = async (req, res) => {
         const { page = 1, limit = 10 } = req.query;
         const offset = (page - 1) * limit;
 
-        const { rows, count } = await DiscountedProduct.findAndCountAll({
-            include: [{ model: Products, include: [ProductImages] }, Discount],
-            limit,
-            offset
-        });
+        const [rows, count] = await Promise.all([
+            DiscountedProduct.findAll({
+                include: [{ model: Products, include: [ProductImages] }, Discount],
+                limit,
+                offset
+            }),
+            DiscountedProduct.count({
+                include: [{ model: Products, include: [ProductImages] }, Discount],
+            }),
+        ]);
 
         const mappedRows = await Promise.all(rows.map(async (row) => {
             const json = row.toJSON();
