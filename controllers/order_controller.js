@@ -41,13 +41,7 @@ const fetchOrdersAdmin = async (req, res) => {
                 order: [['createdAt', 'DESC']]
             }),
             Orders.count({
-                where,
-                include: [
-                    { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
-                    { model: Users, exclude: ['password', 'access_token', 'refresh_token'] },
-                    { model: Payments },
-                    { model: Adresses }
-                ],
+                where
             }),
         ]);
 
