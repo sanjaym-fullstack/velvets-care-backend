@@ -81,9 +81,9 @@ const GetWishlist = async (req, res) => {
 
         const mappedItems = await Promise.all(wishlistItems.map(async (item) => {
             const json = item.toJSON();
-            if (json.Product?.product_images) {
-                json.Product.product_images = await Promise.all(
-                    json.Product.product_images.map(async (img) => ({
+            if (json.product?.product_images) {
+                json.product.product_images = await Promise.all(
+                    json.product.product_images.map(async (img) => ({
                         ...img,
                         file_url: img.file_url
                             ? await FileFunctions.getFromS3(img.file_url)
