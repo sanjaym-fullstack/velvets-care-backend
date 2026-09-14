@@ -109,6 +109,12 @@ const createCheckout = async (req, res) => {
             { order_id: order.id, total: calculatedTotal }
         );
 
+        NotificationHelper.sendToAllAdmins(
+            'New Order',
+            `New order #${order.id} of ₹${calculatedTotal} placed by ${user.name}.`,
+            { order_id: order.id, total: calculatedTotal, user_name: user.name }
+        );
+
         return res.response({
             success: true,
             message: 'Order created successfully',

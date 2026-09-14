@@ -2,6 +2,7 @@ const { PayoutSettings, DoctorBankAccounts, Payouts, Doctors, Appointments } = r
 const { Op, fn, col } = require('sequelize');
 const Sequelize = require('sequelize');
 const { decryptText, encryptText } = require('../helpers/encryption');
+const { NotificationHelper } = require('../helpers');
 
 const getSettings = async (req, res) => {
   try {
@@ -531,6 +532,13 @@ const markAsPaid = async (req, res) => {
     await Appointments.update(
       { payout_processed: true },
       { where: { payout_id: payout.id } }
+    );
+
+    // Notify doctor about payout
+    NotificationHelper.sendToDoctor(doctor_id,
+      'Payout Processed',
+      `Your payout of ₹${payout.net_payout} for ${payout.from_date} to ${payout.to_date} has been processed. Transaction ID: ${transaction_id}`,
+      { payout_id: payout.id, net_payout: payout.net_payout, transaction_id }
     );
 
     return res.response({
