@@ -46,21 +46,30 @@ const addBankAccount = async (req, res) => {
     const { account_holder_name, account_number, ifsc_code, bank_name, branch_name } = req.payload;
 
     const existing = await DoctorBankAccounts.findOne({ where: { doctor_id } });
-    if (existing) return res.response({ success: false, message: 'Bank account already exists. Use update endpoint.' }).code(400);
+    if (existing) {
+      // Update existing instead of error
+      existing.account_holder_name = await encryptText(account_holder_name || await decryptText(existing.account_holder_name));
+      existing.account_number = await encryptText(account_number || await decryptText(existing.account_number));
+      existing.ifsc_code = await encryptText(ifsc_code || await decryptText(existing.ifsc_code));
+      existing.bank_name = await encryptText(bank_name || await decryptText(existing.bank_name));
+      existing.branch_name = await encryptText(branch_name || await decryptText(existing.branch_name));
+      await existing.save();
+      return res.response({ success: true, message: 'Bank account updated', data: existing }).code(200);
+    }
 
     const bankAccount = await DoctorBankAccounts.create({
       doctor_id,
       account_holder_name: await encryptText(account_holder_name),
       account_number: await encryptText(account_number),
       ifsc_code: await encryptText(ifsc_code),
-      bank_name: await encryptText(bank_name),
-      branch_name: await encryptText(branch_name)
+      bank_name: bank_name ? await encryptText(bank_name) : null,
+      branch_name: branch_name ? await encryptText(branch_name) : null,
     });
 
     return res.response({ success: true, message: 'Bank account added', data: bankAccount }).code(201);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 const addBankAccountAdmin = async (req, res) => {
@@ -99,20 +108,32 @@ const updateBankAccount = async (req, res) => {
     const doctor_id = user.doctor_id;
     const { account_holder_name, account_number, ifsc_code, bank_name, branch_name } = req.payload;
 
-    const bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
-    if (!bankAccount) return res.response({ success: false, message: 'No bank account found. Add one first.' }).code(404);
+    let bankAccount = await DoctorBankAccounts.findOne({ where: { doctor_id } });
 
-    bankAccount.account_holder_name = await encryptText(account_holder_name || await decryptText(bankAccount.account_holder_name));
-    bankAccount.account_number = await encryptText(account_number || await decryptText(bankAccount.account_number));
-    bankAccount.ifsc_code = await encryptText(ifsc_code || await decryptText(bankAccount.ifsc_code));
-    bankAccount.bank_name = await encryptText(bank_name || await decryptText(bankAccount.bank_name));
-    bankAccount.branch_name = await encryptText(branch_name || await decryptText(bankAccount.branch_name));
-    await bankAccount.save();
+    if (bankAccount) {
+      // Update existing
+      bankAccount.account_holder_name = await encryptText(account_holder_name || await decryptText(bankAccount.account_holder_name));
+      bankAccount.account_number = await encryptText(account_number || await decryptText(bankAccount.account_number));
+      bankAccount.ifsc_code = await encryptText(ifsc_code || await decryptText(bankAccount.ifsc_code));
+      bankAccount.bank_name = await encryptText(bank_name || await decryptText(bankAccount.bank_name));
+      bankAccount.branch_name = await encryptText(branch_name || await decryptText(bankAccount.branch_name));
+      await bankAccount.save();
+    } else {
+      // Create new if not exists
+      bankAccount = await DoctorBankAccounts.create({
+        doctor_id,
+        account_holder_name: await encryptText(account_holder_name),
+        account_number: await encryptText(account_number),
+        ifsc_code: await encryptText(ifsc_code),
+        bank_name: bank_name ? await encryptText(bank_name) : null,
+        branch_name: branch_name ? await encryptText(branch_name) : null,
+      });
+    }
 
-    return res.response({ success: true, message: 'Bank account updated', data: bankAccount }).code(200);
+    return res.response({ success: true, message: 'Bank account saved', data: bankAccount }).code(200);
   } catch (err) {
     console.error(err);
-    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(200);
+    return res.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
   }
 };
 
