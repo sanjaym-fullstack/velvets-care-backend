@@ -520,6 +520,21 @@ const updateStatus = async (req, h) => {
         }
       });
 
+    // Notify doctor about status change
+    if (verified === true) {
+      NotificationHelper.sendToDoctor(doctor_id,
+        'Account Verified',
+        'Your account has been verified. You can now start receiving appointments.',
+        { doctor_id, verified: true }
+      );
+    } else if (verified === false) {
+      NotificationHelper.sendToDoctor(doctor_id,
+        'Account Rejected',
+        'Your account verification was rejected. Please contact support for details.',
+        { doctor_id, verified: false }
+      );
+    }
+
     return h.response({
       success: true,
       message: 'Status updated'

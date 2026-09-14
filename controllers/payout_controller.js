@@ -332,6 +332,13 @@ const calculatePayouts = async (req, res) => {
         }
       });
 
+      // Notify doctor about calculated payout
+      NotificationHelper.sendToDoctor(appointment.doctor_id,
+        'Payout Calculated',
+        `Your payout of ₹${netPayout} for ${startDate} to ${endDate} has been calculated and is pending processing.`,
+        { payout_id: payout.id, net_payout: netPayout, from_date: startDate, to_date: endDate }
+      );
+
       payoutData.push({
         doctor_id: appointment.doctor_id,
         total_earnings: totalEarnings,

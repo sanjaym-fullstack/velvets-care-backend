@@ -7,7 +7,7 @@ const {
     Op
 } = require('sequelize')
 const {
-    OTPFunctions, JWTFunctions, GoogleAuthFunctions, stripSensitive
+    OTPFunctions, JWTFunctions, GoogleAuthFunctions, stripSensitive, NotificationHelper
 } = require('../helpers')
 const fs = require('fs')
 
@@ -728,6 +728,14 @@ const inactivateUser = async (req, res) => {
         }, {
             where: { id: user_id }
         });
+
+        // Notify user about account suspension
+        NotificationHelper.sendToUser(user_id,
+            'Account Suspended',
+            `Your account has been suspended. Reason: ${inactive_reason || 'Not specified'}. ${inactive_till ? 'Till: ' + inactive_till : ''}`,
+            { user_id, inactive: true, inactive_reason, inactive_till }
+        );
+
         return res.response({
             success: true,
             message: 'User inactivated successfully',
@@ -772,6 +780,14 @@ const reactivateUser = async (req, res) => {
         }, {
             where: { id: user_id }
         });
+
+        // Notify user about account reactivation
+        NotificationHelper.sendToUser(user_id,
+            'Account Reactivated',
+            'Your account has been reactivated. You can now access all features.',
+            { user_id, inactive: false }
+        );
+
         return res.response({
             success: true,
             message: 'User reactivated successfully',

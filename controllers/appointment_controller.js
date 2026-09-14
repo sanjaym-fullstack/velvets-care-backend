@@ -1244,6 +1244,21 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         });
         appointment.order_id = paymentLink.id;
         await appointment.save();
+
+        // Notify patient
+        NotificationHelper.sendToUser(appointment.patient_id,
+            'Appointment Booked',
+            `Your appointment with Dr. ${doctor.name} on ${appointment_date} at ${appointment_time} has been booked. Payment link sent.`,
+            { appointment_id: appointment.id }
+        );
+
+        // Notify doctor
+        NotificationHelper.sendToDoctor(doctor_id,
+            'New Appointment',
+            `New appointment booked by ${patient.name} on ${appointment_date} at ${appointment_time}.`,
+            { appointment_id: appointment.id }
+        );
+
         // 9️⃣ Return appointment + payment link
         return res.response({
             success: true,
@@ -1286,6 +1301,20 @@ const callbackPayment = async (req, res) => {
         }, {
             where: { id }
         });
+
+        // Notify patient
+        NotificationHelper.sendToUser(appointment.patient_id,
+            'Payment Confirmed',
+            `Your payment for appointment #${appointment.id} has been confirmed.`,
+            { appointment_id: appointment.id, payment_id: razorpay_payment_id }
+        );
+
+        // Notify doctor
+        NotificationHelper.sendToDoctor(appointment.doctor_id,
+            'Payment Received',
+            `Payment received for appointment #${appointment.id}. Patient: ${appointment.patient_name || 'Patient'}.`,
+            { appointment_id: appointment.id }
+        );
 
         return res.response({
             success: true,
