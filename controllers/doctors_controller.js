@@ -131,6 +131,13 @@ const createDoctor = async (req, h) => {
     });
     await transaction.commit();
 
+    // Notify admin about new doctor registration
+    NotificationHelper.sendToAllAdmins(
+      'New Doctor Registered',
+      `Dr. ${full_name} (${specialization || 'General'}) has registered on Velvets Care. Phone: ${phone}`,
+      { doctor_id: doctor.id, full_name, phone, specialization }
+    );
+
     const doctor_data = await Doctors.findOne({
       where: { id: doctor.id },
       include: [

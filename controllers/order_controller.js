@@ -165,6 +165,27 @@ const updateOrderStatus = async (req, res) => {
             { order_id: order.id, status }
         );
 
+        // Specific notifications for key statuses
+        if (status === 'shipped') {
+            NotificationHelper.sendToUser(order.user_id,
+                'Order Shipped',
+                `Great news! Your order #${order.id} has been shipped and is on its way.`,
+                { order_id: order.id, status: 'shipped' }
+            );
+        } else if (status === 'delivered') {
+            NotificationHelper.sendToUser(order.user_id,
+                'Order Delivered',
+                `Your order #${order.id} has been delivered successfully. Thank you for shopping with Velvets Care!`,
+                { order_id: order.id, status: 'delivered' }
+            );
+        } else if (status === 'cancelled') {
+            NotificationHelper.sendToUser(order.user_id,
+                'Order Cancelled',
+                `Your order #${order.id} has been cancelled. ${message || ''}`,
+                { order_id: order.id, status: 'cancelled' }
+            );
+        }
+
         return res.response({ success: true, message: 'Order status updated successfully' }).code(200);
 
     } catch (error) {

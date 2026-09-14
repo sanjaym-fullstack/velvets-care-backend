@@ -118,6 +118,14 @@ const request_otp_register = async (req, res) => {
             name: name,
             otp_id: otpCode.id
         })
+
+        // Notify admin about new user registration
+        NotificationHelper.sendToAllAdmins(
+            'New User Registered',
+            `A new user ${name || phone} has registered on Velvets Care.`,
+            { phone, name }
+        );
+
         return res.response({
             success: true,
             otp: otpCode.otp,

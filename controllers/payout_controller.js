@@ -574,6 +574,23 @@ const markAsPaid = async (req, res) => {
       { payout_id: payout.id, net_payout: payout.net_payout, transaction_id }
     );
 
+    // Earnings milestone check
+    const doctor = await Doctors.findByPk(doctor_id, { raw: true });
+    if (doctor) {
+      const totalEarnings = Number(doctor.total_earnings) || 0;
+      const milestones = [10000, 25000, 50000, 100000, 250000, 500000, 1000000];
+      for (const milestone of milestones) {
+        if (totalEarnings >= milestone && totalEarnings - payout.net_payout < milestone) {
+          NotificationHelper.sendToDoctor(doctor_id,
+            'Earnings Milestone!',
+            `Congratulations! You have crossed ₹${milestone.toLocaleString('en-IN')} in total earnings on Velvets Care. Keep up the great work!`,
+            { milestone, total_earnings: totalEarnings }
+          );
+          break;
+        }
+      }
+    }
+
     return res.response({
       success: true,
       message: 'Payout marked as paid successfully',
