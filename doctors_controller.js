@@ -15,7 +15,7 @@ const {
 } = require('sequelize')
 const sequelize = require('../config/sequelize')
 const {
-  OTPFunctions, JWTFunctions, stripSensitive, NotificationHelper
+  OTPFunctions, JWTFunctions, stripSensitive
 } = require('../helpers')
 const fs = require('fs')
 
@@ -130,13 +130,6 @@ const createDoctor = async (req, h) => {
       pan_card_id: panFileId
     });
     await transaction.commit();
-
-    // Notify admin about new doctor registration
-    NotificationHelper.sendToAllAdmins(
-      'New Doctor Registered',
-      `Dr. ${full_name} (${specialization || 'General'}) has registered on Velvets Care. Phone: ${phone}`,
-      { doctor_id: doctor.id, full_name, phone, specialization }
-    );
 
     const doctor_data = await Doctors.findOne({
       where: { id: doctor.id },
@@ -446,6 +439,12 @@ const updateAvailability = async (req, h) => {
         });
       }
     }
+    await Doctorsavailability.bulkCreate(availability.map(slot => ({
+      doctor_id,
+      day: slot.day,
+      start_time: slot.start_time,
+      end_time: slot.end_time
+    })));
 
     return h.response({
       success: true,
@@ -481,21 +480,6 @@ const updateStatusByAdmin = async (req, h) => {
         }
       });
 
-    // Notify doctor about verification status
-    if (verified === true) {
-      NotificationHelper.sendToDoctor(doctor_id,
-        'Account Verified',
-        'Your account has been verified. You can now start receiving appointments.',
-        { doctor_id, verified: true }
-      );
-    } else if (verified === false) {
-      NotificationHelper.sendToDoctor(doctor_id,
-        'Account Rejected',
-        'Your account verification was rejected. Please contact support for details.',
-        { doctor_id, verified: false }
-      );
-    }
-
     return h.response({
       success: true,
       message: 'Status updated'
@@ -526,21 +510,6 @@ const updateStatus = async (req, h) => {
           id: doctor_id
         }
       });
-
-    // Notify doctor about status change
-    if (verified === true) {
-      NotificationHelper.sendToDoctor(doctor_id,
-        'Account Verified',
-        'Your account has been verified. You can now start receiving appointments.',
-        { doctor_id, verified: true }
-      );
-    } else if (verified === false) {
-      NotificationHelper.sendToDoctor(doctor_id,
-        'Account Rejected',
-        'Your account verification was rejected. Please contact support for details.',
-        { doctor_id, verified: false }
-      );
-    }
 
     return h.response({
       success: true,
@@ -796,15 +765,6 @@ const fetch_popular_doctors = async (req, h) => {
     const session_user = req.headers.user;
     if (!session_user) throw new Error("Session expired");
 
-    // Get doctors manually marked as popular
-    const manuallyPopular = await Doctors.findAll({
-      where: { is_popular: true },
-      attributes: ['id'],
-      raw: true
-    });
-    const manualIds = manuallyPopular.map(d => d.id);
-
-    // Get top doctors by completed appointments
     const popularDoctors = await Appointments.findAll({
       where: { status: "completed" },
       attributes: [
@@ -817,11 +777,7 @@ const fetch_popular_doctors = async (req, h) => {
       raw: true,
     });
 
-    // Merge: manual popular first, then appointment-based, deduplicated
-    const appointmentIds = popularDoctors.map((d) => d.doctor_id);
-    const allIds = [...new Set([...manualIds, ...appointmentIds])];
-
-    if (!allIds.length) {
+    if (!popularDoctors.length) {
       return h.response({
         success: true,
         message: "No popular doctors found",
@@ -829,8 +785,10 @@ const fetch_popular_doctors = async (req, h) => {
       });
     }
 
+    const doctorIds = popularDoctors.map((d) => d.doctor_id);
+
     const doctors = await Doctors.findAll({
-      where: { id: { [Op.in]: allIds } },
+      where: { id: { [Op.in]: doctorIds } },
       include: [
         { model: Files, as: "profile_image", required: false },
         { model: Files, as: "registration_certificate", required: false },
@@ -841,38 +799,43 @@ const fetch_popular_doctors = async (req, h) => {
         { model: Doctorsavailability },
         { model: Specialization }
       ],
-      distinct: true,
+      distinct: true,  // 🔥 avoids duplicates caused by joins
       nest: true,
     });
 
+    // Convert to map for quick lookup
     const doctorsMap = {};
     for (let d of doctors) {
       doctorsMap[d.id] = d;
     }
 
-    const countMap = {};
-    popularDoctors.forEach(p => { countMap[p.doctor_id] = p.completed_count; });
-
+    // Preserve sorted order based on completed count
     const finalList = await Promise.all(
-      allIds.map(async (id) => {
-        const doc = doctorsMap[id];
+      popularDoctors.map(async (pop) => {
+        const doc = doctorsMap[pop.doctor_id];
         if (!doc) return null;
 
         return {
           ...doc.toJSON(),
-          completed_appointments: countMap[id] || 0,
+
+          completed_appointments: pop.completed_count,
+
           profile_image: doc.profile_image?.files_url
             ? await FileFunctions.getFromS3(doc.profile_image.files_url)
             : null,
+
           registration_certificate: doc.registration_certificate?.files_url
             ? await FileFunctions.getFromS3(doc.registration_certificate.files_url)
             : null,
+
           medical_degree_certificate: doc.medical_degree_certificate?.files_url
             ? await FileFunctions.getFromS3(doc.medical_degree_certificate.files_url)
             : null,
+
           government_id: doc.government_id_file?.files_url
             ? await FileFunctions.getFromS3(doc.government_id_file.files_url)
             : null,
+
           pan_card: doc.pan_card_file?.files_url
             ? await FileFunctions.getFromS3(doc.pan_card_file.files_url)
             : null,
@@ -883,7 +846,7 @@ const fetch_popular_doctors = async (req, h) => {
     return h.response({
       success: true,
       message: "Popular doctors fetched successfully",
-      data: stripSensitive(finalList.filter(Boolean)),
+      data: stripSensitive(finalList.filter(Boolean)), // remove nulls
     });
 
   } catch (err) {
@@ -1190,79 +1153,6 @@ const CheckDoctorSlotsByAdmin = async (req, h) => {
   }
 }
 
-const toggleDoctorPopular = async (req, h) => {
-  try {
-    const session_user = req.headers.user;
-    if (!session_user) throw new Error('Session expired');
-
-    const { doctor_id } = req.params;
-    const { is_popular } = req.payload;
-
-    const doctor = await Doctors.findOne({ where: { id: doctor_id } });
-    if (!doctor) throw new Error('Doctor not found');
-
-    await Doctors.update({ is_popular }, { where: { id: doctor_id } });
-
-    return h.response({
-      success: true,
-      message: is_popular ? 'Doctor marked as popular' : 'Doctor removed from popular',
-      data: { doctor_id, is_popular }
-    }).code(200);
-  } catch (err) {
-    console.error(err);
-    return h.response({ success: false, message: err.message || 'Something went wrong' }).code(500);
-  }
-}
-
-const uploadDoctorProfilePicture = async (req, h) => {
-  try {
-    const session_user = req.headers.user;
-    if (!session_user) throw new Error('Session expired');
-
-    const doctor_id = session_user.doctor_id;
-    const file = req.payload.profile_image;
-    if (!file) throw new Error('Profile image is required');
-
-    const doctor = await Doctors.findByPk(doctor_id);
-    if (!doctor) throw new Error('Doctor not found');
-
-    // Upload to S3
-    const uploaded = await FileFunctions.uploadToS3(
-      file.filename,
-      'uploads/doctor_profiles',
-      fs.readFileSync(file.path)
-    );
-
-    // Create file record
-    const fileRecord = await Files.create({
-      files_url: uploaded.key,
-      extension: uploaded.key.split('.').pop(),
-      original_name: file.filename,
-      size: fs.statSync(file.path).size
-    });
-
-    // Update doctor profile_image_id
-    await doctor.update({ profile_image_id: fileRecord.id });
-
-    const fileUrl = await FileFunctions.getFromS3(fileRecord.files_url);
-
-    return h.response({
-      success: true,
-      message: 'Profile picture uploaded successfully',
-      data: {
-        profile_image_id: fileRecord.id,
-        file_url: fileUrl
-      }
-    }).code(200);
-  } catch (err) {
-    console.error(err);
-    return h.response({
-      success: false,
-      message: err.message || 'Something went wrong'
-    }).code(500);
-  }
-};
-
 module.exports = {
   createDoctor,
   updateBasicDetails,
@@ -1277,9 +1167,7 @@ module.exports = {
   updateDoctoreDetailsByAdmin,
   deleteDoctor,
   CheckDoctorSlotsByAdmin,
-  fetch_popular_doctors_admin,
-  toggleDoctorPopular,
-  uploadDoctorProfilePicture
+  fetch_popular_doctors_admin
 }
 
 

@@ -7,7 +7,7 @@ const {
     Op
 } = require('sequelize')
 const {
-    OTPFunctions, JWTFunctions, GoogleAuthFunctions
+    OTPFunctions, JWTFunctions, GoogleAuthFunctions, stripSensitive, NotificationHelper
 } = require('../helpers')
 const fs = require('fs')
 
@@ -30,6 +30,12 @@ const request_otp_login = async (req, res) => {
             },
             raw: true
         })
+        if (!user) {
+            return res.response({
+                success: false,
+                message: 'User not found, please register',
+            });
+        }
         if (user.inactive && user.inactive_reason && user.inactive_till && new Date(user.inactive_till) > new Date()) {
             return res.response({
                 success: false,
@@ -50,12 +56,6 @@ const request_otp_login = async (req, res) => {
         }
         const otp = await OTPFunctions.getOTPByLength(4);
         console.log("login otp:", otp);
-        if (!user) {
-            return res.response({
-                success: false,
-                message: 'User not found, please register',
-            });
-        }
         const otpCode = await Otps.create({
             otp: otp,
             otp_time: Date.now()
@@ -118,6 +118,14 @@ const request_otp_register = async (req, res) => {
             name: name,
             otp_id: otpCode.id
         })
+
+        // Notify admin about new user registration
+        NotificationHelper.sendToAllAdmins(
+            'New User Registered',
+            `A new user ${name || phone} has registered on Velvets Care.`,
+            { phone, name }
+        );
+
         return res.response({
             success: true,
             otp: otpCode.otp,
@@ -381,15 +389,15 @@ const update_user = async (req, res) => {
         // Map S3 URL
         const user_data = {
             ...updatedUser,
-            profile_image: updatedUser.profile_image?.files_url
-                ? await FileFunctions.getFromS3(updatedUser.profile_image.files_url)
+            profile_image: updatedUser.file?.files_url
+                ? await FileFunctions.getFromS3(updatedUser.file.files_url)
                 : null
         };
 
         return res.response({
             success: true,
             message: 'User updated successfully',
-            data: user_data
+            data: stripSensitive(user_data)
         }).code(200);
 
     } catch (error) {
@@ -493,15 +501,15 @@ const getusers = async (req, res) => {
         // Map S3 URLs for profile images
         const users_mapped = await Promise.all(users.map(async (user) => ({
             ...user,
-            profile_image: user.profile_image?.files_url
-                ? await FileFunctions.getFromS3(user.profile_image.files_url)
+            profile_image: user.file?.files_url
+                ? await FileFunctions.getFromS3(user.file.files_url)
                 : null
         })));
 
         return res.response({
             success: true,
             message: 'Users fetched successfully',
-            data: users_mapped,
+            data: stripSensitive(users_mapped),
             total: user_count,
             page: parseInt(page),
             limit: parseInt(limit)
@@ -685,7 +693,7 @@ const CreateUserByAdmin = async (req, res) => {
         return res.response({
             success: true,
             message: 'User created successfully',
-            data: userData
+            data: stripSensitive(userData)
         }).code(201);
 
     } catch (error) {
@@ -728,6 +736,14 @@ const inactivateUser = async (req, res) => {
         }, {
             where: { id: user_id }
         });
+
+        // Notify user about account suspension
+        NotificationHelper.sendToUser(user_id,
+            'Account Suspended',
+            `Your account has been suspended. Reason: ${inactive_reason || 'Not specified'}. ${inactive_till ? 'Till: ' + inactive_till : ''}`,
+            { user_id, inactive: true, inactive_reason, inactive_till }
+        );
+
         return res.response({
             success: true,
             message: 'User inactivated successfully',
@@ -772,6 +788,14 @@ const reactivateUser = async (req, res) => {
         }, {
             where: { id: user_id }
         });
+
+        // Notify user about account reactivation
+        NotificationHelper.sendToUser(user_id,
+            'Account Reactivated',
+            'Your account has been reactivated. You can now access all features.',
+            { user_id, inactive: false }
+        );
+
         return res.response({
             success: true,
             message: 'User reactivated successfully',

@@ -6,7 +6,7 @@ const {
     Files
 } = require('../models');
 
-const { FileFunctions } = require('../helpers');
+const { FileFunctions, stripSensitive, NotificationHelper } = require('../helpers');
 const fs = require('fs');
 
 /* ----------------- HELPERS ----------------- */
@@ -59,6 +59,24 @@ const uploadPrescription = async (req, res) => {
         });
 
         const fileUrl = await FileFunctions.getFromS3(fileRecord.files_url);
+
+        // Notify user about prescription upload
+        if (user_id) {
+            NotificationHelper.sendToUser(user_id,
+                'Prescription Uploaded',
+                `A new prescription "${prescription_name}" has been uploaded for you.`,
+                { prescription_id: prescription.id }
+            );
+        }
+
+        // Notify doctor if uploaded by user
+        if (doctor_id && uploaded_by === 'user') {
+            NotificationHelper.sendToDoctor(doctor_id,
+                'New Prescription Received',
+                `A new prescription "${prescription_name}" has been uploaded by the patient.`,
+                { prescription_id: prescription.id }
+            );
+        }
 
         return res.response({
             success: true,
@@ -302,7 +320,7 @@ const getPrescriptionById = async (req, res) => {
 
         return res.response({
             success: true,
-            data: json
+            data: stripSensitive(json)
         }).code(200);
 
     } catch (error) {
@@ -343,6 +361,24 @@ const updatePrescription = async (req, res) => {
         }
 
         await prescription.update(updates);
+
+        // Notify user if prescription was updated by doctor
+        if (prescription.user_id) {
+            NotificationHelper.sendToUser(prescription.user_id,
+                'Prescription Updated',
+                `Your prescription "${prescription_name || prescription.prescription_name}" has been updated.`,
+                { prescription_id: prescription.id }
+            );
+        }
+
+        // Notify doctor if prescription was updated by user
+        if (prescription.doctor_id) {
+            NotificationHelper.sendToDoctor(prescription.doctor_id,
+                'Prescription Updated',
+                `Prescription "${prescription_name || prescription.prescription_name}" has been updated by the patient.`,
+                { prescription_id: prescription.id }
+            );
+        }
 
         const updated = await Prescriptions.findByPk(id, {
             include: [Files]

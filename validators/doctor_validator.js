@@ -225,6 +225,13 @@ const fetchSingleDoctorValidator = Joi.object({
   }),
 });
 
+const togglePopularValidator = Joi.object({
+  is_popular: Joi.boolean().required().messages({
+    'boolean.base': 'is_popular must be true or false',
+    'any.required': 'is_popular is required',
+  }),
+});
+
 module.exports = {
   basicDetailsValidator,
   statusValidator,
@@ -232,5 +239,6 @@ module.exports = {
   addressValidator,
   statusAdminValidator,
   fecthdoctors_admin,
-  fetchSingleDoctorValidator
+  fetchSingleDoctorValidator,
+  togglePopularValidator
 };

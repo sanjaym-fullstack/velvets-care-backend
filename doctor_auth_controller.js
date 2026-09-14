@@ -26,7 +26,6 @@ const doctor_request_otp = async (req, res) => {
             raw: true
         });
 
-        const otp = await OTPFunctions.getOTPByLength(4);
         if (!doctor) {
             // const otpCode = await Otps.create({
             //     otp: otp,
@@ -47,12 +46,13 @@ const doctor_request_otp = async (req, res) => {
                 message: 'Doctor not found. Please register by contacting the velvets care team first.',
             });
         }
-        if (doctor.status == 'INACTIVE' || doctor.verified == false) {
+        if (doctor.status == false || doctor.verified == false) {
             return res.response({
                 success: false,
                 message: 'Your account is inactive. Please contact the velvets care team.',
             });
         }
+        const otp = await OTPFunctions.getOTPByLength(4);
         const otpCode = await Otps.create({
             otp: otp,
             otp_time: Date.now()
@@ -262,7 +262,7 @@ const doctor_update_profile = async (req, res) => {
         const session_doctor = req.headers.user;
         if (!session_doctor) throw new Error('Session expired');
 
-        const { full_name, phone, email, gender, profile_image, date_of_birth } = req.payload;
+        const { full_name, phone, email, gender, profile_image, dob } = req.payload;
 
         const doctor = await Doctors.findOne({ where: { id: session_doctor.doctor_id } });
         if (!doctor) throw new Error('Doctor not found');
@@ -293,7 +293,7 @@ const doctor_update_profile = async (req, res) => {
             full_name,
             phone,
             gender,
-            date_of_birth,
+            dob,
             email,
             profile_image_id: profileFileId
         }, { where: { id: session_doctor.doctor_id } });

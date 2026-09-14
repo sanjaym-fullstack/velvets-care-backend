@@ -11,7 +11,7 @@ const {
     Op
 } = require('sequelize')
 const {
-    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper
+    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, stripSensitive
 } = require('../helpers');
 const Razorpay = require('razorpay');
 require('dotenv/config');
@@ -21,12 +21,48 @@ const razorpay = new Razorpay({
 });
 
 const normalizeDate = (dateStr) => {
+    // Handle MM/DD/YYYY or DD/MM/YYYY
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        // If first part > 12, it's DD/MM/YYYY, otherwise assume MM/DD/YYYY
+        if (parseInt(parts[0]) > 12) {
+            const [day, month, year] = parts;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        } else {
+            const [month, day, year] = parts;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+    }
+    // Handle MM-DD-YYYY
+    if (dateStr.includes('-') && dateStr.split('-')[0].length === 2) {
+        const [month, day, year] = dateStr.split('-');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    // Handle YYYY-MM-DD or other formats
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+};
+
+// Parse any date format to a Date object using normalizeDate first
+const parseAnyDate = (dateStr) => {
+    const normalized = normalizeDate(dateStr);
+    return new Date(normalized + 'T00:00:00');
+};
+
+// Convert any time string to 24h number (e.g., "3:00 PM" → 1500, "18:00" → 1800, "10:00 AM" → 1000)
+const to24Hour = (timeStr) => {
+    const hasAMPM = /[AP]M/i.test(timeStr);
+    const num = parseInt(timeStr.replace(/[:\s]/g, '').replace(/[APap][Mm]/g, ''));
+    if (!hasAMPM) return num; // already 24h format like "10:00" or "18:00"
+    const isPM = /PM/i.test(timeStr);
+    let val = num;
+    if (isPM && val < 1200) val += 1200;
+    if (!isPM && val === 1200) val = 0; // 12:00 AM → 0
+    return val;
 };
 
 
@@ -44,10 +80,8 @@ const precheckAndCreateOrder = async (req, res) => {
         });
         if (!user || !doctor) throw new Error('Invalid user or doctor');
 
-        const appointmentDate = new Date(appointment_date);
+        const appointmentDate = parseAnyDate(appointment_date);
         const appointmentDay = appointmentDate.toLocaleDateString('en-IN', { weekday: 'long' });
-        const AMPM = appointment_time.includes('AM') ? 'AM' : 'PM';
-        const time = appointment_time.split(' ')[0];
         const availability = await Doctorsavailability.findOne({
             where: {
                 doctor_id,
@@ -55,13 +89,15 @@ const precheckAndCreateOrder = async (req, res) => {
             }
         });
         if (!availability) throw new Error('Doctor is not available at this Date');
-        const savedTime = {
-            start_time: parseInt(availability.start_time.replace(':', '')),
-            end_time: parseInt(availability.end_time.replace(':', '')),
-            start_AMPM: availability.start_time.includes('AM') ? 'AM' : 'PM',
-            end_AMPM: availability.end_time.includes('AM') ? 'AM' : 'PM'
-        }
-        if (AMPM == savedTime.start_AMPM && parseInt(time.replace(':', '')) < savedTime.start_time || AMPM == savedTime.end_AMPM && parseInt(time.replace(':', '')) > savedTime.end_time) {
+        const AMPM = appointment_time.includes('AM') ? 'AM' : 'PM';
+        const time = appointment_time.split(' ')[0];
+
+        // Convert all to 24h for proper comparison
+        const req24 = to24Hour(appointment_time);
+        const start24 = to24Hour(availability.start_time);
+        const end24 = to24Hour(availability.end_time);
+
+        if (req24 < start24 || req24 >= end24) {
             throw new Error('Doctor is not available at this Time');
         }
         const existingAppointment = await Appointments.findOne({
@@ -417,7 +453,7 @@ const cancelAppointmentByUser = async (req, h) => {
         }
 
         // ✅ Prevent canceling on the same day
-        const today = new Date().toISOString().split('T')[0];
+        const today = normalizeDate(new Date().toISOString());
         if (appointment.appointment_date === today) {
             throw new Error('Cannot cancel appointment on the same day');
         }
@@ -468,11 +504,8 @@ const getadminAppointments = async (req, res) => {
         if (status) filter.status = status;
         if (patient_id) filter.patient_id = patient_id;
         if (date) {
-            const startOfDay = new Date(date);
-            startOfDay.setHours(0, 0, 0, 0);
-            const endOfDay = new Date(date);
-            endOfDay.setHours(23, 59, 59, 999);
-            filter.appointment_date = { [Op.between]: [startOfDay, endOfDay] };
+            const normalizedDate = normalizeDate(date);
+            filter.appointment_date = { [Op.like]: `${normalizedDate}%` };
         }
 
         const total_count = await Appointments.count({ where: filter });
@@ -625,6 +658,7 @@ const getUserAppointments = async (req, res) => {
             include: [
                 {
                     model: Doctors,
+                    attributes: { exclude: ['access_token', 'refresh_token'] },
                     include: [{ model: Files, as: 'profile_image' }, { model: Specialization }]
                 }
             ],
@@ -731,30 +765,21 @@ const checkDoctorAvailability = async (req, res) => {
         if (!user || !doctor) throw new Error('Invalid user or doctor');
 
         // 4️⃣  Day / time translation
-        const appointmentDate = new Date(appointment_date);
+        const appointmentDate = parseAnyDate(appointment_date);
         const appointmentDay = appointmentDate.toLocaleDateString('en-IN', { weekday: 'long' });
-        const ampm = appointment_time.includes('AM') ? 'AM' : 'PM';
-        const plainTime = appointment_time.split(' ')[0];          // "10:30"
 
-        // 5️⃣  Doctor’s weekly availability
+        // 5️⃣  Doctor's weekly availability
         const availability = await Doctorsavailability.findOne({
             where: { doctor_id, day: appointmentDay }
         });
         if (!availability) throw new Error('Doctor is not available on this day');
 
-        const saved = {
-            start: parseInt(availability.start_time.replace(':', '')),   // 930
-            end: parseInt(availability.end_time.replace(':', '')),     // 1230
-            startAMPM: availability.start_time.includes('AM') ? 'AM' : 'PM',
-            endAMPM: availability.end_time.includes('AM') ? 'AM' : 'PM'
-        };
+        // Convert all to 24h for proper comparison
+        const req24 = to24Hour(appointment_time);
+        const start24 = to24Hour(availability.start_time);
+        const end24 = to24Hour(availability.end_time);
 
-        const requested = parseInt(plainTime.replace(':', ''));            // 1030
-        const outsideWindow =
-            (ampm === saved.startAMPM && requested < saved.start) ||
-            (ampm === saved.endAMPM && requested > saved.end);
-
-        if (outsideWindow) throw new Error('Doctor is not available at this time');
+        if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
 
         // 6️⃣  Collision check
         const existing = await Appointments.findOne({
@@ -790,15 +815,11 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
         }
 
         // 3️⃣ Parse date safely
-        let appointmentDate;
-        if (appointment_date.includes('/')) {
-            const [day, month, year] = appointment_date.split('/');
-            appointmentDate = new Date(`${year}-${month}-${day}`);
-        } else {
-            appointmentDate = new Date(appointment_date);
-        }
+        const appointmentDate = parseAnyDate(appointment_date);
+        const normalizedDate = normalizeDate(appointment_date);
+        const todayNormalized = normalizeDate(new Date().toISOString());
 
-        if (new Date(normalizeDate(appointmentDate.toISOString())) < new Date(normalizeDate(new Date().toISOString()))) {
+        if (normalizedDate < todayNormalized) {
             throw new Error('Past date not allowed');
         }
 
@@ -899,20 +920,13 @@ const getTodaysAppointmentsDoctor = async (req, res) => {
         const doctor = await Doctors.findOne({ where: { id: session_user.doctor_id }, raw: true });
         if (!doctor) throw new Error('Invalid doctor');
 
-        // Get today's date without time (YYYY-MM-DD)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const tomorrow = new Date(today);
-        tomorrow.setDate(today.getDate() + 1);
+        // Get today's date as normalized string (YYYY-MM-DD)
+        const todayStr = normalizeDate(new Date().toISOString());
 
         const appointment = await Appointments.findAll({
             where: {
                 doctor_id: doctor.id,
-                appointment_date: {
-                    [Op.gte]: today,
-                    [Op.lt]: tomorrow
-                }
+                appointment_date: { [Op.like]: `${todayStr}%` }
             },
             include: [
                 {
@@ -968,33 +982,29 @@ const adminCheckDoctorSlot = async (req, res) => {
         if (!doctor_id || !appointment_date || !appointment_time)
             throw new Error('doctor_id, appointment_date and appointment_time are required');
 
-        if (new Date(normalizeDate(appointment_date)) < new Date(normalizeDate(new Date().toISOString())))
+        const normalizedDate = normalizeDate(appointment_date);
+        const todayNormalized = normalizeDate(new Date().toISOString());
+        if (normalizedDate < todayNormalized)
             throw new Error('Booking for past date is not allowed');
 
         const doctor = await Doctors.findByPk(doctor_id);
         if (!doctor) throw new Error('Invalid doctor');
 
-        // Convert date to day of week
-        const appointmentDay = new Date(appointment_date).toLocaleDateString('en-IN', { weekday: 'long' });
-        const ampm = appointment_time.includes('AM') ? 'AM' : 'PM';
-        const timeValue = parseInt(appointment_time.split(' ')[0].replace(':', ''));
+        // Convert date to day of week using parseAnyDate
+        const appointmentDay = parseAnyDate(appointment_date).toLocaleDateString('en-IN', { weekday: 'long' });
 
         const availability = await Doctorsavailability.findOne({ where: { doctor_id, day: appointmentDay } });
         if (!availability) throw new Error('Doctor is not available on this day');
 
-        const start = parseInt(availability.start_time.replace(':', ''));
-        const end = parseInt(availability.end_time.replace(':', ''));
-        const startAMPM = availability.start_time.includes('AM') ? 'AM' : 'PM';
-        const endAMPM = availability.end_time.includes('AM') ? 'AM' : 'PM';
+        // Convert all to 24h for proper comparison
+        const req24 = to24Hour(appointment_time);
+        const start24 = to24Hour(availability.start_time);
+        const end24 = to24Hour(availability.end_time);
 
-        const outsideWindow =
-            (ampm === startAMPM && timeValue < start) ||
-            (ampm === endAMPM && timeValue > end);
-
-        if (outsideWindow) throw new Error('Doctor is not available at this time');
+        if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
 
         // Check if booked
-        const booked = await Appointments.findOne({ where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }, appointment_time } });
+        const booked = await Appointments.findOne({ where: { doctor_id, appointment_date: { [Op.like]: `${normalizedDate}%` }, appointment_time } });
         if (booked) throw new Error('Slot already booked');
 
         return res.response({
@@ -1023,8 +1033,10 @@ const adminGetDoctorAvailableSlots = async (req, res) => {
         const doctor = await Doctors.findByPk(doctor_id);
         if (!doctor) throw new Error('Invalid doctor');
 
-        const dateObj = new Date(appointment_date);
-        if (new Date(normalizeDate(appointment_date)) < new Date(normalizeDate(new Date().toISOString()))) throw new Error('Past date not allowed');
+        const dateObj = parseAnyDate(appointment_date);
+        const normalizedDate = normalizeDate(appointment_date);
+        const todayNormalized = normalizeDate(new Date().toISOString());
+        if (normalizedDate < todayNormalized) throw new Error('Past date not allowed');
 
         const day = dateObj.toLocaleDateString('en-IN', { weekday: 'long' });
 
@@ -1157,15 +1169,14 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         if (!doctor || !patient) throw new Error('Invalid doctor or patient');
 
         // 3️⃣ Check if appointment date is valid (future date)
-        const appointmentDateObj = new Date(appointment_date);
-        appointmentDateObj.setHours(0, 0, 0, 0);
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (appointmentDateObj < today) throw new Error('Cannot book appointment in the past');
+        const appointmentDateObj = parseAnyDate(appointment_date);
+        const normalizedDate = normalizeDate(appointment_date);
+        const todayNormalized = normalizeDate(new Date().toISOString());
+        if (normalizedDate < todayNormalized) throw new Error('Cannot book appointment in the past');
 
         // 4️⃣ Check if slot is already booked
         const existing = await Appointments.findOne({
-            where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }, appointment_time }
+            where: { doctor_id, appointment_date: { [Op.like]: `${normalizedDate}%` }, appointment_time }
         });
         if (existing) throw new Error('Slot already booked for this time');
 
@@ -1179,21 +1190,11 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         if (!availability) throw new Error('Doctor is not available on this day');
 
         // 6️⃣ Check if requested time is within doctor's available time
-        const [hours, minutes] = appointment_time.split(/[: ]/).map(v => parseInt(v));
-        const isPM = appointment_time.includes('PM');
-        let requestedTime = hours % 12 + (isPM ? 12 : 0); // 24h format
+        const req24 = to24Hour(appointment_time);
+        const start24 = to24Hour(availability.start_time);
+        const end24 = to24Hour(availability.end_time);
 
-        const [startH, startM] = availability.start_time.split(/[: ]/).map(v => parseInt(v));
-        const startPM = availability.start_time.includes('PM');
-        const startTime = startH % 12 + (startPM ? 12 : 0) + startM / 60;
-
-        const [endH, endM] = availability.end_time.split(/[: ]/).map(v => parseInt(v));
-        const endPM = availability.end_time.includes('PM') || (endH > 12); // Handle 12:00 PM edge case
-        const endTime = endH % 12 + (endPM ? 12 : 0) + endM / 60;
-
-        const reqTime = requestedTime + minutes / 60;
-        console.log(`Requested: ${reqTime}, Start: ${startTime}, End: ${endTime}`);
-        if (reqTime < startTime || reqTime >= endTime) throw new Error('Doctor is not available at this time');
+        if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
 
         // 7️⃣ Create Razorpay Payment Link
         const amount = consultation_fee || doctor.consultation_fee || 500;
@@ -1243,6 +1244,21 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         });
         appointment.order_id = paymentLink.id;
         await appointment.save();
+
+        // Notify patient
+        NotificationHelper.sendToUser(appointment.patient_id,
+            'Appointment Booked',
+            `Your appointment with Dr. ${doctor.name} on ${appointment_date} at ${appointment_time} has been booked. Payment link sent.`,
+            { appointment_id: appointment.id }
+        );
+
+        // Notify doctor
+        NotificationHelper.sendToDoctor(doctor_id,
+            'New Appointment',
+            `New appointment booked by ${patient.name} on ${appointment_date} at ${appointment_time}.`,
+            { appointment_id: appointment.id }
+        );
+
         // 9️⃣ Return appointment + payment link
         return res.response({
             success: true,
@@ -1285,6 +1301,13 @@ const callbackPayment = async (req, res) => {
         }, {
             where: { id }
         });
+
+        // Notify patient
+        NotificationHelper.sendToUser(appointment.patient_id,
+            'Payment Confirmed',
+            `Your payment for appointment #${appointment.id} has been confirmed.`,
+            { appointment_id: appointment.id, payment_id: razorpay_payment_id }
+        );
 
         return res.response({
             success: true,

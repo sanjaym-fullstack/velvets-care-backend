@@ -1,8 +1,8 @@
 'use strict';
 
-const { Orders, OrderItems, Adresses, Users, Payments, Products, ProductImages } = require('../models');
+const { Orders, OrderItems, Adresses, Users, Payments, Products, ProductImages, Categories, Brands, Subcategories } = require('../models');
 const { Op } = require('sequelize');
-const { MailFunctions, FileFunctions, NotificationHelper } = require('../helpers');
+const { MailFunctions, FileFunctions, NotificationHelper, stripSensitive } = require('../helpers');
 
 // ================= Order Controllers =================
 
@@ -14,7 +14,7 @@ const fetchOrdersAdmin = async (req, res) => {
         const { page = 1, limit = 10, search, status, from_date, to_date } = req.query;
         const offset = (page - 1) * limit;
 
-        
+
         const where = {};
         if (status) where.status = status;
         if (search) {
@@ -53,11 +53,11 @@ const fetchOrdersAdmin = async (req, res) => {
 
         const mappedOrders = await Promise.all(orderRows.map(async (order) => {
             const json = order.toJSON();
-            if (json.OrderItems) {
-                json.OrderItems = await Promise.all(json.OrderItems.map(async (item) => {
-                    if (item.Product?.product_images) {
-                        item.Product.product_images = await Promise.all(
-                            item.Product.product_images.map(async (img) => ({
+            if (json.order_items) {
+                json.order_items = await Promise.all(json.order_items.map(async (item) => {
+                    if (item.product?.product_images) {
+                        item.product.product_images = await Promise.all(
+                            item.product.product_images.map(async (img) => ({
                                 ...img,
                                 file_url: img.file_url
                                     ? await FileFunctions.getFromS3(img.file_url)
@@ -127,11 +127,11 @@ const fetchUserOrders = async (req, res) => {
 
         const mappedOrders = await Promise.all(userOrderRows.map(async (order) => {
             const json = order.toJSON();
-            if (json.OrderItems) {
-                json.OrderItems = await Promise.all(json.OrderItems.map(async (item) => {
-                    if (item.Product?.product_images) {
-                        item.Product.product_images = await Promise.all(
-                            item.Product.product_images.map(async (img) => ({
+            if (json.order_items) {
+                json.order_items = await Promise.all(json.order_items.map(async (item) => {
+                    if (item.product?.product_images) {
+                        item.product.product_images = await Promise.all(
+                            item.product.product_images.map(async (img) => ({
                                 ...img,
                                 file_url: img.file_url
                                     ? await FileFunctions.getFromS3(img.file_url)
@@ -185,6 +185,27 @@ const updateOrderStatus = async (req, res) => {
             `Your order #${order.id} status has been updated to ${status}. ${message || ''}`,
             { order_id: order.id, status }
         );
+
+        // Specific notifications for key statuses
+        if (status === 'shipped') {
+            NotificationHelper.sendToUser(order.user_id,
+                'Order Shipped',
+                `Great news! Your order #${order.id} has been shipped and is on its way.`,
+                { order_id: order.id, status: 'shipped' }
+            );
+        } else if (status === 'delivered') {
+            NotificationHelper.sendToUser(order.user_id,
+                'Order Delivered',
+                `Your order #${order.id} has been delivered successfully. Thank you for shopping with Velvets Care!`,
+                { order_id: order.id, status: 'delivered' }
+            );
+        } else if (status === 'cancelled') {
+            NotificationHelper.sendToUser(order.user_id,
+                'Order Cancelled',
+                `Your order #${order.id} has been cancelled. ${message || ''}`,
+                { order_id: order.id, status: 'cancelled' }
+            );
+        }
 
         return res.response({ success: true, message: 'Order status updated successfully' }).code(200);
 
@@ -252,20 +273,20 @@ const fetchOrderById = async (req, res) => {
         const order = await Orders.findOne({
             where,
             include: [
-                { model: OrderItems, include: [{ model: Products, include: [ProductImages] }] },
+                { model: OrderItems, include: [{ model: Products, include: [ProductImages, Categories, Brands, Subcategories] }] },
                 { model: Payments },
-                { model: Users }
+                { model: Users, attributes: { exclude: ['access_token', 'refresh_token'] } }
             ]
         });
 
         if (!order) return res.response({ success: false, message: 'Order not found' }).code(404);
 
         const orderJSON = order.toJSON();
-        if (orderJSON.OrderItems) {
-            orderJSON.OrderItems = await Promise.all(orderJSON.OrderItems.map(async (item) => {
-                if (item.Product?.product_images) {
-                    item.Product.product_images = await Promise.all(
-                        item.Product.product_images.map(async (img) => ({
+        if (orderJSON.order_items) {
+            orderJSON.order_items = await Promise.all(orderJSON.order_items.map(async (item) => {
+                if (item.product?.product_images) {
+                    item.product.product_images = await Promise.all(
+                        item.product.product_images.map(async (img) => ({
                             ...img,
                             file_url: img.file_url
                                 ? await FileFunctions.getFromS3(img.file_url)
@@ -280,7 +301,7 @@ const fetchOrderById = async (req, res) => {
         return res.response({
             success: true,
             message: 'Order fetched successfully',
-            data: orderJSON
+            data: stripSensitive(orderJSON)
         }).code(200);
 
     } catch (error) {

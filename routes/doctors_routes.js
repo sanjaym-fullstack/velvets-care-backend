@@ -17,8 +17,9 @@ const {
         fetch_popular_doctors,
         updateDoctoreDetailsByAdmin,
         deleteDoctor,
-        CheckDoctorSlotsByAdmin
-
+        CheckDoctorSlotsByAdmin,
+        toggleDoctorPopular,
+        uploadDoctorProfilePicture
     }
 } = require('../controllers');
 const {
@@ -29,7 +30,8 @@ const {
         addressValidator,
         statusAdminValidator,
         fecthdoctors_admin,
-        fetchSingleDoctorValidator
+        fetchSingleDoctorValidator,
+        togglePopularValidator
     },
     HeaderValidator,
 } = require('../validators');
@@ -102,6 +104,38 @@ module.exports = [
             },
         },
         handler: updateBasicDetails
+    },
+
+    {
+        method: 'POST',
+        path: '/doctor/profile-picture',
+        options: {
+            description: 'Upload or update doctor profile picture',
+            tags,
+            pre: [
+                SessionValidator
+            ],
+            validate: {
+                headers: HeaderValidator,
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                },
+            },
+            payload: {
+                maxBytes: 5 * 1024 * 1024,
+                parse: true,
+                output: 'file',
+                multipart: true,
+                allow: 'multipart/form-data'
+            },
+            plugins: {
+                'hapi-swagger': {
+                    payloadType: 'form'
+                }
+            },
+        },
+        handler: uploadDoctorProfilePicture
     },
 
     {
@@ -305,6 +339,18 @@ module.exports = [
                     throw Boom.badRequest(errors.join(', '));
                 }
             },
+            payload: {
+                maxBytes: 5 * 1024 * 1024,
+                parse: true,
+                output: 'file',
+                multipart: true,
+                allow: 'multipart/form-data'
+            },
+            plugins: {
+                'hapi-swagger': {
+                    payloadType: 'form'
+                }
+            },
             handler: updateDoctoreDetailsByAdmin
         }
     },
@@ -326,6 +372,27 @@ module.exports = [
                 }
             },
             handler: deleteDoctor
+        }
+    },
+    {
+        method: 'PUT',
+        path: '/admin/doctor/{doctor_id}/popular',
+        options: {
+            description: 'Toggle doctor popular status by admin',
+            tags,
+            pre: [
+                SessionValidator
+            ],
+            validate: {
+                headers: HeaderValidator,
+                params: fetchSingleDoctorValidator,
+                payload: togglePopularValidator,
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
+            },
+            handler: toggleDoctorPopular
         }
     }
 
