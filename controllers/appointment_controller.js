@@ -21,6 +21,24 @@ const razorpay = new Razorpay({
 });
 
 const normalizeDate = (dateStr) => {
+    // Handle MM/DD/YYYY or DD/MM/YYYY
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        // If first part > 12, it's DD/MM/YYYY, otherwise assume MM/DD/YYYY
+        if (parseInt(parts[0]) > 12) {
+            const [day, month, year] = parts;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        } else {
+            const [month, day, year] = parts;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+    }
+    // Handle MM-DD-YYYY
+    if (dateStr.includes('-') && dateStr.split('-')[0].length === 2) {
+        const [month, day, year] = dateStr.split('-');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    // Handle YYYY-MM-DD or other formats
     const d = new Date(dateStr);
     if (isNaN(d.getTime())) return dateStr;
     const year = d.getFullYear();
@@ -794,6 +812,10 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
         let appointmentDate;
         if (appointment_date.includes('/')) {
             const [day, month, year] = appointment_date.split('/');
+            appointmentDate = new Date(`${year}-${month}-${day}`);
+        } else if (appointment_date.includes('-') && appointment_date.split('-')[0].length === 2) {
+            // MM-DD-YYYY format
+            const [month, day, year] = appointment_date.split('-');
             appointmentDate = new Date(`${year}-${month}-${day}`);
         } else {
             appointmentDate = new Date(appointment_date);
