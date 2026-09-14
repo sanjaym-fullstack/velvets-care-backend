@@ -1309,13 +1309,6 @@ const callbackPayment = async (req, res) => {
             { appointment_id: appointment.id, payment_id: razorpay_payment_id }
         );
 
-        // Notify doctor
-        NotificationHelper.sendToDoctor(appointment.doctor_id,
-            'Payment Received',
-            `Payment received for appointment #${appointment.id}. Patient: ${appointment.patient_name || 'Patient'}.`,
-            { appointment_id: appointment.id }
-        );
-
         return res.response({
             success: true,
             message: 'Payment successful and appointment updated',
