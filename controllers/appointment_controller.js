@@ -53,6 +53,18 @@ const parseAnyDate = (dateStr) => {
     return new Date(normalized + 'T00:00:00');
 };
 
+// Convert any time string to 24h number (e.g., "3:00 PM" → 1500, "18:00" → 1800, "10:00 AM" → 1000)
+const to24Hour = (timeStr) => {
+    const hasAMPM = /[AP]M/i.test(timeStr);
+    const num = parseInt(timeStr.replace(/[:\s]/g, '').replace(/[APap][Mm]/g, ''));
+    if (!hasAMPM) return num; // already 24h format like "10:00" or "18:00"
+    const isPM = /PM/i.test(timeStr);
+    let val = num;
+    if (isPM && val < 1200) val += 1200;
+    if (!isPM && val === 1200) val = 0; // 12:00 AM → 0
+    return val;
+};
+
 
 const precheckAndCreateOrder = async (req, res) => {
     try {
@@ -79,22 +91,12 @@ const precheckAndCreateOrder = async (req, res) => {
         if (!availability) throw new Error('Doctor is not available at this Date');
         const AMPM = appointment_time.includes('AM') ? 'AM' : 'PM';
         const time = appointment_time.split(' ')[0];
-        const savedTime = {
-            start_time: parseInt(availability.start_time.replace(':', '')),
-            end_time: parseInt(availability.end_time.replace(':', '')),
-            start_AMPM: availability.start_time.includes('AM') ? 'AM' : 'PM',
-            end_AMPM: availability.end_time.includes('AM') ? 'AM' : 'PM'
-        }
-        // Convert requested time to 24h for proper comparison
-        let req24 = parseInt(time.replace(':', ''));
-        if (AMPM === 'PM' && req24 < 1200) req24 += 1200;
-        if (AMPM === 'AM' && req24 === 1200) req24 = 0;
-        let start24 = savedTime.start_time;
-        if (savedTime.start_AMPM === 'PM' && start24 < 1200) start24 += 1200;
-        if (savedTime.start_AMPM === 'AM' && start24 === 1200) start24 = 0;
-        let end24 = savedTime.end_time;
-        if (savedTime.end_AMPM === 'PM' && end24 < 1200) end24 += 1200;
-        if (savedTime.end_AMPM === 'AM' && end24 === 1200) end24 = 0;
+
+        // Convert all to 24h for proper comparison
+        const req24 = to24Hour(appointment_time);
+        const start24 = to24Hour(availability.start_time);
+        const end24 = to24Hour(availability.end_time);
+
         if (req24 < start24 || req24 >= end24) {
             throw new Error('Doctor is not available at this Time');
         }
@@ -765,8 +767,6 @@ const checkDoctorAvailability = async (req, res) => {
         // 4️⃣  Day / time translation
         const appointmentDate = parseAnyDate(appointment_date);
         const appointmentDay = appointmentDate.toLocaleDateString('en-IN', { weekday: 'long' });
-        const ampm = appointment_time.includes('AM') ? 'AM' : 'PM';
-        const plainTime = appointment_time.split(' ')[0];          // "10:30"
 
         // 5️⃣  Doctor's weekly availability
         const availability = await Doctorsavailability.findOne({
@@ -774,23 +774,10 @@ const checkDoctorAvailability = async (req, res) => {
         });
         if (!availability) throw new Error('Doctor is not available on this day');
 
-        const saved = {
-            start: parseInt(availability.start_time.replace(':', '')),   // 930
-            end: parseInt(availability.end_time.replace(':', '')),     // 1230
-            startAMPM: availability.start_time.includes('AM') ? 'AM' : 'PM',
-            endAMPM: availability.end_time.includes('AM') ? 'AM' : 'PM'
-        };
-
         // Convert all to 24h for proper comparison
-        let req24 = parseInt(plainTime.replace(':', ''));
-        if (ampm === 'PM' && req24 < 1200) req24 += 1200;
-        if (ampm === 'AM' && req24 === 1200) req24 = 0;
-        let start24 = saved.start;
-        if (saved.startAMPM === 'PM' && start24 < 1200) start24 += 1200;
-        if (saved.startAMPM === 'AM' && start24 === 1200) start24 = 0;
-        let end24 = saved.end;
-        if (saved.endAMPM === 'PM' && end24 < 1200) end24 += 1200;
-        if (saved.endAMPM === 'AM' && end24 === 1200) end24 = 0;
+        const req24 = to24Hour(appointment_time);
+        const start24 = to24Hour(availability.start_time);
+        const end24 = to24Hour(availability.end_time);
 
         if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
 
@@ -1005,22 +992,14 @@ const adminCheckDoctorSlot = async (req, res) => {
 
         // Convert date to day of week using parseAnyDate
         const appointmentDay = parseAnyDate(appointment_date).toLocaleDateString('en-IN', { weekday: 'long' });
-        const ampm = appointment_time.includes('AM') ? 'AM' : 'PM';
-        const timeValue = parseInt(appointment_time.split(' ')[0].replace(':', ''));
 
         const availability = await Doctorsavailability.findOne({ where: { doctor_id, day: appointmentDay } });
         if (!availability) throw new Error('Doctor is not available on this day');
 
         // Convert all to 24h for proper comparison
-        let req24 = timeValue;
-        if (ampm === 'PM' && req24 < 1200) req24 += 1200;
-        if (ampm === 'AM' && req24 === 1200) req24 = 0;
-        let start24 = parseInt(availability.start_time.replace(':', ''));
-        if (availability.start_time.includes('PM') && start24 < 1200) start24 += 1200;
-        if (availability.start_time.includes('AM') && start24 === 1200) start24 = 0;
-        let end24 = parseInt(availability.end_time.replace(':', ''));
-        if (availability.end_time.includes('PM') && end24 < 1200) end24 += 1200;
-        if (availability.end_time.includes('AM') && end24 === 1200) end24 = 0;
+        const req24 = to24Hour(appointment_time);
+        const start24 = to24Hour(availability.start_time);
+        const end24 = to24Hour(availability.end_time);
 
         if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
 
@@ -1211,21 +1190,11 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         if (!availability) throw new Error('Doctor is not available on this day');
 
         // 6️⃣ Check if requested time is within doctor's available time
-        const [hours, minutes] = appointment_time.split(/[: ]/).map(v => parseInt(v));
-        const isPM = appointment_time.includes('PM');
-        let requestedTime = hours % 12 + (isPM ? 12 : 0); // 24h format
+        const req24 = to24Hour(appointment_time);
+        const start24 = to24Hour(availability.start_time);
+        const end24 = to24Hour(availability.end_time);
 
-        const [startH, startM] = availability.start_time.split(/[: ]/).map(v => parseInt(v));
-        const startPM = availability.start_time.includes('PM');
-        const startTime = startH % 12 + (startPM ? 12 : 0) + startM / 60;
-
-        const [endH, endM] = availability.end_time.split(/[: ]/).map(v => parseInt(v));
-        const endPM = availability.end_time.includes('PM') || (endH > 12); // Handle 12:00 PM edge case
-        const endTime = endH % 12 + (endPM ? 12 : 0) + endM / 60;
-
-        const reqTime = requestedTime + minutes / 60;
-        console.log(`Requested: ${reqTime}, Start: ${startTime}, End: ${endTime}`);
-        if (reqTime < startTime || reqTime >= endTime) throw new Error('Doctor is not available at this time');
+        if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
 
         // 7️⃣ Create Razorpay Payment Link
         const amount = consultation_fee || doctor.consultation_fee || 500;
