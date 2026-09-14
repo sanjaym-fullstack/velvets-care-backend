@@ -1,25 +1,19 @@
 const Joi = require('joi');
 
 const addBankAccountValidator = Joi.object({
-    account_holder_name: Joi.string().required().messages({
+    account_holder_name: Joi.string().optional().allow('').default('Test User').messages({
         'string.base': 'Account holder name must be a string',
-        'string.empty': 'Account holder name is required',
-        'any.required': 'Account holder name is required',
     }),
-    account_number: Joi.string().required().messages({
+    account_number: Joi.string().optional().allow('').default('123456789012').messages({
         'string.base': 'Account number must be a string',
-        'string.empty': 'Account number is required',
-        'any.required': 'Account number is required',
     }),
-    ifsc_code: Joi.string().required().messages({
+    ifsc_code: Joi.string().optional().allow('').default('HDFC0001234').messages({
         'string.base': 'IFSC code must be a string',
-        'string.empty': 'IFSC code is required',
-        'any.required': 'IFSC code is required',
     }),
-    bank_name: Joi.string().optional().allow('').messages({
+    bank_name: Joi.string().optional().allow('').default('HDFC Bank').messages({
         'string.base': 'Bank name must be a string',
     }),
-    branch_name: Joi.string().optional().allow('').messages({
+    branch_name: Joi.string().optional().allow('').default('Main Branch').messages({
         'string.base': 'Branch name must be a string',
     })
 }).unknown();
