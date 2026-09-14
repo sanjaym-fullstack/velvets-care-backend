@@ -381,8 +381,8 @@ const update_user = async (req, res) => {
         // Map S3 URL
         const user_data = {
             ...updatedUser,
-            profile_image: updatedUser.Files?.files_url
-                ? await FileFunctions.getFromS3(updatedUser.Files.files_url)
+            profile_image: updatedUser.file?.files_url
+                ? await FileFunctions.getFromS3(updatedUser.file.files_url)
                 : null
         };
 
@@ -493,8 +493,8 @@ const getusers = async (req, res) => {
         // Map S3 URLs for profile images
         const users_mapped = await Promise.all(users.map(async (user) => ({
             ...user,
-            profile_image: user.Files?.files_url
-                ? await FileFunctions.getFromS3(user.Files.files_url)
+            profile_image: user.file?.files_url
+                ? await FileFunctions.getFromS3(user.file.files_url)
                 : null
         })));
 
