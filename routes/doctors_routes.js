@@ -305,6 +305,18 @@ module.exports = [
                     throw Boom.badRequest(errors.join(', '));
                 }
             },
+            payload: {
+                maxBytes: 5 * 1024 * 1024,
+                parse: true,
+                output: 'file',
+                multipart: true,
+                allow: 'multipart/form-data'
+            },
+            plugins: {
+                'hapi-swagger': {
+                    payloadType: 'form'
+                }
+            },
             handler: updateDoctoreDetailsByAdmin
         }
     },

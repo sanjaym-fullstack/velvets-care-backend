@@ -262,7 +262,7 @@ const doctor_update_profile = async (req, res) => {
         const session_doctor = req.headers.user;
         if (!session_doctor) throw new Error('Session expired');
 
-        const { full_name, phone, email, gender, profile_image, dob } = req.payload;
+        const { full_name, phone, email, gender, profile_image, date_of_birth } = req.payload;
 
         const doctor = await Doctors.findOne({ where: { id: session_doctor.doctor_id } });
         if (!doctor) throw new Error('Doctor not found');
@@ -293,7 +293,7 @@ const doctor_update_profile = async (req, res) => {
             full_name,
             phone,
             gender,
-            dob,
+            date_of_birth,
             email,
             profile_image_id: profileFileId
         }, { where: { id: session_doctor.doctor_id } });
