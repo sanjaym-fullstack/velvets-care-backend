@@ -411,13 +411,7 @@ const AdminProducts = async (req, res) => {
                 order: [['id', 'DESC']]
             }),
             Products.count({
-                where,
-                include: [
-                    Brands,
-                    Categories,
-                    Subcategories,
-                    ProductImages
-                ],
+                where
             }),
         ]);
 

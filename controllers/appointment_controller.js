@@ -510,6 +510,7 @@ const getadminAppointments = async (req, res) => {
 
         const total_count = await Appointments.count({ where: filter });
 
+        // Paginated page data
         const appointments = await Appointments.findAll({
             where: filter,
             limit: parseInt(limit),
@@ -528,25 +529,46 @@ const getadminAppointments = async (req, res) => {
             ]
         });
 
-        // Map S3 URLs for doctor profile images
-        const appointmentsWithImages = await Promise.all(
-            appointments.map(async appt => {
-                const doctorData = { ...appt.Doctor?.dataValues };
-
-                if (doctorData.profile_image?.files_url) {
-                    doctorData.profile_image_url = await FileFunctions.getFromS3(
-                        doctorData.profile_image.files_url
-                    );
-                } else {
-                    doctorData.profile_image_url = null;
+        // Full filtered dataset (unpaginated) for static categorization
+        const allAppointments = await Appointments.findAll({
+            where: filter,
+            order: [['appointment_date', 'DESC'], ['appointment_time', 'DESC']],
+            include: [
+                { model: Users, attributes: ['id', 'name', 'email', 'phone'], include: [{ model: Files }] },
+                {
+                    model: Doctors,
+                    attributes: { exclude: ['access_token', 'otp_id', 'refresh_token'] },
+                    include: [
+                        { model: Files, as: 'profile_image' },
+                        { model: Specialization }
+                    ]
                 }
+            ]
+        });
 
-                return {
-                    ...appt.dataValues,
-                    Doctor: doctorData
-                };
-            })
-        );
+        // Map S3 URLs for doctor profile images
+        const mapDoctorImages = async (apptList) =>
+            Promise.all(
+                apptList.map(async appt => {
+                    const doctorData = { ...appt.Doctor?.dataValues };
+
+                    if (doctorData.profile_image?.files_url) {
+                        doctorData.profile_image_url = await FileFunctions.getFromS3(
+                            doctorData.profile_image.files_url
+                        );
+                    } else {
+                        doctorData.profile_image_url = null;
+                    }
+
+                    return {
+                        ...appt.dataValues,
+                        Doctor: doctorData
+                    };
+                })
+            );
+
+        const appointmentsWithImages = await mapDoctorImages(appointments);
+        const allAppointmentsWithImages = await mapDoctorImages(allAppointments);
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -560,7 +582,7 @@ const getadminAppointments = async (req, res) => {
             approved: []
         };
 
-        appointmentsWithImages.forEach(appt => {
+        allAppointmentsWithImages.forEach(appt => {
             categorized.all.push(appt);
 
             const apptDate = new Date(appt.appointment_date);
