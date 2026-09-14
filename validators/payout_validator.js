@@ -118,8 +118,9 @@ const payoutHistoryValidator = Joi.object({
 }).unknown();
 
 const docktorBackAccountFetchingParamsValidator = Joi.object({
-    doctor_id: Joi.number().optional().messages({
+    doctor_id: Joi.number().required().messages({
         'number.base': 'Doctor ID must be a number',
+        'any.required': 'Doctor ID is required',
     }),
 });
 

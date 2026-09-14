@@ -30,4 +30,11 @@ const sendToAllDoctors = async (title, body, extras = {}) => {
   ));
 };
 
-module.exports = { sendToUser, sendToDoctor, sendToAllUsers, sendToAllDoctors };
+const sendToAllAdmins = async (title, body, extras = {}) => {
+  const admins = await Users.findAll({ where: { fcm_token: { [Op.ne]: null }, is_admin: true } });
+  return Promise.allSettled(admins.map(a =>
+    pushNotification.send(a.fcm_token, title, body, null, null, extras, a.id)
+  ));
+};
+
+module.exports = { sendToUser, sendToDoctor, sendToAllUsers, sendToAllDoctors, sendToAllAdmins };

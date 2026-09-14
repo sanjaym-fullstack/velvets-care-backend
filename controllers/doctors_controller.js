@@ -15,7 +15,7 @@ const {
 } = require('sequelize')
 const sequelize = require('../config/sequelize')
 const {
-  OTPFunctions, JWTFunctions, stripSensitive
+  OTPFunctions, JWTFunctions, stripSensitive, NotificationHelper
 } = require('../helpers')
 const fs = require('fs')
 
@@ -473,6 +473,21 @@ const updateStatusByAdmin = async (req, h) => {
           id: doctor_id
         }
       });
+
+    // Notify doctor about verification status
+    if (verified === true) {
+      NotificationHelper.sendToDoctor(doctor_id,
+        'Account Verified',
+        'Your account has been verified. You can now start receiving appointments.',
+        { doctor_id, verified: true }
+      );
+    } else if (verified === false) {
+      NotificationHelper.sendToDoctor(doctor_id,
+        'Account Rejected',
+        'Your account verification was rejected. Please contact support for details.',
+        { doctor_id, verified: false }
+      );
+    }
 
     return h.response({
       success: true,

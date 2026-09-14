@@ -16,7 +16,8 @@ const {
     getDoctorPayouts,
     getPayoutPlan,
     markAsPaid,
-    getPayoutHistory
+    getPayoutHistory,
+    getDoctorEarnings
   }
 } = require('../controllers');
 const {
@@ -203,6 +204,19 @@ module.exports = [
       }
     },
     handler: getDoctorPayouts
+  },
+  {
+    method: 'GET',
+    path: '/doctor/earnings',
+    options: {
+      description: 'Get doctor earnings summary, transactions, and monthly breakdown',
+      tags,
+      pre: [SessionValidator],
+      validate: {
+        headers: HeaderValidator
+      }
+    },
+    handler: getDoctorEarnings
   },
   {
     method: 'POST',
