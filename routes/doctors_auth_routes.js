@@ -120,7 +120,7 @@ module.exports = [
                     throw Boom.badRequest(errors.join(', '));
                 },
             },
-            payload: {
+           payload: {
                 maxBytes: 5 * 1024 * 1024,
                 parse: true,
                 output: 'file',
@@ -131,7 +131,6 @@ module.exports = [
                 'hapi-swagger': {
                     payloadType: 'form'
                 }
-
             },
         },
         handler: doctor_update_profile,

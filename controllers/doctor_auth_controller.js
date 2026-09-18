@@ -262,7 +262,7 @@ const doctor_update_profile = async (req, res) => {
         const session_doctor = req.headers.user;
         if (!session_doctor) throw new Error('Session expired');
 
-        const { full_name, phone, email, gender, profile_image, date_of_birth } = req.payload;
+        const { email, profile_image } = req.payload;
 
         const doctor = await Doctors.findOne({ where: { id: session_doctor.doctor_id } });
         if (!doctor) throw new Error('Doctor not found');
@@ -288,12 +288,8 @@ const doctor_update_profile = async (req, res) => {
             profileFileId = fileRecord.id;
         }
 
-        // Update doctor record
+        // Only update email and profile_image — other fields (name, phone, gender, dob) are admin-only
         await Doctors.update({
-            full_name,
-            phone,
-            gender,
-            date_of_birth,
             email,
             profile_image_id: profileFileId
         }, { where: { id: session_doctor.doctor_id } });

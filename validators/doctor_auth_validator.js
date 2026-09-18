@@ -47,21 +47,7 @@ const get_doctor_list = Joi.object({
         'string.base': 'Search query must be a string',
     }),
 })
-const update_doctor_profile = Joi.object({
-    full_name: Joi.string().allow(null).messages({
-        'string.base': 'Full name must be a string',
-    }),
-    gender: Joi.string().allow(null).messages({
-        'string.base': 'Gender must be a string',
-    }),
-    date_of_birth: Joi.date().allow(null).messages({
-        'date.base': 'Date of birth must be a valid date',
-    }),
-    phone: Joi.number().integer().required().messages({
-        'number.base': 'Phone number must be a number',
-        'number.integer': 'Phone number must be an integer',
-        'any.required': 'Phone number is required',
-    }),
+const update_doctor_profile_validator = Joi.object({
     email: Joi.string().email().required().messages({
         'string.base': 'Email must be a string',
         'string.empty': 'Email is required',
@@ -81,5 +67,5 @@ module.exports = {
     logout_doctor,
     get_doctor_list,
     doctor_refresh_token_validator,
-    
+    update_doctor_profile_validator,
 }
