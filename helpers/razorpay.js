@@ -112,6 +112,30 @@ const fetchRazorpayBalance = async () => {
   }
 };
 
+const refundPayment = async (paymentId, amount, notes = {}) => {
+  try {
+    const refund = await razorpayInstance.payments.refund(paymentId, {
+      amount: Math.round(amount * 100), // in paise
+      notes: {
+        reason: notes.reason || 'Appointment cancelled',
+        ...notes
+      }
+    });
+    return refund;
+  } catch (error) {
+    throw new Error(`Razorpay refund failed: ${error.error?.description || error.message || 'Unknown error'}`);
+  }
+};
+
+const fetchRefund = async (refundId) => {
+  try {
+    const refund = await razorpayInstance.refunds.fetch(refundId);
+    return refund;
+  } catch (error) {
+    throw new Error(`Razorpay refund fetch failed: ${error.error?.description || error.message || 'Unknown error'}`);
+  }
+};
+
 module.exports = {
   createRazorpayOrder,
   capturePayment,
@@ -120,5 +144,7 @@ module.exports = {
   createRazorpayFundAccount,
   createRazorpayPayout,
   fetchRazorpayPayout,
-  fetchRazorpayBalance
+  fetchRazorpayBalance,
+  refundPayment,
+  fetchRefund
 };
