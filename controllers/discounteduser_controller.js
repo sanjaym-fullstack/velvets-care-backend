@@ -98,11 +98,16 @@ const GetDiscountedUsers = async (req, res) => {
         const { page = 1, limit = 10 } = req.query;
         const offset = (page - 1) * limit;
 
-        const { rows, count } = await DiscountedUser.findAndCountAll({
-            include: [Users, Discount],
-            limit,
-            offset
-        });
+        const [rows, count] = await Promise.all([
+            DiscountedUser.findAll({
+                include: [Users, Discount],
+                limit,
+                offset
+            }),
+            DiscountedUser.count({
+                include: [Users, Discount],
+            }),
+        ]);
 
         return res.response({
             success: true,
