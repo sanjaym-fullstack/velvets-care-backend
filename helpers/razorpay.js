@@ -112,16 +112,31 @@ const fetchRazorpayBalance = async () => {
   }
 };
 
-const refundPayment = async (paymentId, amount, notes = {}) => {
+const refundPayment = async (paymentId, amountInRupees, notes = {}) => {
   try {
+    // SAFETY: Fetch actual payment from Razorpay to get the real captured amount
+    const payment = await razorpayInstance.payments.fetch(paymentId);
+    const actualAmountPaidPaise = payment.amount; // Razorpay stores in paise
+    const actualAmountPaidRupees = Math.round(actualAmountPaidPaise / 100);
+
+    // Use the minimum of (requested refund, actual paid amount) — never refund more than paid
+    const refundInRupees = Math.min(amountInRupees, actualAmountPaidRupees);
+    const refundInPaise = Math.round(refundInRupees * 100);
+
+    console.log(`Refund debug: requested=${amountInRupees}rupees, actual_paid=${actualAmountPaidRupees}rupees, refunding=${refundInRupees}rupees (${refundInPaise}paise)`);
+
+    if (refundInPaise <= 0) {
+      throw new Error('Nothing to refund — amount is zero');
+    }
+
     const refund = await razorpayInstance.payments.refund(paymentId, {
-      amount: Math.round(amount * 100), // in paise
+      amount: refundInPaise,
       notes: {
         reason: notes.reason || 'Appointment cancelled',
         ...notes
       }
     });
-    return refund;
+    return { ...refund, refund_amount_rupees: refundInRupees };
   } catch (error) {
     throw new Error(`Razorpay refund failed: ${error.error?.description || error.message || 'Unknown error'}`);
   }

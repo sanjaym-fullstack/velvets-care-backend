@@ -11,7 +11,7 @@ const {
     Op
 } = require('sequelize')
 const {
-    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, stripSensitive
+    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, stripSensitive, normalizeFee
 } = require('../helpers');
 const { refundPayment } = require('../helpers/razorpay');
 const Razorpay = require('razorpay');
@@ -413,7 +413,7 @@ const doctoreject = async (req, h) => {
         let refundId = null;
 
         if (appointment.payment_status === 'paid' && appointment.payment_id) {
-            refundAmount = Number(appointment.consultation_fee) || 0;
+            refundAmount = normalizeFee(appointment.consultation_fee);
 
             // Process full refund via Razorpay
             if (refundAmount > 0) {
@@ -424,6 +424,8 @@ const doctoreject = async (req, h) => {
                     });
                     refundId = refund.id;
                     refundStatus = refund.status || 'processed';
+                    // Use actual amount refunded by Razorpay (in rupees)
+                    refundAmount = refund.refund_amount_rupees || refundAmount;
                 } catch (refundErr) {
                     console.error('Refund failed:', refundErr.message);
                     refundStatus = 'failed';
@@ -507,7 +509,7 @@ const cancelAppointmentByUser = async (req, h) => {
         let refundId = null;
 
         if (appointment.payment_status === 'paid' && appointment.payment_id) {
-            const fee = Number(appointment.consultation_fee) || 0;
+            const fee = normalizeFee(appointment.consultation_fee);
 
             // Calculate days/hours before appointment
             const apptDateTime = new Date(`${appointment.appointment_date}T${appointment.appointment_time}`);
@@ -534,6 +536,8 @@ const cancelAppointmentByUser = async (req, h) => {
                     });
                     refundId = refund.id;
                     refundStatus = refund.status || 'processed';
+                    // Use actual amount refunded by Razorpay (in rupees)
+                    refundAmount = refund.refund_amount_rupees || refundAmount;
                 } catch (refundErr) {
                     console.error('Refund failed:', refundErr.message);
                     refundStatus = 'failed';
