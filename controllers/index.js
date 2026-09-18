@@ -25,6 +25,7 @@ module.exports = {
     PrescriptionController: require('./prescription_controller'),
     FCMController: require('./fcm_controller'),
     PayoutController: require('./payout_controller'),
+    RefundController: require('./refund_controller'),
     AddressController: require('./address_controller'),
     DoctorDashboardController: require('./doctor_dashboard_controller'),
 }

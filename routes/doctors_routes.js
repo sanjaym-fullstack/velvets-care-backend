@@ -31,7 +31,8 @@ const {
         statusAdminValidator,
         fecthdoctors_admin,
         fetchSingleDoctorValidator,
-        togglePopularValidator
+        togglePopularValidator,
+        profilePictureValidator
     },
     HeaderValidator,
 } = require('../validators');
@@ -116,6 +117,7 @@ module.exports = [
                 SessionValidator
             ],
             validate: {
+                payload: profilePictureValidator,
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);

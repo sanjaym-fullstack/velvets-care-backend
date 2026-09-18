@@ -250,6 +250,7 @@ const calculatePayouts = async (req, res) => {
         },
         payout_id: null,
         payout_processed: false,
+        refund_id: null, // Exclude refunded appointments
         ...where,
       },
       include: [
@@ -482,6 +483,7 @@ const getPayoutPlan = async (req, res) => {
           status: 'completed',
           payment_status: 'paid',
           payout_id: null,
+          refund_id: null, // Exclude refunded appointments
           appointment_date: {
             [Op.between]: [
               startDate.toISOString().split('T')[0],
@@ -710,6 +712,16 @@ const getDoctorEarnings = async (req, res) => {
       raw: true,
     });
 
+    // 7️⃣ Refund stats
+    const refundStats = await Appointments.findAll({
+      where: { doctor_id, refund_id: { [Op.ne]: null } },
+      attributes: [
+        [fn('SUM', col('refund_amount')), 'total_refunded'],
+        [fn('COUNT', col('id')), 'total_refunds'],
+      ],
+      raw: true,
+    });
+
     return res.response({
       success: true,
       message: 'Doctor earnings fetched',
@@ -721,6 +733,8 @@ const getDoctorEarnings = async (req, res) => {
           pending_appointments: Number(pendingEarnings[0]?.pending_appointments) || 0,
           total_paid_out: Number(paidOut[0]?.total_paid_out) || 0,
           total_pending_payout: Number(pendingPayouts[0]?.total_pending_payout) || 0,
+          total_refunded: Number(refundStats[0]?.total_refunded) || 0,
+          total_refunds: Number(refundStats[0]?.total_refunds) || 0,
         },
         recent_transactions: recentTransactions,
         monthly_earnings: monthlyEarnings,

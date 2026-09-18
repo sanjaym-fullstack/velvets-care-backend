@@ -232,6 +232,17 @@ const togglePopularValidator = Joi.object({
   }),
 });
 
+const profilePictureValidator = Joi.object({
+  profile_image: Joi.any()
+    .meta({ swaggerType: 'file' })
+    .required()
+    .description('Profile image (jpg, png, webp, max 5MB)')
+    .messages({
+      'any.required': 'Profile image is required',
+      'any.only': 'Profile image must be a valid image file',
+    }),
+}).unknown();
+
 module.exports = {
   basicDetailsValidator,
   statusValidator,
@@ -240,5 +251,6 @@ module.exports = {
   statusAdminValidator,
   fecthdoctors_admin,
   fetchSingleDoctorValidator,
-  togglePopularValidator
+  togglePopularValidator,
+  profilePictureValidator
 };
