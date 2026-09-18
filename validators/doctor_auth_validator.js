@@ -47,7 +47,7 @@ const get_doctor_list = Joi.object({
         'string.base': 'Search query must be a string',
     }),
 })
-const update_doctor_profile = Joi.object({
+const update_doctor_profile_validator = Joi.object({
     full_name: Joi.string().allow(null).messages({
         'string.base': 'Full name must be a string',
     }),
@@ -81,5 +81,5 @@ module.exports = {
     logout_doctor,
     get_doctor_list,
     doctor_refresh_token_validator,
-    
+    update_doctor_profile_validator,
 }
