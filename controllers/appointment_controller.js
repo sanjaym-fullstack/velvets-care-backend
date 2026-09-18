@@ -661,13 +661,14 @@ const getadminAppointments = async (req, res) => {
             Promise.all(
                 apptList.map(async appt => {
                     const doctorData = { ...appt.Doctor?.dataValues };
+                    const profileImage = appt.Doctor?.profile_image;
 
-                    if (doctorData.profile_image?.files_url) {
+                    if (profileImage?.files_url) {
                         doctorData.profile_image_url = await FileFunctions.getFromS3(
-                            doctorData.profile_image.files_url
+                            profileImage.files_url
                         );
                         doctorData.profile_image = {
-                            ...doctorData.profile_image,
+                            ...profileImage.dataValues || profileImage,
                             files_url: doctorData.profile_image_url
                         };
                     } else {
@@ -805,13 +806,14 @@ const getUserAppointments = async (req, res) => {
         const appointmentsWithImages = await Promise.all(
             appointments.map(async appt => {
                 const doctorData = { ...appt.Doctor?.dataValues };
+                const profileImage = appt.Doctor?.profile_image;
 
-                if (doctorData.profile_image?.files_url) {
+                if (profileImage?.files_url) {
                     doctorData.profile_image_url = await FileFunctions.getFromS3(
-                        doctorData.profile_image.files_url
+                        profileImage.files_url
                     );
                     doctorData.profile_image = {
-                        ...doctorData.profile_image,
+                        ...profileImage.dataValues || profileImage,
                         files_url: doctorData.profile_image_url
                     };
                 } else {
