@@ -138,12 +138,12 @@ const confirmAppointment = async (req, res) => {
             order_id,
             payment_id,
             payment_signature,
-            consultation_fee,
             consultation_modes
         } = req.payload;
-        //    const captured_payment = await RazorpayFunctions.capturePayment(consultation_fee, payment_id);
-        //    console.log(captured_payment);
-        //    if(!captured_payment) throw new Error('Razorpay payment capture failed');
+
+        const doctor = await Doctors.findOne({ where: { id: doctor_id } });
+        const fee = doctor.consultation_fee || 500;
+
         const appointment = await Appointments.create({
             doctor_id,
             patient_id: session_user.user_id,
@@ -155,11 +155,9 @@ const confirmAppointment = async (req, res) => {
             order_id,
             payment_signature,
             payment_status: 'paid',
-            consultation_fee,
+            consultation_fee: fee,
             consultation_modes
         });
-        const doctor = await Doctors.findOne({ where: { id: doctor_id } });
-        const fee = doctor.consultation_fee || 500;
 
         await Doctors.update(
             { total_earnings: (doctor.total_earnings || 0) + fee },
@@ -1259,7 +1257,6 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
             appointment_date,
             appointment_time,
             reason,
-            consultation_fee,
             consultation_modes
         } = req.payload;
 
@@ -1300,8 +1297,8 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
 
         if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
 
-        // 7️⃣ Create Razorpay Payment Link
-        const amount = consultation_fee || doctor.consultation_fee || 500;
+        // 7️⃣ Always use doctor's consultation_fee from DB (never from frontend - it may be in paise)
+        const amount = doctor.consultation_fee || 500;
         const appointment = await Appointments.create({
             doctor_id,
             patient_id,
