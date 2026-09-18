@@ -48,20 +48,6 @@ const get_doctor_list = Joi.object({
     }),
 })
 const update_doctor_profile_validator = Joi.object({
-    full_name: Joi.string().allow(null).messages({
-        'string.base': 'Full name must be a string',
-    }),
-    gender: Joi.string().allow(null).messages({
-        'string.base': 'Gender must be a string',
-    }),
-    date_of_birth: Joi.date().allow(null).messages({
-        'date.base': 'Date of birth must be a valid date',
-    }),
-    phone: Joi.number().integer().required().messages({
-        'number.base': 'Phone number must be a number',
-        'number.integer': 'Phone number must be an integer',
-        'any.required': 'Phone number is required',
-    }),
     email: Joi.string().email().required().messages({
         'string.base': 'Email must be a string',
         'string.empty': 'Email is required',
