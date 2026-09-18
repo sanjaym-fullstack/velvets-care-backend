@@ -238,7 +238,11 @@ const getDoctorAppointments = async (req, h) => {
                 ...appt,
                 user: {
                     ...appt.user,
-                    profile_image_url
+                    profile_image_url,
+                    file: appt.user?.file ? {
+                        ...appt.user.file,
+                        files_url: profile_image_url || appt.user.file.files_url
+                    } : appt.user?.file
                 }
             };
 
@@ -643,6 +647,10 @@ const getadminAppointments = async (req, res) => {
                     doctorData.profile_image_url = await FileFunctions.getFromS3(
                         doctorData.profile_image.files_url
                     );
+                    doctorData.profile_image = {
+                        ...doctorData.profile_image,
+                        files_url: doctorData.profile_image_url
+                    };
                 } else {
                     doctorData.profile_image_url = null;
                 }
@@ -780,6 +788,10 @@ const getUserAppointments = async (req, res) => {
                     doctorData.profile_image_url = await FileFunctions.getFromS3(
                         doctorData.profile_image.files_url
                     );
+                    doctorData.profile_image = {
+                        ...doctorData.profile_image,
+                        files_url: doctorData.profile_image_url
+                    };
                 } else {
                     doctorData.profile_image_url = null;
                 }
