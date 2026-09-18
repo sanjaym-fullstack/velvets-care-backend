@@ -11,7 +11,7 @@ const {
     Op
 } = require('sequelize')
 const {
-    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, stripSensitive
+    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, stripSensitive, normalizeFee
 } = require('../helpers');
 const { refundPayment } = require('../helpers/razorpay');
 const Razorpay = require('razorpay');
@@ -138,12 +138,12 @@ const confirmAppointment = async (req, res) => {
             order_id,
             payment_id,
             payment_signature,
-            consultation_fee,
             consultation_modes
         } = req.payload;
-        //    const captured_payment = await RazorpayFunctions.capturePayment(consultation_fee, payment_id);
-        //    console.log(captured_payment);
-        //    if(!captured_payment) throw new Error('Razorpay payment capture failed');
+
+        const doctor = await Doctors.findOne({ where: { id: doctor_id } });
+        const fee = doctor.consultation_fee || 500;
+
         const appointment = await Appointments.create({
             doctor_id,
             patient_id: session_user.user_id,
@@ -155,11 +155,9 @@ const confirmAppointment = async (req, res) => {
             order_id,
             payment_signature,
             payment_status: 'paid',
-            consultation_fee,
+            consultation_fee: fee,
             consultation_modes
         });
-        const doctor = await Doctors.findOne({ where: { id: doctor_id } });
-        const fee = doctor.consultation_fee || 500;
 
         await Doctors.update(
             { total_earnings: (doctor.total_earnings || 0) + fee },
@@ -240,7 +238,11 @@ const getDoctorAppointments = async (req, h) => {
                 ...appt,
                 user: {
                     ...appt.user,
-                    profile_image_url
+                    profile_image_url,
+                    file: appt.user?.file ? {
+                        ...appt.user.file,
+                        files_url: profile_image_url || appt.user.file.files_url
+                    } : appt.user?.file
                 }
             };
 
@@ -415,7 +417,7 @@ const doctoreject = async (req, h) => {
         let refundId = null;
 
         if (appointment.payment_status === 'paid' && appointment.payment_id) {
-            refundAmount = Number(appointment.consultation_fee) || 0;
+            refundAmount = normalizeFee(appointment.consultation_fee);
 
             // Process full refund via Razorpay
             if (refundAmount > 0) {
@@ -426,6 +428,8 @@ const doctoreject = async (req, h) => {
                     });
                     refundId = refund.id;
                     refundStatus = refund.status || 'processed';
+                    // Use actual amount refunded by Razorpay (in rupees)
+                    refundAmount = refund.refund_amount_rupees || refundAmount;
                 } catch (refundErr) {
                     console.error('Refund failed:', refundErr.message);
                     refundStatus = 'failed';
@@ -509,7 +513,7 @@ const cancelAppointmentByUser = async (req, h) => {
         let refundId = null;
 
         if (appointment.payment_status === 'paid' && appointment.payment_id) {
-            const fee = Number(appointment.consultation_fee) || 0;
+            const fee = normalizeFee(appointment.consultation_fee);
 
             // Calculate days/hours before appointment
             const apptDateTime = new Date(`${appointment.appointment_date}T${appointment.appointment_time}`);
@@ -536,6 +540,8 @@ const cancelAppointmentByUser = async (req, h) => {
                     });
                     refundId = refund.id;
                     refundStatus = refund.status || 'processed';
+                    // Use actual amount refunded by Razorpay (in rupees)
+                    refundAmount = refund.refund_amount_rupees || refundAmount;
                 } catch (refundErr) {
                     console.error('Refund failed:', refundErr.message);
                     refundStatus = 'failed';
@@ -660,6 +666,10 @@ const getadminAppointments = async (req, res) => {
                         doctorData.profile_image_url = await FileFunctions.getFromS3(
                             doctorData.profile_image.files_url
                         );
+                        doctorData.profile_image = {
+                            ...doctorData.profile_image,
+                            files_url: doctorData.profile_image_url
+                        };
                     } else {
                         doctorData.profile_image_url = null;
                     }
@@ -800,6 +810,10 @@ const getUserAppointments = async (req, res) => {
                     doctorData.profile_image_url = await FileFunctions.getFromS3(
                         doctorData.profile_image.files_url
                     );
+                    doctorData.profile_image = {
+                        ...doctorData.profile_image,
+                        files_url: doctorData.profile_image_url
+                    };
                 } else {
                     doctorData.profile_image_url = null;
                 }
@@ -1281,7 +1295,6 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
             appointment_date,
             appointment_time,
             reason,
-            consultation_fee,
             consultation_modes
         } = req.payload;
 
@@ -1322,8 +1335,8 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
 
         if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
 
-        // 7️⃣ Create Razorpay Payment Link
-        const amount = consultation_fee || doctor.consultation_fee || 500;
+        // 7️⃣ Always use doctor's consultation_fee from DB (never from frontend - it may be in paise)
+        const amount = doctor.consultation_fee || 500;
         const appointment = await Appointments.create({
             doctor_id,
             patient_id,
