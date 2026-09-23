@@ -333,6 +333,12 @@ const DoctorApproval = async (req, h) => {
             { appointment_id: appointment.id }
         );
 
+        NotificationHelper.sendToDoctor(appointment.doctor_id,
+            'Appointment Approved',
+            `You have approved the appointment on ${appointment.appointment_date} at ${appointment.appointment_time}.`,
+            { appointment_id: appointment.id }
+        );
+
         return h.response({
             success: true,
             message: 'Appointment approved successfully',
@@ -378,10 +384,20 @@ const UpdateAppointmentStatus = async (req, h) => {
                 `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been marked as completed.`,
                 { appointment_id: appointment.id }
             );
+            NotificationHelper.sendToDoctor(appointment.doctor_id,
+                'Appointment Completed',
+                `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been marked as completed.`,
+                { appointment_id: appointment.id }
+            );
         } else if (status === 'no_show') {
             NotificationHelper.sendToUser(appointment.patient_id,
                 'Missed Appointment',
                 `You missed your appointment on ${appointment.appointment_date} at ${appointment.appointment_time}. Please reschedule.`,
+                { appointment_id: appointment.id }
+            );
+            NotificationHelper.sendToDoctor(appointment.doctor_id,
+                'Patient No-Show',
+                `The patient did not attend the appointment on ${appointment.appointment_date} at ${appointment.appointment_time}.`,
                 { appointment_id: appointment.id }
             );
         }
@@ -586,10 +602,10 @@ const cancelAppointmentByUser = async (req, h) => {
             { appointment_id: appointment.id }
         );
 
-        // Notify user about refund
+        // Notify user about refund (only send here for immediate refund; webhook will handle async confirmations)
         if (refundAmount > 0 && refundStatus === 'processed') {
             NotificationHelper.sendToUser(user_id,
-                'Refund Processed',
+                'Refund Initiated',
                 `Your refund of ₹${refundAmount} for appointment #${appointment.id} has been initiated. It will be credited in 5-7 business days.`,
                 { appointment_id: appointment.id, refund_amount: refundAmount, refund_id: refundId }
             );
