@@ -28,4 +28,7 @@ module.exports = {
     RefundController: require('./refund_controller'),
     AddressController: require('./address_controller'),
     DoctorDashboardController: require('./doctor_dashboard_controller'),
+    WebhookController: require('./webhook_controller'),
+    GoogleCalendarController: require('./google_calendar_controller'),
+    TransactionController: require('./transaction_controller'),
 }

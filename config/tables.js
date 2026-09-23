@@ -29,6 +29,8 @@ module.exports = {
     prescriptions: 'prescriptions',
     PayoutSettings: 'payout_settings',
     DoctorBankAccounts: 'doctor_bank_accounts',
-    Payouts: 'payouts'
+    Payouts: 'payouts',
+    GoogleCalendarTokens: 'google_calendar_tokens',
+    AppointmentCalendarEvents: 'appointment_calendar_events'
 
 }

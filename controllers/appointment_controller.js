@@ -11,7 +11,7 @@ const {
     Op
 } = require('sequelize')
 const {
-    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, stripSensitive, normalizeFee
+    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, GoogleCalendarHelper, stripSensitive, normalizeFee
 } = require('../helpers');
 const { refundPayment } = require('../helpers/razorpay');
 const Razorpay = require('razorpay');
@@ -34,9 +34,15 @@ const normalizeDate = (dateStr) => {
             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
         }
     }
-    // Handle MM-DD-YYYY
+    // Handle DD-MM-YYYY or MM-DD-YYYY
     if (dateStr.includes('-') && dateStr.split('-')[0].length === 2) {
-        const [month, day, year] = dateStr.split('-');
+        const parts = dateStr.split('-');
+        // If first part > 12, it's DD-MM-YYYY, otherwise assume MM-DD-YYYY
+        if (parseInt(parts[0]) > 12) {
+            const [day, month, year] = parts;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        const [month, day, year] = parts;
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
     // Handle YYYY-MM-DD or other formats
@@ -89,7 +95,7 @@ const precheckAndCreateOrder = async (req, res) => {
                 day: appointmentDay
             }
         });
-        if (!availability) throw new Error('Doctor is not available at this Date');
+        if (!availability) throw new Error('Doctor is not available on this day');
         const AMPM = appointment_time.includes('AM') ? 'AM' : 'PM';
         const time = appointment_time.split(' ')[0];
 
@@ -99,7 +105,7 @@ const precheckAndCreateOrder = async (req, res) => {
         const end24 = to24Hour(availability.end_time);
 
         if (req24 < start24 || req24 >= end24) {
-            throw new Error('Doctor is not available at this Time');
+            throw new Error(`Doctor is available from ${availability.start_time} to ${availability.end_time}. Please select a time within this window.`);
         }
         const existingAppointment = await Appointments.findOne({
             where: {
@@ -174,6 +180,10 @@ const confirmAppointment = async (req, res) => {
             'New Appointment',
             `New appointment booked by ${patient?.name || 'a patient'} on ${appointment_date} at ${appointment_time}.`,
             { appointment_id: appointment.id }
+        );
+
+        GoogleCalendarHelper.createCalendarEvent(appointment, doctor, patient).catch(e =>
+            console.error('Google Calendar event creation failed (non-blocking):', e.message)
         );
 
         return res.response({
@@ -323,6 +333,12 @@ const DoctorApproval = async (req, h) => {
             { appointment_id: appointment.id }
         );
 
+        NotificationHelper.sendToDoctor(appointment.doctor_id,
+            'Appointment Approved',
+            `You have approved the appointment on ${appointment.appointment_date} at ${appointment.appointment_time}.`,
+            { appointment_id: appointment.id }
+        );
+
         return h.response({
             success: true,
             message: 'Appointment approved successfully',
@@ -368,10 +384,20 @@ const UpdateAppointmentStatus = async (req, h) => {
                 `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been marked as completed.`,
                 { appointment_id: appointment.id }
             );
+            NotificationHelper.sendToDoctor(appointment.doctor_id,
+                'Appointment Completed',
+                `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been marked as completed.`,
+                { appointment_id: appointment.id }
+            );
         } else if (status === 'no_show') {
             NotificationHelper.sendToUser(appointment.patient_id,
                 'Missed Appointment',
                 `You missed your appointment on ${appointment.appointment_date} at ${appointment.appointment_time}. Please reschedule.`,
+                { appointment_id: appointment.id }
+            );
+            NotificationHelper.sendToDoctor(appointment.doctor_id,
+                'Patient No-Show',
+                `The patient did not attend the appointment on ${appointment.appointment_date} at ${appointment.appointment_time}.`,
                 { appointment_id: appointment.id }
             );
         }
@@ -448,6 +474,10 @@ const doctoreject = async (req, h) => {
             refund_date: refundAmount > 0 ? new Date() : null,
             refund_reason: cancel_reason
         });
+
+        GoogleCalendarHelper.deleteCalendarEvents(appointment.id).catch(e =>
+            console.error('Google Calendar event deletion failed (non-blocking):', e.message)
+        );
 
         // Notify user about rejection + refund
         if (refundAmount > 0 && refundStatus === 'processed') {
@@ -561,6 +591,10 @@ const cancelAppointmentByUser = async (req, h) => {
             refund_reason: cancel_reason
         });
 
+        GoogleCalendarHelper.deleteCalendarEvents(appointment.id).catch(e =>
+            console.error('Google Calendar event deletion failed (non-blocking):', e.message)
+        );
+
         // Notify doctor
         NotificationHelper.sendToDoctor(appointment.doctor_id,
             'Appointment Cancelled',
@@ -568,10 +602,10 @@ const cancelAppointmentByUser = async (req, h) => {
             { appointment_id: appointment.id }
         );
 
-        // Notify user about refund
+        // Notify user about refund (only send here for immediate refund; webhook will handle async confirmations)
         if (refundAmount > 0 && refundStatus === 'processed') {
             NotificationHelper.sendToUser(user_id,
-                'Refund Processed',
+                'Refund Initiated',
                 `Your refund of ₹${refundAmount} for appointment #${appointment.id} has been initiated. It will be credited in 5-7 business days.`,
                 { appointment_id: appointment.id, refund_amount: refundAmount, refund_id: refundId }
             );
@@ -921,7 +955,7 @@ const checkDoctorAvailability = async (req, res) => {
         const start24 = to24Hour(availability.start_time);
         const end24 = to24Hour(availability.end_time);
 
-        if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
+        if (req24 < start24 || req24 >= end24) throw new Error(`Doctor is available from ${availability.start_time} to ${availability.end_time}. Please select a time within this window.`);
 
         // 6️⃣  Collision check
         const existing = await Appointments.findOne({
@@ -1143,7 +1177,7 @@ const adminCheckDoctorSlot = async (req, res) => {
         const start24 = to24Hour(availability.start_time);
         const end24 = to24Hour(availability.end_time);
 
-        if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
+        if (req24 < start24 || req24 >= end24) throw new Error(`Doctor is available from ${availability.start_time} to ${availability.end_time}. Please select a time within this window.`);
 
         // Check if booked
         const booked = await Appointments.findOne({ where: { doctor_id, appointment_date: { [Op.like]: `${normalizedDate}%` }, appointment_time } });
@@ -1335,7 +1369,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         const start24 = to24Hour(availability.start_time);
         const end24 = to24Hour(availability.end_time);
 
-        if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
+        if (req24 < start24 || req24 >= end24) throw new Error(`Doctor is available from ${availability.start_time} to ${availability.end_time}. Please select a time within this window.`);
 
         // 7️⃣ Always use doctor's consultation_fee from DB (never from frontend - it may be in paise)
         const amount = doctor.consultation_fee || 500;
@@ -1400,6 +1434,10 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
             { appointment_id: appointment.id }
         );
 
+        GoogleCalendarHelper.createCalendarEvent(appointment, doctor, patient).catch(e =>
+            console.error('Google Calendar event creation failed (non-blocking):', e.message)
+        );
+
         // 9️⃣ Return appointment + payment link
         return res.response({
             success: true,
@@ -1449,6 +1487,14 @@ const callbackPayment = async (req, res) => {
             `Your payment for appointment #${appointment.id} has been confirmed.`,
             { appointment_id: appointment.id, payment_id: razorpay_payment_id }
         );
+
+        const patient = await Users.findByPk(appointment.patient_id);
+        const doctor = await Doctors.findOne({ where: { id: appointment.doctor_id }, raw: true });
+        if (doctor && patient) {
+            GoogleCalendarHelper.createCalendarEvent(appointment, doctor, patient).catch(e =>
+                console.error('Google Calendar event creation failed (non-blocking):', e.message)
+            );
+        }
 
         return res.response({
             success: true,

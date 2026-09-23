@@ -174,13 +174,7 @@ const updateOrderStatus = async (req, res) => {
             subject, message
         );
 
-        NotificationHelper.sendToUser(order.user_id,
-            `Order ${status.charAt(0).toUpperCase() + status.slice(1)}`,
-            `Your order #${order.id} status has been updated to ${status}. ${message || ''}`,
-            { order_id: order.id, status }
-        );
-
-        // Specific notifications for key statuses
+        // Send specific notification based on status (one notification only)
         if (status === 'shipped') {
             NotificationHelper.sendToUser(order.user_id,
                 'Order Shipped',
@@ -198,6 +192,13 @@ const updateOrderStatus = async (req, res) => {
                 'Order Cancelled',
                 `Your order #${order.id} has been cancelled. ${message || ''}`,
                 { order_id: order.id, status: 'cancelled' }
+            );
+        } else {
+            // Generic notification for other statuses (confirmed, processing, etc.)
+            NotificationHelper.sendToUser(order.user_id,
+                `Order ${status.charAt(0).toUpperCase() + status.slice(1)}`,
+                `Your order #${order.id} status has been updated to ${status}. ${message || ''}`,
+                { order_id: order.id, status }
             );
         }
 

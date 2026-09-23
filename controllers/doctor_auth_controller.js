@@ -1,5 +1,6 @@
 
 const { Doctors, Otps, Users, Files, Doctorsavailability, Adresses, Specialization } = require('../models');
+const fs = require('fs');
 const {
     OTPFunctions,
     JWTFunctions,
@@ -288,11 +289,12 @@ const doctor_update_profile = async (req, res) => {
             profileFileId = fileRecord.id;
         }
 
-        // Only update email and profile_image — other fields (name, phone, gender, dob) are admin-only
-        await Doctors.update({
-            email,
-            profile_image_id: profileFileId
-        }, { where: { id: session_doctor.doctor_id } });
+        // Only update provided fields — other fields (name, phone, gender, dob) are admin-only
+        const updateData = {};
+        if (email !== undefined) updateData.email = email;
+        updateData.profile_image_id = profileFileId;
+
+        await Doctors.update(updateData, { where: { id: session_doctor.doctor_id } });
 
         // Refetch updated doctor with profile image
         const updatedDoctor = await Doctors.findOne({
@@ -351,7 +353,7 @@ const doctor_refresh_token = async (req, res) => {
         const access_token = await JWTFunctions.generateToken(payload, '1d');
         const new_refresh_token = await JWTFunctions.generateToken(payload, '30d');
 
-        await Doctor.update({
+        await Doctors.update({
             access_token: access_token,
             refresh_token: new_refresh_token
         }, {
@@ -441,5 +443,4 @@ module.exports = {
     doctor_logout,
     doctor_update_profile,
     doctor_refresh_token,
-    getDoctorProfile
 };

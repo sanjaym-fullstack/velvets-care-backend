@@ -48,18 +48,17 @@ const get_doctor_list = Joi.object({
     }),
 })
 const update_doctor_profile_validator = Joi.object({
-    email: Joi.string().email().required().messages({
+    email: Joi.string().email().optional().messages({
         'string.base': 'Email must be a string',
-        'string.empty': 'Email is required',
         'string.email': 'Email must be a valid email address',
-        'any.required': 'Email is required',
     }),
     profile_image: Joi.any()
       .meta({ swaggerType: 'file' })
+      .optional()
       .description('Profile image').messages({
-        'any.required': 'Image is required',
-        'string.empty': 'Image is required',
       }),
+}).or('email', 'profile_image').messages({
+    'object.missing': 'At least one field (email or profile_image) is required'
 })
 module.exports = {
     login_doctor,

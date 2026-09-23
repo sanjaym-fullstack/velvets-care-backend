@@ -31,6 +31,8 @@ module.exports = {
   PayoutSettings: require('./payout_settings'),
   DoctorBankAccounts: require('./doctor_bank_account'),
   Payouts: require('./payout'),
+  GoogleCalendarTokens: require('./google_calendar_tokens'),
+  AppointmentCalendarEvents: require('./appointment_calendar_events'),
 
   // Notifications: require('./notifications'),
   // SustainabilityScore: require('./sustainability_score'),
