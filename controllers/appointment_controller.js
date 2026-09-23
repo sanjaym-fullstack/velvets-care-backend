@@ -89,7 +89,7 @@ const precheckAndCreateOrder = async (req, res) => {
                 day: appointmentDay
             }
         });
-        if (!availability) throw new Error('Doctor is not available at this Date');
+        if (!availability) throw new Error('Doctor is not available on this day');
         const AMPM = appointment_time.includes('AM') ? 'AM' : 'PM';
         const time = appointment_time.split(' ')[0];
 
@@ -99,7 +99,7 @@ const precheckAndCreateOrder = async (req, res) => {
         const end24 = to24Hour(availability.end_time);
 
         if (req24 < start24 || req24 >= end24) {
-            throw new Error('Doctor is not available at this Time');
+            throw new Error(`Doctor is available from ${availability.start_time} to ${availability.end_time}. Please select a time within this window.`);
         }
         const existingAppointment = await Appointments.findOne({
             where: {
@@ -921,7 +921,7 @@ const checkDoctorAvailability = async (req, res) => {
         const start24 = to24Hour(availability.start_time);
         const end24 = to24Hour(availability.end_time);
 
-        if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
+        if (req24 < start24 || req24 >= end24) throw new Error(`Doctor is available from ${availability.start_time} to ${availability.end_time}. Please select a time within this window.`);
 
         // 6️⃣  Collision check
         const existing = await Appointments.findOne({
@@ -1143,7 +1143,7 @@ const adminCheckDoctorSlot = async (req, res) => {
         const start24 = to24Hour(availability.start_time);
         const end24 = to24Hour(availability.end_time);
 
-        if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
+        if (req24 < start24 || req24 >= end24) throw new Error(`Doctor is available from ${availability.start_time} to ${availability.end_time}. Please select a time within this window.`);
 
         // Check if booked
         const booked = await Appointments.findOne({ where: { doctor_id, appointment_date: { [Op.like]: `${normalizedDate}%` }, appointment_time } });
@@ -1335,7 +1335,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
         const start24 = to24Hour(availability.start_time);
         const end24 = to24Hour(availability.end_time);
 
-        if (req24 < start24 || req24 >= end24) throw new Error('Doctor is not available at this time');
+        if (req24 < start24 || req24 >= end24) throw new Error(`Doctor is available from ${availability.start_time} to ${availability.end_time}. Please select a time within this window.`);
 
         // 7️⃣ Always use doctor's consultation_fee from DB (never from frontend - it may be in paise)
         const amount = doctor.consultation_fee || 500;
