@@ -28,4 +28,5 @@ module.exports = [
     ...require('./refund_routes'),
     ...require('./address_routes'),
     ...require('./doctor_dashboard_routes'),
+    ...require('./webhook_routes'),
 ]
