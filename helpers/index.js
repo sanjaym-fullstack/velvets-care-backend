@@ -35,6 +35,7 @@ module.exports = {
     AgoraFunctions: require('./agora'),
     PushNotificationFunctions: require('./pushNotification'),
     NotificationHelper: require('./notification_helper'),
+    GoogleCalendarHelper: require('./google_calendar'),
     stripSensitive,
     normalizeFee,
 }

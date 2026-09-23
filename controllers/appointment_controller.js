@@ -11,7 +11,7 @@ const {
     Op
 } = require('sequelize')
 const {
-    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, stripSensitive, normalizeFee
+    FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, GoogleCalendarHelper, stripSensitive, normalizeFee
 } = require('../helpers');
 const { refundPayment } = require('../helpers/razorpay');
 const Razorpay = require('razorpay');
@@ -34,9 +34,15 @@ const normalizeDate = (dateStr) => {
             return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
         }
     }
-    // Handle MM-DD-YYYY
+    // Handle DD-MM-YYYY or MM-DD-YYYY
     if (dateStr.includes('-') && dateStr.split('-')[0].length === 2) {
-        const [month, day, year] = dateStr.split('-');
+        const parts = dateStr.split('-');
+        // If first part > 12, it's DD-MM-YYYY, otherwise assume MM-DD-YYYY
+        if (parseInt(parts[0]) > 12) {
+            const [day, month, year] = parts;
+            return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+        }
+        const [month, day, year] = parts;
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
     // Handle YYYY-MM-DD or other formats
@@ -174,6 +180,10 @@ const confirmAppointment = async (req, res) => {
             'New Appointment',
             `New appointment booked by ${patient?.name || 'a patient'} on ${appointment_date} at ${appointment_time}.`,
             { appointment_id: appointment.id }
+        );
+
+        GoogleCalendarHelper.createCalendarEvent(appointment, doctor, patient).catch(e =>
+            console.error('Google Calendar event creation failed (non-blocking):', e.message)
         );
 
         return res.response({
@@ -449,6 +459,10 @@ const doctoreject = async (req, h) => {
             refund_reason: cancel_reason
         });
 
+        GoogleCalendarHelper.deleteCalendarEvents(appointment.id).catch(e =>
+            console.error('Google Calendar event deletion failed (non-blocking):', e.message)
+        );
+
         // Notify user about rejection + refund
         if (refundAmount > 0 && refundStatus === 'processed') {
             NotificationHelper.sendToUser(appointment.patient_id,
@@ -560,6 +574,10 @@ const cancelAppointmentByUser = async (req, h) => {
             refund_date: refundAmount > 0 ? new Date() : null,
             refund_reason: cancel_reason
         });
+
+        GoogleCalendarHelper.deleteCalendarEvents(appointment.id).catch(e =>
+            console.error('Google Calendar event deletion failed (non-blocking):', e.message)
+        );
 
         // Notify doctor
         NotificationHelper.sendToDoctor(appointment.doctor_id,
@@ -1400,6 +1418,10 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
             { appointment_id: appointment.id }
         );
 
+        GoogleCalendarHelper.createCalendarEvent(appointment, doctor, patient).catch(e =>
+            console.error('Google Calendar event creation failed (non-blocking):', e.message)
+        );
+
         // 9️⃣ Return appointment + payment link
         return res.response({
             success: true,
@@ -1449,6 +1471,14 @@ const callbackPayment = async (req, res) => {
             `Your payment for appointment #${appointment.id} has been confirmed.`,
             { appointment_id: appointment.id, payment_id: razorpay_payment_id }
         );
+
+        const patient = await Users.findByPk(appointment.patient_id);
+        const doctor = await Doctors.findOne({ where: { id: appointment.doctor_id }, raw: true });
+        if (doctor && patient) {
+            GoogleCalendarHelper.createCalendarEvent(appointment, doctor, patient).catch(e =>
+                console.error('Google Calendar event creation failed (non-blocking):', e.message)
+            );
+        }
 
         return res.response({
             success: true,

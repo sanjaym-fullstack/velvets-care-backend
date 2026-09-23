@@ -15,6 +15,24 @@ const getSettings = async (req, res) => {
 };
 
 const normalizeDate = (dateStr) => {
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    if (parseInt(parts[0]) > 12) {
+      const [day, month, year] = parts;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    const [month, day, year] = parts;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
+  if (dateStr.includes('-') && dateStr.split('-')[0].length === 2) {
+    const parts = dateStr.split('-');
+    if (parseInt(parts[0]) > 12) {
+      const [day, month, year] = parts;
+      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    const [month, day, year] = parts;
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  }
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return dateStr;
   const year = d.getFullYear();
