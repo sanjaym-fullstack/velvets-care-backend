@@ -11,6 +11,15 @@ const {
 
 const BASE = '/api/v1';
 
+const {
+    SessionValidator
+} = require('../middlewares')
+const Boom = require('@hapi/boom');
+
+const {
+    HeaderValidator,
+} = require('../validators');
+
 const commonQuerySchema = {
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(20),
@@ -32,11 +41,19 @@ module.exports = [
             description: 'Get all transactions (appointments + orders + payouts + refunds)',
             tags: ['api', 'Transactions'],
             notes: 'Admin can view all transactions with date range, type, status, and search filters',
+            pre: [
+                SessionValidator
+            ],
             validate: {
+                headers: HeaderValidator,
                 query: Joi.object({
                     ...commonQuerySchema,
                     type: Joi.string().valid('appointment', 'order', 'refund', 'payout').optional().allow('').description('Filter by transaction type')
-                })
+                }),
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             }
         }
     },
@@ -49,11 +66,19 @@ module.exports = [
             description: 'Get transaction summary dashboard for admin',
             tags: ['api', 'Transactions'],
             notes: 'Returns total revenue, refunds, payouts, platform income, and status breakdowns',
+            pre: [
+                SessionValidator
+            ],
             validate: {
+                headers: HeaderValidator,
                 query: Joi.object({
                     date_from: Joi.string().optional().allow(''),
                     date_to: Joi.string().optional().allow('')
-                })
+                }),
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             }
         }
     },
@@ -66,11 +91,19 @@ module.exports = [
             description: 'Get user own transactions (appointments + orders)',
             tags: ['api', 'Transactions'],
             notes: 'User can view their own payment history with date range, type, and search filters',
+            pre: [
+                SessionValidator
+            ],
             validate: {
+                headers: HeaderValidator,
                 query: Joi.object({
                     ...commonQuerySchema,
                     type: Joi.string().valid('appointment', 'order', 'refund').optional().allow('').description('Filter by transaction type')
-                })
+                }),
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             }
         }
     },
@@ -83,11 +116,19 @@ module.exports = [
             description: 'Get doctor own transactions (consultations + payouts)',
             tags: ['api', 'Transactions'],
             notes: 'Doctor can view their consultation earnings and payout history with date range, type, and search filters',
+            pre: [
+                SessionValidator
+            ],
             validate: {
+                headers: HeaderValidator,
                 query: Joi.object({
                     ...commonQuerySchema,
                     type: Joi.string().valid('consultation', 'payout', 'refund').optional().allow('').description('Filter by transaction type')
-                })
+                }),
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
             }
         }
     }
