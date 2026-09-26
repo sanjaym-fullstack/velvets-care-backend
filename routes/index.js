@@ -31,4 +31,5 @@ module.exports = [
     ...require('./webhook_routes'),
     ...require('./google_calendar_routes'),
     ...require('./transaction_routes'),
+    ...require('./notification_routes'),
 ]

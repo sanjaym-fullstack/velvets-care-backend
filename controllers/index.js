@@ -31,4 +31,5 @@ module.exports = {
     WebhookController: require('./webhook_controller'),
     GoogleCalendarController: require('./google_calendar_controller'),
     TransactionController: require('./transaction_controller'),
+    NotificationController: require('./notification_controllers'),
 }

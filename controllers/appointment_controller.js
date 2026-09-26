@@ -310,14 +310,19 @@ const DoctorApproval = async (req, h) => {
         const session_user = req.headers.user;
         if (!session_user) throw new Error('Session expired');
 
-        const doctor_id = session_user.doctor_id;
         const appointmentId = req.params.id;
         const appointment = await Appointments.findByPk(appointmentId);
         if (!appointment) {
             throw new Error('Appointment not found');
         }
-        if (appointment.doctor_id !== doctor_id) {
-            throw new Error('Unauthorized: This is not your appointment');
+        let doctor_id = null;
+        if (session_user.role !== 'ADMIN') {
+            doctor_id = session_user.doctor_id;
+            if (appointment.doctor_id !== doctor_id) {
+                throw new Error('Unauthorized: This is not your appointment');
+            }
+        } else {
+            doctor_id = appointment.doctor_id;
         }
         if (appointment.status !== 'pending') {
             throw new Error(`Only pending appointments can be approved. Current status: ${appointment.status}`);
@@ -421,7 +426,6 @@ const doctoreject = async (req, h) => {
         const session_user = req.headers.user;
         if (!session_user) throw new Error('Session expired');
 
-        const doctor_id = session_user.doctor_id;
         const appointmentId = req.params.id;
         const { cancel_reason } = req.payload;
 
@@ -429,8 +433,15 @@ const doctoreject = async (req, h) => {
         if (!appointment) {
             throw new Error('Appointment not found');
         }
-        if (appointment.doctor_id !== doctor_id) {
-            throw new Error('Unauthorized: This is not your appointment');
+
+        let doctor_id = null;
+        if (session_user.role !== 'ADMIN') {
+            doctor_id = session_user.doctor_id;
+            if (appointment.doctor_id !== doctor_id) {
+                throw new Error('Unauthorized: This is not your appointment');
+            }
+        } else {
+            doctor_id = appointment.doctor_id;
         }
 
         if (appointment.status !== 'pending') {
@@ -513,13 +524,20 @@ const cancelAppointmentByUser = async (req, h) => {
         const session_user = req.headers.user;
         if (!session_user) throw new Error('Session expired');
 
-        const user_id = session_user.user_id;
+
         const appointmentId = req.params.id;
         const { cancel_reason } = req.payload;
-
         const appointment = await Appointments.findByPk(appointmentId);
         if (!appointment) {
             throw new Error('Appointment not found');
+        }
+
+        let user_id = null;
+
+        if (session_user.role !== 'ADMIN') {
+            user_id = session_user.user_id;
+        } else {
+            user_id = appointment.patient_id;
         }
 
         if (appointment.patient_id !== user_id) {

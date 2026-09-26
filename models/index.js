@@ -34,12 +34,12 @@ module.exports = {
   GoogleCalendarTokens: require('./google_calendar_tokens'),
   AppointmentCalendarEvents: require('./appointment_calendar_events'),
 
-  // Notifications: require('./notifications'),
+  Notifications: require('./notifications'),
   // SustainabilityScore: require('./sustainability_score'),
   // UserClicksOnStores: require('./user_clicks_on_stores'),
   // UserSearchHistory: require('./user_search_history'),
   // UserSearchPreference: require('./user_search_preference')
-  
+
 
 
 
