@@ -50,10 +50,10 @@ const getDashboardStats = async (req, res) => {
             data: {
                 userCount,
                 bookingCount,
-                bookingAmount,
-                commissionAmount,
+                bookingAmount: parseFloat(bookingAmount).toFixed(2),
+                commissionAmount: parseFloat(commissionAmount).toFixed(2),
                 doctorCount,
-                payoutAmount
+                payoutAmount: parseFloat(payoutAmount).toFixed(2)
             }
         }).code(200);
 
@@ -94,8 +94,8 @@ const getYearlyDashboardStats = async (req, res) => {
                 month: i + 1,
                 booking_count: found ? parseInt(found.booking_count) : 0,
                 patient_count: found ? parseInt(found.patient_count) : 0,
-                total_amount: found ? parseFloat(found.total_amount) : 0,
-                commission_amount: found ? parseFloat(found.commission_amount) : 0,
+                total_amount: found ? parseFloat(found.total_amount).toFixed(2) : 0,
+                commission_amount: found ? parseFloat(found.commission_amount).toFixed(2) : 0,
                 // payout_amount: found ? parseFloat(found.payout_amount) : 0
             };
         });
