@@ -4,6 +4,8 @@ const {
     Notifications
 } = require('../models');
 
+const { Op } = require('sequelize');
+
 
 const fetchNotifications = async (req, res) => {
     try {
