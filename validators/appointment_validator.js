@@ -249,5 +249,6 @@ module.exports = {
     slotcheckingValidator,
     updateAppointmentStatusValidator,
     UpdateAppointmentStatusParams,
-    createAppointmentAdminValidator
+    createAppointmentAdminValidator,
+    appointmentUpdateDateAndTimeValidator
 }
