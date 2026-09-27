@@ -362,6 +362,7 @@ const updateAppointmentDateTime = async (req, h) => {
     try {
         const session_user = req.headers.user;
         if (!session_user) throw new Error('Session expired');
+        if (session_user.role !== 'ADMIN') throw new Error('Unauthorized: Only admin can update appointment date and time');
         const appointmentId = req.params.id;
 
         const appointment = await Appointments.findByPk(appointmentId);
