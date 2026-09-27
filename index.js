@@ -158,6 +158,11 @@ const init = async () => {
     // Start notification schedulers
     const { startSchedulers } = require('./helpers/scheduler');
     startSchedulers();
+
+    // Start the auto-reject cron (rejects pending appointments the doctor never
+    // responded to, AUTO_REJECT_AFTER_MINUTES after their start time)
+    const { startAutoRejectCron } = require('./helpers/appointment_auto_reject_cron');
+    startAutoRejectCron();
 };
 
 // Error handling
