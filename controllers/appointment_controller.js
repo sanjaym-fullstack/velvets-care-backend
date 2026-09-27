@@ -1040,7 +1040,7 @@ const checkDoctorAvailability = async (req, res) => {
 
         // 6️⃣  Collision check
         const existing = await Appointments.findOne({
-            where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }, appointment_time }
+            where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }, appointment_time, status: { [Op.in]: ['approved', 'pending'] } }
         });
         if (existing) throw new Error('Slot already booked');
 
@@ -1127,7 +1127,8 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
         const allAppointments = await Appointments.findAll({
             where: {
                 doctor_id,
-                appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }
+                appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` },
+                status: { [Op.in]: ['approved', 'pending'] }
             },
             raw: true
         });
