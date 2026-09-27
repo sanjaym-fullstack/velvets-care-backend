@@ -1539,6 +1539,824 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
     }
 };
 
+const escapeHtml = (value) => {
+    if (value === null || value === undefined) {
+        return '';
+    }
+
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+};
+
+
+const formatDate = (date) => {
+    if (!date) return '-';
+
+    return new Intl.DateTimeFormat('en-IN', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+    }).format(new Date(date));
+};
+
+
+const formatDateTime = (date) => {
+    if (!date) return '-';
+
+    return new Intl.DateTimeFormat('en-IN', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'Asia/Kolkata'
+    }).format(new Date(date));
+};
+
+
+const formatDayDate = (date) => {
+    if (!date) return '-';
+
+    return new Intl.DateTimeFormat('en-IN', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric'
+    }).format(new Date(`${date}T00:00:00`));
+};
+
+
+const paymentResultHtml = ({
+    success,
+    title,
+    message,
+    appointment = {},
+    payment = {}
+}) => {
+
+    const appointmentDate =
+        formatDayDate(appointment.date);
+
+    const paymentDate =
+        formatDateTime(payment.date);
+
+    const consultationMode =
+        appointment.consultationMode || 'Online';
+
+    const fee =
+        Number(payment.amount || appointment.consultationFee || 0)
+            .toFixed(2);
+
+    const status =
+        appointment.status || 'pending';
+
+    const paymentStatus =
+        appointment.paymentStatus || 'paid';
+
+    const safeAppointmentId =
+        escapeHtml(appointment.id);
+
+    const safePaymentId =
+        escapeHtml(payment.paymentId);
+
+    const safeOrderId =
+        escapeHtml(payment.orderId);
+
+    const safeAppointmentDate =
+        escapeHtml(formatDate(appointment.date));
+
+    const safeAppointmentDay =
+        escapeHtml(appointmentDate);
+
+    const safeAppointmentTime =
+        escapeHtml(appointment.time);
+
+    const safePaymentDate =
+        escapeHtml(paymentDate);
+
+    const safeConsultationMode =
+        escapeHtml(consultationMode);
+
+    const safeStatus =
+        escapeHtml(status);
+
+    const safeTitle =
+        escapeHtml(title);
+
+    const safeMessage =
+        escapeHtml(message);
+
+    return `
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>
+        ${safeTitle} | Velvet Care
+    </title>
+
+    <style>
+
+        :root {
+            --primary: #7c3aed;
+            --primary-dark: #5b21b6;
+            --primary-light: #ede9fe;
+
+            --success: #16a34a;
+            --success-light: #dcfce7;
+
+            --danger: #dc2626;
+            --danger-light: #fee2e2;
+
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+
+            --border: #e5e7eb;
+            --background: #f8fafc;
+            --white: #ffffff;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family:
+                Inter,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Roboto,
+                Helvetica,
+                Arial,
+                sans-serif;
+
+            background:
+                radial-gradient(
+                    circle at 50% -10%,
+                    rgba(124, 58, 237, .10),
+                    transparent 40%
+                ),
+                var(--background);
+
+            color: var(--text-primary);
+
+            min-height: 100vh;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            padding: 30px 16px;
+        }
+
+        .page {
+            width: 100%;
+            max-width: 720px;
+        }
+
+        .card {
+            background: var(--white);
+
+            border: 1px solid var(--border);
+
+            border-radius: 24px;
+
+            box-shadow:
+                0 20px 60px rgba(15, 23, 42, .08),
+                0 4px 12px rgba(15, 23, 42, .03);
+
+            overflow: hidden;
+        }
+
+        .header {
+            padding: 40px 35px 28px;
+
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 22px;
+
+            font-weight: 800;
+
+            color: var(--primary);
+
+            margin-bottom: 28px;
+        }
+
+        .success-icon {
+            width: 78px;
+            height: 78px;
+
+            margin: 0 auto 20px;
+
+            border-radius: 50%;
+
+            background: ${success
+            ? 'var(--success-light)'
+            : 'var(--danger-light)'
+        };
+
+            display: flex;
+
+            align-items: center;
+            justify-content: center;
+        }
+
+        .success-icon span {
+            font-size: 38px;
+
+            color: ${success
+            ? 'var(--success)'
+            : 'var(--danger)'
+        };
+        }
+
+        h1 {
+            font-size: 29px;
+
+            letter-spacing: -.7px;
+
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+
+            font-size: 14px;
+
+            line-height: 1.6;
+
+            max-width: 500px;
+
+            margin: auto;
+        }
+
+        .payment-banner {
+            margin: 0 35px;
+
+            padding: 17px 20px;
+
+            border-radius: 14px;
+
+            background: #f5f3ff;
+
+            border: 1px solid #ddd6fe;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            gap: 15px;
+        }
+
+        .payment-label {
+            color: var(--text-secondary);
+
+            font-size: 12px;
+
+            margin-bottom: 4px;
+        }
+
+        .payment-status {
+            color: var(--primary-dark);
+
+            font-weight: 700;
+
+            font-size: 14px;
+        }
+
+        .amount {
+            color: var(--primary-dark);
+
+            font-weight: 800;
+
+            font-size: 19px;
+        }
+
+        .content {
+            padding: 30px 35px 35px;
+        }
+
+        .section-title {
+            font-size: 16px;
+
+            font-weight: 700;
+
+            margin-bottom: 15px;
+        }
+
+        .appointment {
+            border: 1px solid var(--border);
+
+            border-radius: 16px;
+
+            overflow: hidden;
+        }
+
+        .appointment-header {
+            padding: 16px 18px;
+
+            background: #fafafa;
+
+            border-bottom: 1px solid var(--border);
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+        }
+
+        .appointment-id {
+            font-size: 14px;
+
+            font-weight: 700;
+        }
+
+        .badge {
+            padding: 5px 10px;
+
+            border-radius: 999px;
+
+            background: #fff7ed;
+
+            color: #c2410c;
+
+            font-size: 10px;
+
+            font-weight: 700;
+
+            text-transform: uppercase;
+        }
+
+        .details {
+            display: grid;
+
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .detail {
+            padding: 17px;
+
+            border-bottom: 1px solid var(--border);
+        }
+
+        .detail:nth-child(odd) {
+            border-right: 1px solid var(--border);
+        }
+
+        .detail:nth-last-child(-n + 2) {
+            border-bottom: 0;
+        }
+
+        .label {
+            color: var(--text-secondary);
+
+            font-size: 11px;
+
+            margin-bottom: 6px;
+        }
+
+        .value {
+            font-size: 14px;
+
+            font-weight: 650;
+        }
+
+        .highlight {
+            margin-top: 22px;
+
+            padding: 18px;
+
+            border-radius: 14px;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #f5f3ff,
+                    #faf5ff
+                );
+
+            border: 1px solid #e9d5ff;
+        }
+
+        .highlight-label {
+            color: var(--primary);
+
+            font-size: 11px;
+
+            font-weight: 700;
+
+            text-transform: uppercase;
+
+            letter-spacing: .5px;
+
+            margin-bottom: 6px;
+        }
+
+        .highlight-date {
+            color: var(--primary-dark);
+
+            font-size: 18px;
+
+            font-weight: 800;
+        }
+
+        .highlight-time {
+            color: var(--text-secondary);
+
+            font-size: 13px;
+
+            margin-top: 5px;
+        }
+
+        .payment-section {
+            margin-top: 28px;
+        }
+
+        .payment-details {
+            border: 1px solid var(--border);
+
+            border-radius: 14px;
+
+            overflow: hidden;
+        }
+
+        .payment-row {
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+
+            gap: 20px;
+
+            padding: 14px 17px;
+
+            border-bottom: 1px solid var(--border);
+        }
+
+        .payment-row:last-child {
+            border-bottom: 0;
+        }
+
+        .payment-row-label {
+            color: var(--text-secondary);
+
+            font-size: 12px;
+        }
+
+        .payment-row-value {
+            font-size: 12px;
+
+            font-weight: 600;
+
+            text-align: right;
+
+            word-break: break-all;
+        }
+
+        .footer {
+            text-align: center;
+
+            color: #9ca3af;
+
+            font-size: 11px;
+
+            line-height: 1.6;
+
+            padding: 0 35px 28px;
+        }
+
+        @media(max-width: 600px) {
+
+            body {
+                padding: 15px 10px;
+            }
+
+            .header {
+                padding: 30px 20px 25px;
+            }
+
+            .payment-banner {
+                margin: 0 20px;
+            }
+
+            .content {
+                padding: 25px 20px 30px;
+            }
+
+            .details {
+                grid-template-columns: 1fr;
+            }
+
+            .detail:nth-child(odd) {
+                border-right: 0;
+            }
+
+            .detail {
+                border-bottom: 1px solid var(--border) !important;
+            }
+
+            .detail:last-child {
+                border-bottom: 0 !important;
+            }
+
+            .payment-row {
+                align-items: flex-start;
+
+                flex-direction: column;
+
+                gap: 5px;
+            }
+
+            .payment-row-value {
+                text-align: left;
+            }
+
+            h1 {
+                font-size: 25px;
+            }
+
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+    <main class="page">
+
+        <div class="card">
+
+            <header class="header">
+
+                <div class="logo">
+                    Velvet Care
+                </div>
+
+                <div class="success-icon">
+
+                    <span>
+                        ${success ? '✓' : '×'}
+                    </span>
+
+                </div>
+
+                <h1>
+                    ${safeTitle}
+                </h1>
+
+                <p class="subtitle">
+                    ${safeMessage}
+                </p>
+
+            </header>
+
+
+            ${success
+            ? `
+            <div class="payment-banner">
+
+                <div>
+
+                    <div class="payment-label">
+                        Payment Status
+                    </div>
+
+                    <div class="payment-status">
+                        Paid Successfully
+                    </div>
+
+                </div>
+
+                <div class="amount">
+                    ₹${escapeHtml(fee)}
+                </div>
+
+            </div>
+            `
+            : ''
+        }
+
+
+            ${success
+            ? `
+            <section class="content">
+
+                <h2 class="section-title">
+                    Appointment Details
+                </h2>
+
+
+                <div class="appointment">
+
+                    <div class="appointment-header">
+
+                        <div class="appointment-id">
+                            Appointment #${safeAppointmentId}
+                        </div>
+
+                        <div class="badge">
+                            ${safeStatus}
+                        </div>
+
+                    </div>
+
+
+                    <div class="details">
+
+                        <div class="detail">
+
+                            <div class="label">
+                                Appointment Date
+                            </div>
+
+                            <div class="value">
+                                ${safeAppointmentDate}
+                            </div>
+
+                        </div>
+
+
+                        <div class="detail">
+
+                            <div class="label">
+                                Appointment Time
+                            </div>
+
+                            <div class="value">
+                                ${safeAppointmentTime}
+                            </div>
+
+                        </div>
+
+
+                        <div class="detail">
+
+                            <div class="label">
+                                Consultation Mode
+                            </div>
+
+                            <div class="value">
+                                ${safeConsultationMode}
+                            </div>
+
+                        </div>
+
+
+                        <div class="detail">
+
+                            <div class="label">
+                                Consultation Fee
+                            </div>
+
+                            <div class="value">
+                                ₹${escapeHtml(fee)}
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="highlight">
+
+                    <div class="highlight-label">
+                        Your Appointment
+                    </div>
+
+                    <div class="highlight-date">
+                        ${safeAppointmentDay}
+                    </div>
+
+                    <div class="highlight-time">
+                        ${safeAppointmentTime}
+                        ·
+                        ${safeConsultationMode}
+                    </div>
+
+                </div>
+
+
+                <div class="payment-section">
+
+                    <h2 class="section-title">
+                        Payment Information
+                    </h2>
+
+
+                    <div class="payment-details">
+
+                        <div class="payment-row">
+
+                            <span class="payment-row-label">
+                                Payment Date
+                            </span>
+
+                            <span class="payment-row-value">
+                                ${safePaymentDate}
+                            </span>
+
+                        </div>
+
+
+                        <div class="payment-row">
+
+                            <span class="payment-row-label">
+                                Payment ID
+                            </span>
+
+                            <span class="payment-row-value">
+                                ${safePaymentId}
+                            </span>
+
+                        </div>
+
+
+                        <div class="payment-row">
+
+                            <span class="payment-row-label">
+                                Order ID
+                            </span>
+
+                            <span class="payment-row-value">
+                                ${safeOrderId}
+                            </span>
+
+                        </div>
+
+
+                        <div class="payment-row">
+
+                            <span class="payment-row-label">
+                                Payment Status
+                            </span>
+
+                            <span class="payment-row-value">
+                                ${escapeHtml(paymentStatus)}
+                            </span>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </section>
+            `
+            : ''
+        }
+
+
+            <footer class="footer">
+
+                ${success
+            ? `
+                    Your payment confirmation has been recorded
+                    successfully. Please keep your Payment ID
+                    for future reference.
+                    `
+            : `
+                    Please contact Velvet Care support if
+                    you believe this is an error.
+                    `
+        }
+
+            </footer>
+
+        </div>
+
+    </main>
+
+</body>
+
+</html>
+`;
+};
+
 const callbackPayment = async (req, res) => {
     try {
         const { id } = req.params;
@@ -1578,18 +2396,52 @@ const callbackPayment = async (req, res) => {
             );
         }
 
-        return res.response({
+        const paymentDate = appointment.updatedAt || new Date();
+
+        const html = paymentResultHtml({
             success: true,
-            message: 'Payment successful and appointment updated',
-            data: appointment
-        }).code(200);
+            title: 'Payment Successful',
+            message:
+                'Your payment has been successfully processed and your appointment has been updated.',
+
+            appointment: {
+                id: appointment.id,
+                date: appointment.appointment_date,
+                time: appointment.appointment_time,
+                status: appointment.status,
+                paymentStatus: appointment.payment_status,
+                consultationMode: appointment.consultation_modes,
+                consultationFee: appointment.consultation_fee
+            },
+
+            payment: {
+                paymentId: razorpay_payment_id,
+                orderId: razorpay_payment_link_id,
+                amount: appointment.consultation_fee,
+                date: paymentDate
+            }
+        });
+
+        return h
+            .response(html)
+            .type('text/html')
+            .code(200);
+
 
     } catch (err) {
         console.error(err);
-        return res.response({
-            success: false,
-            message: err.message || 'Something went wrong'
-        }).code(200);
+        return h
+            .response(
+                paymentResultHtml({
+                    success: false,
+                    title: 'Payment Processing Failed',
+                    message:
+                        err.message ||
+                        'Something went wrong while processing your payment.'
+                })
+            )
+            .type('text/html')
+            .code(500);
     }
 }
 
