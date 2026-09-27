@@ -16,8 +16,8 @@ const {
         getDoctorAvailableTimeSlots,
         getTodaysAppointmentsDoctor,
         UpdateAppointmentStatus,
-        adminCreateAppointmentWithPaymentLink
-
+        adminCreateAppointmentWithPaymentLink,
+        updateAppointmentDateTime
 
     }
 } = require('../controllers');
@@ -33,7 +33,8 @@ const {
         slotcheckingValidator,
         UpdateAppointmentStatusParams,
         updateAppointmentStatusValidator,
-        createAppointmentAdminValidator
+        createAppointmentAdminValidator,
+        appointmentUpdateDateAndTimeValidator
     },
     HeaderValidator,
 } = require('../validators');
@@ -123,6 +124,29 @@ module.exports = [
         },
         handler: callbackPayment,
     },
+
+    {
+        method: 'POST',
+        path: '/appointment/{id}/update-date-time',
+        options: {
+            description: 'Update appointment date and time',
+            tags,
+            pre: [
+                SessionValidator
+            ],
+            validate: {
+                headers: HeaderValidator,
+                params: appointment,
+                payload: appointmentUpdateDateAndTimeValidator,
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
+            },
+        },
+        handler: updateAppointmentDateTime,
+    },
+
     {
         method: 'POST',
         path: '/appointment/{id}/cancel',

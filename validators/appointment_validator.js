@@ -223,6 +223,19 @@ const callbackValidator = Joi.object({
     }),
 }).unknown();
 
+const appointmentUpdateDateAndTimeValidator = Joi.object({
+    appointment_time: Joi.string().required().messages({
+        'string.base': 'Appointment time must be a string',
+        'string.empty': 'Appointment time is required',
+        'any.required': 'Appointment time is required',
+    }),
+    appointment_date: Joi.string().required().messages({
+        'string.base': 'Appointment date must be a string',
+        'string.empty': 'Appointment date is required',
+        'any.required': 'Appointment date is required',
+    }),
+});
+
 
 module.exports = {
     callbackValidator,
