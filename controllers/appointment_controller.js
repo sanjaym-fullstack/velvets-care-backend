@@ -1433,7 +1433,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
 
         // 4️⃣ Check if slot is already booked
         const existing = await Appointments.findOne({
-            where: { doctor_id, appointment_date: { [Op.like]: `${normalizedDate}%` }, appointment_time }
+            where: { doctor_id, appointment_date: { [Op.like]: `${normalizedDate}%` }, appointment_time, status: { [Op.in]: ['approved', 'pending'] } }
         });
         if (existing) throw new Error('Slot already booked for this time');
 
