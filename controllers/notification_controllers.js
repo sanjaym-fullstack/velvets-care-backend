@@ -12,7 +12,7 @@ const fetchNotifications = async (req, res) => {
 
         const { limit, offset, search } = req.query;
         const notifications = await Notifications.findAll({
-            where: { user_id: session_user.id, role: session_user.role, ...(search ? { message: { [Op.like]: `%${search}%` } } : {}) },
+            where: { user_id: session_user.role == "USER" ? session_user.user_id : session_user.doctor_id, role: session_user.role, ...(search ? { message: { [Op.like]: `%${search}%` } } : {}) },
             order: [['createdAt', 'DESC']],
             limit: limit ? parseInt(limit) : 10,
             offset: offset ? parseInt(offset) : 0,
@@ -45,11 +45,13 @@ const markNotificationAsRead = async (req, res) => {
         const notification = await Notifications.findOne({
             where: {
                 id: notification_id,
-                user_id: session_user.id,
                 role: session_user.role
             },
         });
         if (!notification) throw new Error("Notification not found");
+        if (notification.user_id !== (session_user.role === 'USER' ? session_user.user_id : session_user.doctor_id)) {
+            throw new Error("You are not authorized to mark this notification as read");
+        }
 
         await notification.update({ seen: true });
 
@@ -71,7 +73,7 @@ const markAllNotificationsAsRead = async (req, res) => {
         const session_user = req.headers.user;
         if (!session_user) throw new Error("Session expired");
 
-        await Notifications.update({ seen: true }, { where: { user_id: session_user.id, role: session_user.role } });
+        await Notifications.update({ seen: true }, { where: { user_id: session_user.role == "USER" ? session_user.user_id : session_user.doctor_id, role: session_user.role } });
 
         return res.response({
             success: true,
@@ -91,8 +93,12 @@ const deleteNotification = async (req, res) => {
         const session_user = req.headers.user;
         if (!session_user) throw new Error("Session expired");
         const { notification_id } = req.params;
-        const notification = await Notifications.findOne({ where: { id: notification_id, user_id: session_user.id, role: session_user.role } });
+        const notification = await Notifications.findOne({ where: { id: notification_id, role: session_user.role } });
+
         if (!notification) throw new Error("Notification not found");
+        if (notification.user_id !== (session_user.role === 'USER' ? session_user.user_id : session_user.doctor_id)) {
+            throw new Error("You are not authorized to delete this notification");
+        }
 
         await notification.destroy();
 
