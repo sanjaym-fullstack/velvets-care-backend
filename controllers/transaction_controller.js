@@ -103,7 +103,7 @@ const getAdminTransactions = async (req, res) => {
                 where,
                 include: [
                     { model: Users, as: 'user', attributes: ['id', 'name', 'email', 'phone'], required: false },
-                    { model: Doctors, attributes: ['id', 'full_name', 'email', 'phone'], required: false }
+                    { model: Doctors, paranoid: true, attributes: ['id', 'full_name', 'email', 'phone'], required: false }
                 ],
                 order: [[sort_by === 'amount' ? 'consultation_fee' : 'createdAt', sort_order]],
                 offset: pager.offset, limit: pager.limit, raw: true, nest: true
