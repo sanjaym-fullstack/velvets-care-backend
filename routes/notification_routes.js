@@ -1,11 +1,15 @@
 const {
     NotificationValidator: {
-        fetchNotificationsValidator,
-        markNotificationAsReadValidator,
-        deleteNotificationValidator,
+        fetchNotificationsSchema,
+        markNotificationAsSeenSchema,
+        deleteNotificationSchema,
     },
     HeaderValidator
 } = require('../validators');
+
+const {
+    SessionValidator
+} = require('../middlewares')
 
 const {
     NotificationController: {
@@ -25,9 +29,12 @@ module.exports = [
         options: {
             description: 'Fetch notifications for a user',
             tags: ['api', 'Notifications'],
+            pre: [
+                SessionValidator
+            ],
             validate: {
                 headers: HeaderValidator,
-                query: fetchNotificationsValidator,
+                query: fetchNotificationsSchema,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
                     throw Boom.badRequest(errors.join(', '));
@@ -42,9 +49,12 @@ module.exports = [
         options: {
             description: 'Mark a notification as read',
             tags: ['api', 'Notifications'],
+            pre: [
+                SessionValidator
+            ],
             validate: {
                 headers: HeaderValidator,
-                payload: markNotificationAsReadValidator,
+                payload: markNotificationAsSeenSchema,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
                     throw Boom.badRequest(errors.join(', '));
@@ -59,6 +69,9 @@ module.exports = [
         options: {
             description: 'Mark all notifications as read',
             tags: ['api', 'Notifications'],
+            pre: [
+                SessionValidator
+            ],
             validate: {
                 headers: HeaderValidator,
                 failAction: (request, h, err) => {
@@ -75,9 +88,12 @@ module.exports = [
         options: {
             description: 'Delete a notification',
             tags: ['api', 'Notifications'],
+            pre: [
+                SessionValidator
+            ],
             validate: {
                 headers: HeaderValidator,
-                payload: deleteNotificationValidator,
+                payload: deleteNotificationSchema,
                 failAction: (request, h, err) => {
                     const errors = err.details.map(e => e.message);
                     throw Boom.badRequest(errors.join(', '));
