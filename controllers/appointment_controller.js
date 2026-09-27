@@ -358,6 +358,68 @@ const DoctorApproval = async (req, h) => {
     }
 };
 
+const updateAppointmentDateTime = async (req, h) => {
+    try {
+        const session_user = req.headers.user;
+        if (!session_user) throw new Error('Session expired');
+        const appointmentId = req.params.id;
+
+        const appointment = await Appointments.findByPk(appointmentId);
+        if (!appointment) {
+            throw new Error('Appointment not found');
+        }
+
+        // check the slot is available or not
+        // Implementation for slot availability check goes here
+        const { doctor_id } = appointment;
+        const { appointment_date, appointment_time } = req.payload;
+
+        const appointmentDate = parseAnyDate(appointment_date);
+        const appointmentDay = appointmentDate.toLocaleDateString('en-IN', { weekday: 'long' });
+        const availability = await Doctorsavailability.findOne({
+            where: {
+                doctor_id,
+                day: appointmentDay
+            }
+        });
+        if (!availability) throw new Error('Doctor is not available on this day');
+
+        const AMPM = appointment_time.includes('AM') ? 'AM' : 'PM';
+        const time = appointment_time.split(' ')[0];
+
+        // Convert all to 24h for proper comparison
+        const req24 = to24Hour(appointment_time);
+        const start24 = to24Hour(availability.start_time);
+        const end24 = to24Hour(availability.end_time);
+
+        if (req24 < start24 || req24 >= end24) {
+            throw new Error(`Doctor is available from ${availability.start_time} to ${availability.end_time}. Please select a time within this window.`);
+        }
+        const existingAppointment = await Appointments.findOne({
+            where: {
+                doctor_id,
+                appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` },
+                appointment_time
+            }
+        });
+
+        if (existingAppointment) throw new Error('Slot already booked');
+
+        await appointment.update({ appointment_date, appointment_time });
+        return h.response({
+            success: true,
+            message: 'Appointment date and time updated successfully',
+            data: appointment
+        });
+    } catch (error) {
+        console.error(error);
+        return h.response({
+            success: false,
+            message: error.message || 'Something went wrong'
+        }).code(200);
+    }
+}
+
 const UpdateAppointmentStatus = async (req, h) => {
     try {
         const session_user = req.headers.user;
@@ -1547,7 +1609,8 @@ module.exports = {
     adminCheckDoctorSlot,
     adminCreateAppointmentWithPaymentLink,
     adminGetDoctorAvailableSlots,
-    callbackPayment
+    callbackPayment,
+    updateAppointmentDateTime
 
 }
 
