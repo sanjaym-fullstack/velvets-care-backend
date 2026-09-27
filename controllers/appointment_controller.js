@@ -2422,7 +2422,7 @@ const callbackPayment = async (req, res) => {
             }
         });
 
-        return h
+        return res
             .response(html)
             .type('text/html')
             .code(200);
@@ -2430,7 +2430,7 @@ const callbackPayment = async (req, res) => {
 
     } catch (err) {
         console.error(err);
-        return h
+        return res
             .response(
                 paymentResultHtml({
                     success: false,
