@@ -1,36 +1,35 @@
 const cron = require('node-cron');
 const { Op } = require('sequelize');
 const { Appointments } = require('../models');
-const { normalizeFee } = require('./index');
-const { refundPayment } = require('./razorpay');
-const { NotificationHelper } = require('./notification_helper');
-const { GoogleCalendarHelper } = require('./google_calendar');
+const { transitionWithFullRefund } = require('./appointment_refund');
+const { constants } = require('../config');
 
 // ---------------------------------------------------------------------------
-// Cron configuration
+// Cron configuration — sourced from config/constants.js so the schedule and the
+// rest of the app can never disagree about the grace period or lookback window.
 // ---------------------------------------------------------------------------
 
-// Cron expression for the sweep. Every minute.
-const CRON_EXPRESSION = '* * * * *';
+const { AUTO_REJECT, REJECTABLE_STATUSES } = constants.APPOINTMENT;
+
+const CRON_EXPRESSION = AUTO_REJECT.CRON;
 
 // Grace period, in MINUTES, after an appointment's scheduled start before the
-// sweep treats it as unanswered. This is the "one hour" rule — change this one
-// number to retune the whole job.
-const AUTO_REJECT_AFTER_MINUTES = 60;
+// sweep treats it as unanswered. This is the "one hour" rule.
+const AUTO_REJECT_AFTER_MINUTES = AUTO_REJECT.AFTER_MINUTES;
 
 // How far back the sweep is willing to look, in DAYS. Bounds the job so a
 // `pending` row left behind by a long outage is not refunded months later, while
 // still covering restarts and brief downtime.
-const LOOKBACK_DAYS = 7;
+const LOOKBACK_DAYS = AUTO_REJECT.LOOKBACK_DAYS;
 
 // Statuses eligible for automatic rejection.
-const ELIGIBLE_STATUSES = ['pending'];
+const ELIGIBLE_STATUSES = AUTO_REJECT.STATUSES;
 
 // `cancel_by` recorded on automatically rejected appointments.
-const CANCEL_BY = 'doctor';
+const CANCEL_BY = AUTO_REJECT.CANCEL_BY;
 
 // `cancel_reason` recorded when no human supplied one.
-const CANCEL_REASON = 'Doctor did not respond within the allotted time';
+const CANCEL_REASON = AUTO_REJECT.REASON;
 
 // Guards against a slow tick overlapping the next one.
 let sweepInProgress = false;
@@ -144,96 +143,36 @@ const hasGracePeriodElapsed = (appointment, now) => {
 // ---------------------------------------------------------------------------
 // Rejection flow
 //
-// Deliberately a standalone copy of the doctor reject flow
-// (POST /appointment/{id}/reject) so this job can evolve without touching the
-// controller. Steps mirrored: 100% refund via Razorpay, flip to `rejected`,
-// clear the Google Calendar event, notify the patient.
+// Delegates to the shared transition+refund flow used by the doctor reject
+// endpoint and the missed-appointment mark, so the atomic status claim (and
+// therefore the double-refund guard) is identical on all three paths.
 // ---------------------------------------------------------------------------
 
 const rejectAppointmentAutomatically = async (appointment) => {
     const reason = CANCEL_REASON;
 
-    // Claim the appointment with a conditional UPDATE before touching Razorpay.
-    // The manual reject endpoint can race this sweep, and only one of the two
-    // can win the status transition, which is what prevents a double refund.
-    const [claimed] = await Appointments.update(
-        {
-            status: 'rejected',
-            cancel_reason: reason,
-            cancel_by: CANCEL_BY,
-        },
-        {
-            where: {
-                id: appointment.id,
-                status: { [Op.in]: ELIGIBLE_STATUSES },
-            },
-        }
-    );
-
-    if (!claimed) {
-        // Already approved, cancelled or rejected since the sweep read it.
-        return { id: appointment.id, rejected: false, refund: null };
-    }
-
-    let refundAmount = 0;
-    let refundStatus = null;
-    let refundId = null;
-
-    if (appointment.payment_status === 'paid' && appointment.payment_id) {
-        refundAmount = normalizeFee(appointment.consultation_fee);
-
-        if (refundAmount > 0) {
-            try {
-                const refund = await refundPayment(appointment.payment_id, refundAmount, {
-                    reason,
-                    appointment_id: appointment.id,
-                });
-                refundId = refund.id;
-                refundStatus = refund.status || 'processed';
-                // Razorpay reports the amount actually refunded, in rupees.
-                refundAmount = refund.refund_amount_rupees || refundAmount;
-            } catch (refundErr) {
-                console.error(`[AutoReject] Refund failed for appointment ${appointment.id}:`, refundErr.message);
-                refundStatus = 'failed';
+    const { transitioned, refund } = await transitionWithFullRefund(appointment, {
+        fromStatuses: REJECTABLE_STATUSES,
+        toStatus: 'rejected',
+        cancelBy: CANCEL_BY,
+        reason,
+        buildNotification: ({ amount, status, percent }) => (amount > 0 && status === 'processed'
+            ? {
+                title: 'Appointment Rejected - Refund Initiated',
+                body: `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} was rejected because the doctor did not respond in time. A full refund of ₹${amount} (${percent}%) has been initiated.`,
+                extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: refund.id, refund_percent: percent },
             }
-        }
-    }
-
-    await Appointments.update(
-        {
-            refund_id: refundId,
-            refund_amount: refundAmount,
-            refund_status: refundStatus,
-            refund_date: refundAmount > 0 ? new Date() : null,
-            refund_reason: reason,
-        },
-        { where: { id: appointment.id } }
-    );
-
-    GoogleCalendarHelper.deleteCalendarEvents(appointment.id).catch((e) =>
-        console.error(`[AutoReject] Google Calendar event deletion failed for appointment ${appointment.id} (non-blocking):`, e.message)
-    );
-
-    if (refundAmount > 0 && refundStatus === 'processed') {
-        NotificationHelper.sendToUser(
-            appointment.patient_id,
-            'Appointment Rejected - Refund Initiated',
-            `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} was rejected by the doctor. Full refund of ₹${refundAmount} has been initiated.`,
-            { appointment_id: appointment.id, refund_amount: refundAmount, refund_id: refundId }
-        );
-    } else {
-        NotificationHelper.sendToUser(
-            appointment.patient_id,
-            'Appointment Rejected',
-            `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been rejected. Reason: ${reason || 'N/A'}`,
-            { appointment_id: appointment.id }
-        );
-    }
+            : {
+                title: 'Appointment Rejected',
+                body: `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been rejected. Reason: ${reason}`,
+                extras: { appointment_id: appointment.id },
+            }),
+    });
 
     return {
         id: appointment.id,
-        rejected: true,
-        refund: { id: refundId, amount: refundAmount, status: refundStatus },
+        rejected: transitioned,
+        refund: transitioned ? refund : null,
     };
 };
 

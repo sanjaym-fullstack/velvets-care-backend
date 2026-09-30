@@ -3,6 +3,43 @@
 const { Orders, OrderItems, Adresses, Users, Payments, Products, ProductImages, Categories, Brands, Subcategories } = require('../models');
 const { Op } = require('sequelize');
 const { MailFunctions, FileFunctions, NotificationHelper, stripSensitive } = require('../helpers');
+const { refundFullPayment } = require('../helpers/razorpay');
+const { constants } = require('../config');
+
+// Issues a 100% refund for a cancelled order. The Razorpay payment id lives on
+// the Payments row rather than the order, so it is resolved from there.
+const refundCancelledOrder = async (order) => {
+    // Only a settled payment can be returned, and never twice.
+    if (order.payment_status !== 'paid' || order.refund_status === 'processed') {
+        return { id: null, amount: 0, status: order.refund_status || null, percent: 0 };
+    }
+
+    const payment = await Payments.findOne({
+        where: { order_id: order.id, payment_reference_id: { [Op.ne]: null } },
+        order: [['id', 'DESC']],
+    });
+
+    if (!payment?.payment_reference_id) {
+        return { id: null, amount: 0, status: null, percent: 0 };
+    }
+
+    try {
+        const refund = await refundFullPayment(payment.payment_reference_id, {
+            reason: constants.REFUND.REASONS.ORDER_CANCEL,
+            order_id: order.id,
+        });
+
+        return {
+            id: refund.id,
+            amount: refund.refund_amount_rupees || 0,
+            status: refund.status || 'processed',
+            percent: (refund.refund_amount_rupees || 0) > 0 ? 100 : 0,
+        };
+    } catch (err) {
+        console.error(`Refund failed for order ${order.id}:`, err.message);
+        return { id: null, amount: 0, status: 'failed', percent: 0 };
+    }
+};
 
 // ================= Order Controllers =================
 
@@ -166,6 +203,19 @@ const updateOrderStatus = async (req, res) => {
         const order = await Orders.findByPk(id, { include: [Users] });
         if (!order) return res.response({ success: false, message: 'Order not found' }).code(404);
 
+        // A cancelled order is refunded in full before the status is announced.
+        let refund = null;
+        if (status === 'cancelled') {
+            refund = await refundCancelledOrder(order);
+            await Orders.update({
+                refund_id: refund.id,
+                refund_amount: refund.amount,
+                refund_status: refund.status,
+                refund_date: refund.amount > 0 ? new Date() : null,
+                refund_reason: constants.REFUND.REASONS.ORDER_CANCEL,
+            }, { where: { id } });
+        }
+
         await Orders.update({ status }, { where: { id } });
 
         await MailFunctions.sendHtmlMailToSingleReceiver(
@@ -188,11 +238,24 @@ const updateOrderStatus = async (req, res) => {
                 { order_id: order.id, status: 'delivered' }
             );
         } else if (status === 'cancelled') {
+            const refunded = refund && refund.amount > 0 && refund.status === 'processed';
             NotificationHelper.sendToUser(order.user_id,
-                'Order Cancelled',
-                `Your order #${order.id} has been cancelled. ${message || ''}`,
-                { order_id: order.id, status: 'cancelled' }
+                refunded ? 'Order Cancelled - Refund Initiated' : 'Order Cancelled',
+                refunded
+                    ? `Your order #${order.id} has been cancelled and a full refund of ₹${refund.amount} (100%) has been initiated. It will be credited in 5-7 business days.`
+                    : `Your order #${order.id} has been cancelled. ${message || ''}`,
+                refunded
+                    ? { order_id: order.id, status: 'cancelled', refund_id: refund.id, refund_amount: refund.amount, refund_percent: 100 }
+                    : { order_id: order.id, status: 'cancelled' }
             );
+
+            if (refund && refund.status === 'failed') {
+                NotificationHelper.sendToAllAdmins(
+                    'Order Refund Failed',
+                    `The refund for cancelled order #${order.id} (₹${order.total_amount}) failed. Please retry from the Razorpay dashboard.`,
+                    { order_id: order.id, refund_status: 'failed' }
+                );
+            }
         } else {
             // Generic notification for other statuses (confirmed, processing, etc.)
             NotificationHelper.sendToUser(order.user_id,
@@ -202,7 +265,13 @@ const updateOrderStatus = async (req, res) => {
             );
         }
 
-        return res.response({ success: true, message: 'Order status updated successfully' }).code(200);
+        return res.response({
+            success: true,
+            message: 'Order status updated successfully',
+            data: refund
+                ? { order_id: order.id, status, refund_id: refund.id, refund_amount: refund.amount, refund_status: refund.status, refund_percent: refund.percent }
+                : { order_id: order.id, status }
+        }).code(200);
 
     } catch (error) {
         console.error(error);

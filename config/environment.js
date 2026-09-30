@@ -19,6 +19,7 @@ module.exports = {
     MAIL_PASS: process.env.MAIL_PASS,
     RAZORPAY_KEY_ID: process.env.RAZORPAY_KEY_ID,
     RAZORPAY_SECRET: process.env.RAZORPAY_SECRET,
+    RAZORPAY_WEBHOOK_SECRET: process.env.RAZORPAY_WEBHOOK_SECRET,
     AGORA_APP_ID: process.env.AGORA_APP_ID,
     AGORA_APP_CERTIFICATE: process.env.AGORA_APP_CERTIFICATE,
     AWS_ACCESS_KEY_ID: process.env.AWS_ACCESS_KEY_ID,

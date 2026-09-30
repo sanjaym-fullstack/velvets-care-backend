@@ -30,4 +30,24 @@ module.exports = {
             REASON: 'Doctor did not respond within the allotted time',
         },
     },
+
+    REFUND: {
+        // Every refund scenario is a FULL refund — no partial percentages.
+        // The amount actually refunded is whatever Razorpay reports, clamped
+        // to the captured payment, so this is "100% of what was paid".
+        FULL_REFUND: true,
+
+        // Statuses an appointment may still be cancelled from.
+        CANCELLABLE_STATUSES: ['pending', 'approved'],
+
+        // Statuses that can still be marked as a patient no-show.
+        NO_SHOW_STATUSES: ['approved'],
+
+        REASONS: {
+            CANCEL: 'Patient cancelled appointment',
+            REJECT: 'Doctor rejected appointment',
+            NO_SHOW: 'Patient missed the appointment',
+            ORDER_CANCEL: 'Order cancelled by admin',
+        },
+    },
 }

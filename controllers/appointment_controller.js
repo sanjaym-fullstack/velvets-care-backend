@@ -13,7 +13,13 @@ const {
 const {
     FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, GoogleCalendarHelper, stripSensitive, normalizeFee
 } = require('../helpers');
-const { refundPayment } = require('../helpers/razorpay');
+const { transitionWithFullRefund } = require('../helpers/appointment_refund');
+const { constants } = require('../config');
+
+const REJECTABLE_STATUSES = constants.APPOINTMENT.REJECTABLE_STATUSES;
+const REFUND = constants.REFUND;
+const CANCELLABLE_STATUSES = REFUND.CANCELLABLE_STATUSES;
+const NO_SHOW_STATUSES = REFUND.NO_SHOW_STATUSES;
 const Razorpay = require('razorpay');
 require('dotenv/config');
 const razorpay = new Razorpay({
@@ -437,38 +443,63 @@ const UpdateAppointmentStatus = async (req, h) => {
         if (session_user.role !== 'ADMIN' && appointment.doctor_id !== doctor_id) {
             throw new Error('Unauthorized: This is not your appointment');
         }
-        if (appointment.status !== 'approved') {
+        if (!['approved'].includes(appointment.status)) {
             throw new Error(`Only approved appointments can have status updated. Current status: ${appointment.status}`);
         }
         if (!['completed', 'no_show'].includes(status)) {
             throw new Error('Invalid status. Allowed values are: completed, no_show');
         }
-        // Update status
-        await appointment.update({ status });
 
-        if (status === 'completed') {
-            NotificationHelper.sendToUser(appointment.patient_id,
-                'Appointment Completed',
-                `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been marked as completed.`,
-                { appointment_id: appointment.id }
-            );
-            NotificationHelper.sendToDoctor(appointment.doctor_id,
-                'Appointment Completed',
-                `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been marked as completed.`,
-                { appointment_id: appointment.id }
-            );
-        } else if (status === 'no_show') {
-            NotificationHelper.sendToUser(appointment.patient_id,
-                'Missed Appointment',
-                `You missed your appointment on ${appointment.appointment_date} at ${appointment.appointment_time}. Please reschedule.`,
-                { appointment_id: appointment.id }
-            );
+        if (status === 'no_show') {
+            // A missed appointment is refunded in full, through the same shared
+            // flow as cancel/reject so the refund cannot be issued twice.
+            const { refund } = await transitionWithFullRefund(appointment, {
+                fromStatuses: NO_SHOW_STATUSES,
+                toStatus: 'no_show',
+                cancelBy: 'doctor',
+                reason: REFUND.REASONS.NO_SHOW,
+                buildNotification: ({ amount, status: refundState, percent }) => (amount > 0 && refundState === 'processed'
+                    ? {
+                        title: 'Missed Appointment - Refund Initiated',
+                        body: `You missed your appointment on ${appointment.appointment_date} at ${appointment.appointment_time}. A full refund of ₹${amount} (${percent}%) has been initiated.`,
+                        extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: refund.id, refund_percent: percent },
+                    }
+                    : {
+                        title: 'Missed Appointment',
+                        body: `You missed your appointment on ${appointment.appointment_date} at ${appointment.appointment_time}. Please reschedule.`,
+                        extras: { appointment_id: appointment.id },
+                    }),
+            });
+
             NotificationHelper.sendToDoctor(appointment.doctor_id,
                 'Patient No-Show',
-                `The patient did not attend the appointment on ${appointment.appointment_date} at ${appointment.appointment_time}.`,
+                `The patient did not attend the appointment on ${appointment.appointment_date} at ${appointment.appointment_time}.` +
+                (refund.amount > 0 && refund.status === 'processed' ? ` A full refund of ₹${refund.amount} was issued.` : ''),
                 { appointment_id: appointment.id }
             );
+
+            return h.response({
+                success: true,
+                message: refund.amount > 0 && refund.status === 'processed'
+                    ? `Appointment marked as missed. Full refund of ₹${refund.amount} (100%) initiated.`
+                    : 'Appointment status updated successfully',
+                data: appointment
+            });
         }
+
+        // Update status to completed
+        await appointment.update({ status: 'completed' });
+
+        NotificationHelper.sendToUser(appointment.patient_id,
+            'Appointment Completed',
+            `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been marked as completed.`,
+            { appointment_id: appointment.id }
+        );
+        NotificationHelper.sendToDoctor(appointment.doctor_id,
+            'Appointment Completed',
+            `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been marked as completed.`,
+            { appointment_id: appointment.id }
+        );
 
         return h.response({
             success: true,
@@ -507,66 +538,29 @@ const doctoreject = async (req, h) => {
             doctor_id = appointment.doctor_id;
         }
 
-        if (appointment.status !== 'pending') {
-            throw new Error(`Only pending appointments can be rejected. Current status: ${appointment.status}`);
+        if (!REJECTABLE_STATUSES.includes(appointment.status)) {
+            throw new Error(`Only ${REJECTABLE_STATUSES.join('/')} appointments can be rejected. Current status: ${appointment.status}`);
         }
 
-        // Calculate refund - doctor rejection gets 100% refund
-        let refundAmount = 0;
-        let refundStatus = null;
-        let refundId = null;
-
-        if (appointment.payment_status === 'paid' && appointment.payment_id) {
-            refundAmount = normalizeFee(appointment.consultation_fee);
-
-            // Process full refund via Razorpay
-            if (refundAmount > 0) {
-                try {
-                    const refund = await refundPayment(appointment.payment_id, refundAmount, {
-                        reason: cancel_reason || 'Doctor rejected appointment',
-                        appointment_id: appointment.id
-                    });
-                    refundId = refund.id;
-                    refundStatus = refund.status || 'processed';
-                    // Use actual amount refunded by Razorpay (in rupees)
-                    refundAmount = refund.refund_amount_rupees || refundAmount;
-                } catch (refundErr) {
-                    console.error('Refund failed:', refundErr.message);
-                    refundStatus = 'failed';
+        // Shared with the auto-reject sweep and the missed-appointment flow:
+        // atomic status claim + 100% refund + calendar cleanup + notification.
+        const { refund } = await transitionWithFullRefund(appointment, {
+            fromStatuses: REJECTABLE_STATUSES,
+            toStatus: 'rejected',
+            cancelBy: 'doctor',
+            reason: cancel_reason || REFUND.REASONS.REJECT,
+            buildNotification: ({ amount, status, percent }) => (amount > 0 && status === 'processed'
+                ? {
+                    title: 'Appointment Rejected - Refund Initiated',
+                    body: `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} was rejected by the doctor. A full refund of ₹${amount} (${percent}%) has been initiated.`,
+                    extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: refund.id, refund_percent: percent },
                 }
-            }
-        }
-
-        // Update status to rejected
-        await appointment.update({
-            status: 'rejected',
-            cancel_reason,
-            cancel_by: 'doctor',
-            refund_id: refundId,
-            refund_amount: refundAmount,
-            refund_status: refundStatus,
-            refund_date: refundAmount > 0 ? new Date() : null,
-            refund_reason: cancel_reason
+                : {
+                    title: 'Appointment Rejected',
+                    body: `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been rejected. Reason: ${cancel_reason || 'N/A'}`,
+                    extras: { appointment_id: appointment.id },
+                }),
         });
-
-        GoogleCalendarHelper.deleteCalendarEvents(appointment.id).catch(e =>
-            console.error('Google Calendar event deletion failed (non-blocking):', e.message)
-        );
-
-        // Notify user about rejection + refund
-        if (refundAmount > 0 && refundStatus === 'processed') {
-            NotificationHelper.sendToUser(appointment.patient_id,
-                'Appointment Rejected - Refund Initiated',
-                `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} was rejected by the doctor. Full refund of ₹${refundAmount} has been initiated.`,
-                { appointment_id: appointment.id, refund_amount: refundAmount, refund_id: refundId }
-            );
-        } else {
-            NotificationHelper.sendToUser(appointment.patient_id,
-                'Appointment Rejected',
-                `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been rejected. Reason: ${cancel_reason || 'N/A'}`,
-                { appointment_id: appointment.id }
-            );
-        }
 
         return h.response({
             success: true,
@@ -607,103 +601,56 @@ const cancelAppointmentByUser = async (req, h) => {
             throw new Error('Unauthorized: This is not your appointment');
         }
 
-        // Prevent canceling on the same day
-        const today = normalizeDate(new Date().toISOString());
-        if (appointment.appointment_date === today) {
-            throw new Error('Cannot cancel appointment on the same day');
+        // Only a still-open appointment can be cancelled. Completed, missed and
+        // already-rejected appointments are history and must not be flipped.
+        if (!CANCELLABLE_STATUSES.includes(appointment.status)) {
+            throw new Error(`Only ${CANCELLABLE_STATUSES.join('/')} appointments can be cancelled. Current status: ${appointment.status}`);
         }
 
-        // Prevent duplicate cancellation
-        if (appointment.status === 'cancelled') {
-            throw new Error('Appointment is already cancelled');
+        // Once the appointment slot has passed it can no longer be cancelled.
+        const apptDateTime = new Date(`${appointment.appointment_date}T${appointment.appointment_time}`);
+        if (apptDateTime.getTime() <= Date.now()) {
+            throw new Error('This appointment slot has already passed and can no longer be cancelled');
         }
 
-        // Calculate refund based on timing
-        let refundAmount = 0;
-        let refundStatus = null;
-        let refundId = null;
-
-        if (appointment.payment_status === 'paid' && appointment.payment_id) {
-            const fee = normalizeFee(appointment.consultation_fee);
-
-            // Calculate days/hours before appointment
-            const apptDateTime = new Date(`${appointment.appointment_date}T${appointment.appointment_time}`);
-            const now = new Date();
-            const hoursUntil = (apptDateTime - now) / (1000 * 60 * 60);
-
-            if (hoursUntil >= 24) {
-                // 24hr+ before: 90% refund (platform keeps 10% commission)
-                refundAmount = Math.round(fee * 0.9 * 100) / 100;
-            } else if (hoursUntil > 0) {
-                // <24hr before: 50% refund
-                refundAmount = Math.round(fee * 0.5 * 100) / 100;
-            } else {
-                // Past appointment: no refund
-                refundAmount = 0;
-            }
-
-            // Process refund via Razorpay
-            if (refundAmount > 0) {
-                try {
-                    const refund = await refundPayment(appointment.payment_id, refundAmount, {
-                        reason: cancel_reason || 'Patient cancelled appointment',
-                        appointment_id: appointment.id
-                    });
-                    refundId = refund.id;
-                    refundStatus = refund.status || 'processed';
-                    // Use actual amount refunded by Razorpay (in rupees)
-                    refundAmount = refund.refund_amount_rupees || refundAmount;
-                } catch (refundErr) {
-                    console.error('Refund failed:', refundErr.message);
-                    refundStatus = 'failed';
+        // Shared with reject / auto-reject / no-show: atomic status claim plus a
+        // 100% refund of whatever was actually paid.
+        const { refund } = await transitionWithFullRefund(appointment, {
+            fromStatuses: CANCELLABLE_STATUSES,
+            toStatus: 'cancelled',
+            cancelBy: 'patient',
+            reason: cancel_reason || REFUND.REASONS.CANCEL,
+            buildNotification: ({ amount, status, percent }) => (amount > 0 && status === 'processed'
+                ? {
+                    title: 'Refund Initiated',
+                    body: `Your refund of ₹${amount} (${percent}%) for appointment #${appointment.id} has been initiated. It will be credited in 5-7 business days.`,
+                    extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: refund.id, refund_percent: percent },
                 }
-            }
-        }
-
-        // Cancel the appointment
-        await appointment.update({
-            status: 'cancelled',
-            cancel_reason: cancel_reason,
-            cancel_by: 'patient',
-            refund_id: refundId,
-            refund_amount: refundAmount,
-            refund_status: refundStatus,
-            refund_date: refundAmount > 0 ? new Date() : null,
-            refund_reason: cancel_reason
+                : {
+                    title: 'Appointment Cancelled',
+                    body: `Your appointment #${appointment.id} has been cancelled. No refund applicable as per cancellation policy.`,
+                    extras: { appointment_id: appointment.id },
+                }),
         });
 
-        GoogleCalendarHelper.deleteCalendarEvents(appointment.id).catch(e =>
-            console.error('Google Calendar event deletion failed (non-blocking):', e.message)
-        );
-
-        // Notify doctor
+        // Notify doctor of the cancellation
         NotificationHelper.sendToDoctor(appointment.doctor_id,
             'Appointment Cancelled',
             `An appointment on ${appointment.appointment_date} at ${appointment.appointment_time} has been cancelled by the patient. Reason: ${cancel_reason || 'N/A'}`,
             { appointment_id: appointment.id }
         );
 
-        // Notify user about refund (only send here for immediate refund; webhook will handle async confirmations)
-        if (refundAmount > 0 && refundStatus === 'processed') {
-            NotificationHelper.sendToUser(user_id,
-                'Refund Initiated',
-                `Your refund of ₹${refundAmount} for appointment #${appointment.id} has been initiated. It will be credited in 5-7 business days.`,
-                { appointment_id: appointment.id, refund_amount: refundAmount, refund_id: refundId }
-            );
-        } else if (refundAmount === 0) {
-            NotificationHelper.sendToUser(user_id,
-                'Appointment Cancelled',
-                `Your appointment #${appointment.id} has been cancelled. No refund applicable as per cancellation policy.`,
-                { appointment_id: appointment.id }
-            );
-        }
-
+        const refunded = refund.amount > 0 && refund.status === 'processed';
         return h.response({
             success: true,
-            message: refundAmount > 0 ? `Appointment cancelled. Refund of ₹${refundAmount} initiated.` : 'Appointment cancelled. No refund applicable.',
+            message: refunded
+                ? `Appointment cancelled. Full refund of ₹${refund.amount} (100%) initiated.`
+                : 'Appointment cancelled. No refund applicable.',
             data: {
                 ...appointment.toJSON(),
-                refund: refundAmount > 0 ? { refund_id: refundId, refund_amount: refundAmount, refund_status: refundStatus } : null
+                refund: refund.amount > 0
+                    ? { refund_id: refund.id, refund_amount: refund.amount, refund_status: refund.status, refund_percent: refund.percent }
+                    : null
             }
         });
 

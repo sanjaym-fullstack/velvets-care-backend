@@ -36,6 +36,7 @@ module.exports = {
     PushNotificationFunctions: require('./pushNotification'),
     NotificationHelper: require('./notification_helper'),
     GoogleCalendarHelper: require('./google_calendar'),
+    AppointmentRefundHelper: require('./appointment_refund'),
     stripSensitive,
     normalizeFee,
 }

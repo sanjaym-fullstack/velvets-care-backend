@@ -14,9 +14,17 @@ const getAllRefunds = async (req, res) => {
         const { page = 1, limit = 20, doctor_id, user_id, refund_status, from_date, to_date } = req.query;
         const offset = (page - 1) * limit;
 
-        const where = {
-            refund_id: { [Op.ne]: null },
+        // Match anything that has a refund recorded against it. Filtering on
+        // `refund_id` alone hid rows whose refund failed at the API call, since
+        // those never got a gateway id — exactly the ones an admin must act on.
+        const baseWhere = {
+            [Op.or]: [
+                { refund_id: { [Op.ne]: null } },
+                { refund_status: { [Op.ne]: null } },
+            ],
         };
+
+        const where = { ...baseWhere };
         if (doctor_id) where.doctor_id = doctor_id;
         if (user_id) where.patient_id = user_id;
         if (refund_status) where.refund_status = refund_status;
@@ -39,7 +47,7 @@ const getAllRefunds = async (req, res) => {
 
         // Summary stats
         const stats = await Appointments.findAll({
-            where: { refund_id: { [Op.ne]: null } },
+            where: baseWhere,
             attributes: [
                 [fn('COUNT', col('id')), 'total_refunds'],
                 [fn('SUM', col('refund_amount')), 'total_refund_amount'],
@@ -49,7 +57,7 @@ const getAllRefunds = async (req, res) => {
         });
 
         const statusStats = await Appointments.findAll({
-            where: { refund_id: { [Op.ne]: null } },
+            where: baseWhere,
             attributes: [
                 'refund_status',
                 [fn('COUNT', col('id')), 'count'],
