@@ -23,6 +23,11 @@ Order.init({
   status: DataTypes.STRING,
   payment_status: DataTypes.STRING,
   payment_method: DataTypes.STRING,
+  refund_id: DataTypes.STRING,
+  refund_amount: DataTypes.DOUBLE,
+  refund_status: DataTypes.STRING,
+  refund_date: DataTypes.DATE,
+  refund_reason: DataTypes.STRING,
   discount_code: DataTypes.STRING,
   notes: DataTypes.JSON
 }, {

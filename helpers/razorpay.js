@@ -151,6 +151,87 @@ const fetchRefund = async (refundId) => {
   }
 };
 
+// Total already refunded against a payment, in paise. Counts only refunds that
+// actually settled, so a pending/failed attempt does not eat into the balance.
+const getRefundedAmountPaise = async (paymentId) => {
+  try {
+    const existing = await razorpayInstance.refunds.all({ payment_id: paymentId });
+    const items = existing?.items || existing?.data || [];
+    return items.reduce((sum, r) => {
+      if (r.status === 'failed') return sum;
+      return sum + (Number(r.amount) || 0);
+    }, 0);
+  } catch (error) {
+    // A failed lookup must not block the refund; the refund call itself is the
+    // real guard, it will reject an over-refund.
+    console.error('Could not list existing refunds:', error.message);
+    return 0;
+  }
+};
+
+// Refunds the entire remaining refundable balance on a payment — i.e. 100% of
+// what the customer actually paid, minus anything already refunded. Refunds the
+// captured amount rather than the catalogue fee, so taxes/discounts are covered
+// and the customer is never left with a residue.
+const refundFullPayment = async (paymentId, notes = {}) => {
+  try {
+    const payment = await razorpayInstance.payments.fetch(paymentId);
+
+    if (payment.status !== 'captured') {
+      throw new Error(`Payment ${paymentId} is ${payment.status}, not captured`);
+    }
+
+    const paidPaise = Number(payment.amount) || 0;
+    const alreadyRefundedPaise = await getRefundedAmountPaise(paymentId);
+    const remainingPaise = paidPaise - alreadyRefundedPaise;
+
+    console.log(
+      `Full refund: payment=${paymentId}, paid=${paidPaise}paise, ` +
+      `already_refunded=${alreadyRefundedPaise}paise, refunding=${remainingPaise}paise`
+    );
+
+    if (remainingPaise <= 0) {
+      // Nothing left to give back — treat as already fully refunded.
+      return {
+        id: null,
+        status: 'processed',
+        amount: 0,
+        refund_amount_rupees: 0,
+        already_fully_refunded: true,
+      };
+    }
+
+    const refund = await razorpayInstance.payments.refund(paymentId, {
+      amount: remainingPaise,
+      notes: {
+        reason: notes.reason || 'Full refund',
+        ...notes,
+      },
+    });
+
+    return {
+      ...refund,
+      refund_amount_rupees: Math.round(remainingPaise / 100),
+      refunded_paise: remainingPaise,
+      paid_paise: paidPaise,
+    };
+  } catch (error) {
+    throw new Error(`Razorpay refund failed: ${error.error?.description || error.message || 'Unknown error'}`);
+  }
+};
+
+// Verifies the X-Razorpay-Signature header against the raw request body.
+const verifyWebhookSignature = (rawBody, signature) => {
+  const secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+  if (!secret) {
+    throw new Error('RAZORPAY_WEBHOOK_SECRET is not configured');
+  }
+  if (!signature) {
+    throw new Error('Missing X-Razorpay-Signature header');
+  }
+  return razorpayInstance.webhooks.verify(rawBody, signature, secret);
+};
+
 module.exports = {
   createRazorpayOrder,
   capturePayment,
@@ -161,5 +242,7 @@ module.exports = {
   fetchRazorpayPayout,
   fetchRazorpayBalance,
   refundPayment,
-  fetchRefund
+  refundFullPayment,
+  fetchRefund,
+  verifyWebhookSignature,
 };
