@@ -3,7 +3,8 @@ const {
     RefundController: {
         getAllRefunds,
         getDoctorRefunds,
-        getUserRefunds
+        getUserRefunds,
+        retryRefund
     }
 } = require('../controllers');
 const { HeaderValidator } = require('../validators');
@@ -70,5 +71,21 @@ module.exports = [
             }
         },
         handler: getUserRefunds
+    },
+    {
+        method: 'POST',
+        path: '/admin/refunds/{appointment_id}/retry',
+        options: {
+            description: 'Re-attempt a refund that failed to settle (admin)',
+            tags,
+            pre: [SessionValidator],
+            validate: {
+                params: Joi.object({
+                    appointment_id: Joi.number().integer().required()
+                }).unknown(),
+                headers: HeaderValidator
+            }
+        },
+        handler: retryRefund
     }
 ];

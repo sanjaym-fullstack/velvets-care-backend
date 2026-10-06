@@ -156,11 +156,11 @@ const rejectAppointmentAutomatically = async (appointment) => {
         toStatus: 'rejected',
         cancelBy: CANCEL_BY,
         reason,
-        buildNotification: ({ amount, status, percent }) => (amount > 0 && status === 'processed'
+        buildNotification: ({ id, amount, status, percent }) => (amount > 0 && status === 'processed'
             ? {
                 title: 'Appointment Rejected - Refund Initiated',
                 body: `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} was rejected because the doctor did not respond in time. A full refund of ₹${amount} (${percent}%) has been initiated.`,
-                extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: refund.id, refund_percent: percent },
+                extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: id, refund_percent: percent },
             }
             : {
                 title: 'Appointment Rejected',

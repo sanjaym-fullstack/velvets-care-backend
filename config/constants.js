@@ -43,6 +43,10 @@ module.exports = {
         // Statuses that can still be marked as a patient no-show.
         NO_SHOW_STATUSES: ['approved'],
 
+        // Statuses that mean money should be back with the patient. A refund
+        // retry is only offered while the appointment sits in one of these.
+        REFUNDABLE_STATUSES: ['cancelled', 'rejected', 'no_show'],
+
         REASONS: {
             CANCEL: 'Patient cancelled appointment',
             REJECT: 'Doctor rejected appointment',
