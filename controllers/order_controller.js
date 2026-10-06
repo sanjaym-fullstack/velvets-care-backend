@@ -374,10 +374,81 @@ const fetchOrderById = async (req, res) => {
     }
 };
 
+// Admin: re-attempt a refund that did not settle on cancellation.
+const retryOrderRefund = async (req, res) => {
+    try {
+        const session_user = req.headers.user;
+        if (!session_user || session_user.role !== 'ADMIN') {
+            return res.response({ success: false, message: 'Unauthorized' }).code(401);
+        }
+
+        const { id } = req.params;
+        const order = await Orders.findByPk(id);
+        if (!order) return res.response({ success: false, message: 'Order not found' }).code(404);
+
+        if (order.status !== 'cancelled') {
+            return res.response({
+                success: false,
+                message: `Only cancelled orders can be refunded. Current status: ${order.status}`
+            }).code(400);
+        }
+
+        if (order.refund_status === 'processed') {
+            return res.response({
+                success: false,
+                message: 'Refund is already processed',
+                refund: { refund_id: order.refund_id, refund_amount: order.refund_amount, refund_status: order.refund_status, refund_percent: order.refund_amount > 0 ? 100 : 0 }
+            }).code(200);
+        }
+
+        const refund = await refundCancelledOrder(order);
+
+        await Orders.update({
+            refund_id: refund.id || order.refund_id,
+            refund_amount: refund.amount,
+            refund_status: refund.status,
+            refund_date: refund.amount > 0 ? (order.refund_date || new Date()) : null,
+            refund_reason: constants.REFUND.REASONS.ORDER_CANCEL,
+        }, { where: { id: order.id } });
+
+        const succeeded = refund.status === 'processed';
+        if (succeeded) {
+            NotificationHelper.sendToUser(order.user_id,
+                'Refund Processed',
+                `Your full refund of ₹${refund.amount} for order #${order.id} has been processed. It will be credited in 5-7 business days.`,
+                { order_id: order.id, refund_id: refund.id, refund_amount: refund.amount, refund_percent: refund.percent }
+            );
+        } else if (refund.status === 'failed') {
+            NotificationHelper.sendToAllAdmins(
+                'Order Refund Failed',
+                `The refund retry for order #${order.id} failed. Please retry from the Razorpay dashboard.`,
+                { order_id: order.id, refund_status: 'failed' }
+            );
+        }
+
+        return res.response({
+            success: succeeded,
+            message: succeeded
+                ? `Refund of ₹${refund.amount} (100%) processed successfully`
+                : 'Razorpay refund failed, check the gateway logs',
+            refund: {
+                refund_id: refund.id || order.refund_id,
+                refund_amount: refund.amount,
+                refund_status: refund.status,
+                refund_percent: refund.percent,
+            }
+        }).code(200);
+    } catch (error) {
+        console.error(error);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
+    }
+};
+
 module.exports = {
     fetchOrdersAdmin,
     fetchUserOrders,
     updateOrderStatus,
     fetchPaymentsAdmin,
-    fetchOrderById
+    fetchOrderById,
+    retryOrderRefund
 };

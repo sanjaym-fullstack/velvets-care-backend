@@ -11,7 +11,8 @@ const {
     fetchUserOrders,
     updateOrderStatus,
     fetchPaymentsAdmin,
-    fetchOrderById
+    fetchOrderById,
+    retryOrderRefund
 
     }
 } = require('../controllers');
@@ -145,6 +146,26 @@ module.exports = [
             },
         },
         handler: fetchOrderById,
+    },
+    {
+        method: 'POST',
+        path: '/admin/orders/{id}/refund-retry',
+        options: {
+            description: 'Re-attempt a refund for a cancelled order (admin)',
+            tags,
+            pre: [
+                SessionValidator
+            ],
+            validate: {
+                params: fetchOrderParamsValidator,
+                headers: HeaderValidator,
+                failAction: (request, h, err) => {
+                    const errors = err.details.map(e => e.message);
+                    throw Boom.badRequest(errors.join(', '));
+                }
+            },
+        },
+        handler: retryOrderRefund,
     },
     
             ]

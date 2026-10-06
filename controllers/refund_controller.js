@@ -4,6 +4,37 @@ const { Appointments, Users, Doctors } = require('../models');
 const { Op, fn, col } = require('sequelize');
 const Sequelize = require('sequelize');
 const { NotificationHelper } = require('../helpers');
+const { retryAppointmentRefund } = require('../helpers/appointment_refund');
+
+// Admin: re-attempt a refund that did not settle. Safe to call repeatedly.
+const retryRefund = async (req, res) => {
+    try {
+        const session_user = req.headers.user;
+        if (!session_user || session_user.role !== 'ADMIN') {
+            return res.response({ success: false, message: 'Unauthorized' }).code(401);
+        }
+
+        const { appointment_id } = req.params;
+        const appointment = await Appointments.findByPk(appointment_id);
+        if (!appointment) {
+            return res.response({ success: false, message: 'Appointment not found' }).code(404);
+        }
+
+        const result = await retryAppointmentRefund(appointment);
+
+        return res.response({
+            success: result.retried,
+            message: result.retried
+                ? `Refund of ₹${result.refund.refund_amount} processed successfully`
+                : (result.reason || 'Refund not retried'),
+            data: { appointment_id: appointment.id, status: appointment.status },
+            refund: result.refund
+        }).code(200);
+    } catch (error) {
+        console.error(error);
+        return res.response({ success: false, message: error.message || 'Something went wrong' }).code(500);
+    }
+};
 
 // Admin: Get all refunds with filters
 const getAllRefunds = async (req, res) => {
@@ -199,5 +230,6 @@ const getUserRefunds = async (req, res) => {
 module.exports = {
     getAllRefunds,
     getDoctorRefunds,
-    getUserRefunds
+    getUserRefunds,
+    retryRefund
 };

@@ -13,7 +13,7 @@ const {
 const {
     FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, GoogleCalendarHelper, stripSensitive, normalizeFee
 } = require('../helpers');
-const { transitionWithFullRefund } = require('../helpers/appointment_refund');
+const { transitionWithFullRefund, retryAppointmentRefund, refundSummary } = require('../helpers/appointment_refund');
 const { constants } = require('../config');
 
 const REJECTABLE_STATUSES = constants.APPOINTMENT.REJECTABLE_STATUSES;
@@ -458,11 +458,11 @@ const UpdateAppointmentStatus = async (req, h) => {
                 toStatus: 'no_show',
                 cancelBy: 'doctor',
                 reason: REFUND.REASONS.NO_SHOW,
-                buildNotification: ({ amount, status: refundState, percent }) => (amount > 0 && refundState === 'processed'
+                buildNotification: ({ id, amount, status: refundState, percent }) => (amount > 0 && refundState === 'processed'
                     ? {
                         title: 'Missed Appointment - Refund Initiated',
                         body: `You missed your appointment on ${appointment.appointment_date} at ${appointment.appointment_time}. A full refund of ₹${amount} (${percent}%) has been initiated.`,
-                        extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: refund.id, refund_percent: percent },
+                        extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: id, refund_percent: percent },
                     }
                     : {
                         title: 'Missed Appointment',
@@ -483,7 +483,8 @@ const UpdateAppointmentStatus = async (req, h) => {
                 message: refund.amount > 0 && refund.status === 'processed'
                     ? `Appointment marked as missed. Full refund of ₹${refund.amount} (100%) initiated.`
                     : 'Appointment status updated successfully',
-                data: appointment
+                data: appointment,
+                refund: refundSummary(refund)
             });
         }
 
@@ -549,11 +550,11 @@ const doctoreject = async (req, h) => {
             toStatus: 'rejected',
             cancelBy: 'doctor',
             reason: cancel_reason || REFUND.REASONS.REJECT,
-            buildNotification: ({ amount, status, percent }) => (amount > 0 && status === 'processed'
+            buildNotification: ({ id, amount, status, percent }) => (amount > 0 && status === 'processed'
                 ? {
                     title: 'Appointment Rejected - Refund Initiated',
                     body: `Your appointment on ${appointment.appointment_date} at ${appointment.appointment_time} was rejected by the doctor. A full refund of ₹${amount} (${percent}%) has been initiated.`,
-                    extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: refund.id, refund_percent: percent },
+                    extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: id, refund_percent: percent },
                 }
                 : {
                     title: 'Appointment Rejected',
@@ -564,8 +565,11 @@ const doctoreject = async (req, h) => {
 
         return h.response({
             success: true,
-            message: 'Appointment rejected successfully',
-            data: appointment
+            message: refund.amount > 0 && refund.status === 'processed'
+                ? `Appointment rejected. Full refund of ₹${refund.amount} (100%) initiated.`
+                : 'Appointment rejected successfully',
+            data: appointment,
+            refund: refundSummary(refund)
         });
     } catch (error) {
         console.error(error);
@@ -620,11 +624,11 @@ const cancelAppointmentByUser = async (req, h) => {
             toStatus: 'cancelled',
             cancelBy: 'patient',
             reason: cancel_reason || REFUND.REASONS.CANCEL,
-            buildNotification: ({ amount, status, percent }) => (amount > 0 && status === 'processed'
+            buildNotification: ({ id, amount, status, percent }) => (amount > 0 && status === 'processed'
                 ? {
                     title: 'Refund Initiated',
                     body: `Your refund of ₹${amount} (${percent}%) for appointment #${appointment.id} has been initiated. It will be credited in 5-7 business days.`,
-                    extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: refund.id, refund_percent: percent },
+                    extras: { appointment_id: appointment.id, refund_amount: amount, refund_id: id, refund_percent: percent },
                 }
                 : {
                     title: 'Appointment Cancelled',
@@ -646,12 +650,8 @@ const cancelAppointmentByUser = async (req, h) => {
             message: refunded
                 ? `Appointment cancelled. Full refund of ₹${refund.amount} (100%) initiated.`
                 : 'Appointment cancelled. No refund applicable.',
-            data: {
-                ...appointment.toJSON(),
-                refund: refund.amount > 0
-                    ? { refund_id: refund.id, refund_amount: refund.amount, refund_status: refund.status, refund_percent: refund.percent }
-                    : null
-            }
+            data: appointment,
+            refund: refundSummary(refund)
         });
 
     } catch (error) {

@@ -191,12 +191,16 @@ const refundFullPayment = async (paymentId, notes = {}) => {
     );
 
     if (remainingPaise <= 0) {
-      // Nothing left to give back — treat as already fully refunded.
+      // Nothing left to give back — the money already went. Report the total
+      // that was actually returned so a retry after a crash records the real
+      // amount instead of overwriting it with zero.
       return {
         id: null,
         status: 'processed',
-        amount: 0,
-        refund_amount_rupees: 0,
+        amount: alreadyRefundedPaise,
+        refund_amount_rupees: Math.round(alreadyRefundedPaise / 100),
+        refunded_paise: alreadyRefundedPaise,
+        paid_paise: paidPaise,
         already_fully_refunded: true,
       };
     }
