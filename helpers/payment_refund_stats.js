@@ -26,12 +26,20 @@ const PAYMENT_STATE_LABELS = {
     refunded: 'Refunded',
 };
 
+const PAYMENT_STATE_KEYS = Object.keys(PAYMENT_STATE_LABELS);
+
 const paymentState = (paymentStatus, refundStatus) => {
     const rs = refundStatus ? String(refundStatus).toLowerCase() : null;
     if (rs === 'processed') return 'refunded';
     if (rs === 'pending' || rs === 'initiated') return 'refund_initiated';
     if (rs === 'failed') return 'refund_failed';
-    return String(paymentStatus || '').toLowerCase() === 'paid' ? 'paid' : 'unpaid';
+
+    const ps = String(paymentStatus || '').toLowerCase();
+    // A row that already carries a derived state (applyPaymentState has run
+    // once) must evaluate to itself, or a second pass would report 'unpaid'
+    // for an appointment that is plainly refunded.
+    if (PAYMENT_STATE_KEYS.includes(ps)) return ps;
+    return ps === 'paid' ? 'paid' : 'unpaid';
 };
 
 // Same two values as one spreadable object, for row builders.
@@ -64,7 +72,11 @@ const buildPaymentRefundStats = (appointment) => {
     const a = (appointment && appointment.dataValues) || appointment || {};
 
     const fee = Number(a.consultation_fee || 0);
-    const paid = String(a.payment_status || '').toLowerCase() === 'paid';
+    const rawPaymentStatus = String(a.payment_status || '').toLowerCase();
+    // 'refunded' / 'refund_initiated' / 'refund_failed' are derived states that
+    // still mean the money was captured, so they count as paid.
+    const paid = rawPaymentStatus === 'paid'
+        || (PAYMENT_STATE_KEYS.includes(rawPaymentStatus) && rawPaymentStatus !== 'unpaid');
     const refundStatus = a.refund_status ? String(a.refund_status).toLowerCase() : null;
     const refundAmount = Number(a.refund_amount || 0);
     const refundId = a.refund_id || null;
@@ -168,18 +180,47 @@ const buildPaymentRefundStats = (appointment) => {
 };
 
 /**
+ * Shape one appointment row for a response: attach `payment_refund` and mirror
+ * its `payment_state` onto the row's own `payment_status`, so the outside field
+ * the admin panel reads says `refunded` instead of the capture-time `paid`.
+ *
+ * Only the response object is changed — the database column still records the
+ * capture and is never written here. Safe to call more than once on a row.
+ *
+ * @param {object} row sequelize instance or plain object
+ * @returns {object} the same row
+ */
+const applyPaymentState = (row) => {
+    if (!row) return row;
+    const stats = buildPaymentRefundStats(row);
+
+    // A sequelize instance keeps its attributes in `dataValues` (that is what
+    // toJSON serialises), a plain response row is the object itself. Write both
+    // so the block and the mirrored status actually reach the payload.
+    const target = (row.dataValues && typeof row.dataValues === 'object') ? row.dataValues : row;
+    target.payment_refund = stats;
+    target.payment_status = stats.payment_state;
+    if (target !== row) {
+        row.payment_refund = stats;
+        row.payment_status = stats.payment_state;
+    }
+    return row;
+};
+
+/**
  * Attach `payment_refund` to every row of a list response.
  * Accepts sequelize instances or already-plain objects.
  */
 const attachRefundStats = (rows = []) =>
     rows.map(row => {
         const plain = (row && typeof row.toJSON === 'function') ? row.toJSON() : { ...row };
-        return { ...plain, payment_refund: buildPaymentRefundStats(plain) };
+        return applyPaymentState(plain);
     });
 
 module.exports = {
     buildPaymentRefundStats,
     attachRefundStats,
+    applyPaymentState,
     paymentState,
     paymentStateInfo,
     PAYMENT_STATE_LABELS,
