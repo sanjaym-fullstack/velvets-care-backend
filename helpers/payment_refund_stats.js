@@ -15,6 +15,31 @@ const STAGE_LABELS = {
     refunded: 'Refunded',
 };
 
+// `payment_status` stays 'paid' forever once Razorpay captured the money — it
+// records the capture, not the current state of the money. This is the value
+// meant for display: paid -> refund_initiated -> refunded.
+const PAYMENT_STATE_LABELS = {
+    unpaid: 'Payment pending',
+    paid: 'Paid',
+    refund_initiated: 'Refund initiated',
+    refund_failed: 'Refund failed',
+    refunded: 'Refunded',
+};
+
+const paymentState = (paymentStatus, refundStatus) => {
+    const rs = refundStatus ? String(refundStatus).toLowerCase() : null;
+    if (rs === 'processed') return 'refunded';
+    if (rs === 'pending' || rs === 'initiated') return 'refund_initiated';
+    if (rs === 'failed') return 'refund_failed';
+    return String(paymentStatus || '').toLowerCase() === 'paid' ? 'paid' : 'unpaid';
+};
+
+// Same two values as one spreadable object, for row builders.
+const paymentStateInfo = (paymentStatus, refundStatus) => {
+    const state = paymentState(paymentStatus, refundStatus);
+    return { payment_state: state, payment_state_label: PAYMENT_STATE_LABELS[state] };
+};
+
 /**
  * Build a "Paid -> Refunded" progress block for one appointment.
  *
@@ -128,6 +153,8 @@ const buildPaymentRefundStats = (appointment) => {
         stage,
         stage_label: STAGE_LABELS[stage] || stage,
         stage_progress: Math.round((done / timeline.length) * 100),
+        payment_state: paymentState(a.payment_status, refundStatus),
+        payment_state_label: PAYMENT_STATE_LABELS[paymentState(a.payment_status, refundStatus)],
         paid_amount: paid ? fee : 0,
         refunded_amount: refundAmount,
         refund_percent: refundPercent,
@@ -150,4 +177,11 @@ const attachRefundStats = (rows = []) =>
         return { ...plain, payment_refund: buildPaymentRefundStats(plain) };
     });
 
-module.exports = { buildPaymentRefundStats, attachRefundStats, STAGE_LABELS };
+module.exports = {
+    buildPaymentRefundStats,
+    attachRefundStats,
+    paymentState,
+    paymentStateInfo,
+    PAYMENT_STATE_LABELS,
+    STAGE_LABELS,
+};

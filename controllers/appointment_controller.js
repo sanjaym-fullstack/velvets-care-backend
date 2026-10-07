@@ -13,7 +13,7 @@ const {
 const {
     FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, GoogleCalendarHelper, stripSensitive, normalizeFee
 } = require('../helpers');
-const { transitionWithFullRefund, retryAppointmentRefund, refundSummary } = require('../helpers/appointment_refund');
+const { transitionWithFullRefund, retryAppointmentRefund, refundSummary, ClientError, clientMessage } = require('../helpers/appointment_refund');
 const { buildPaymentRefundStats, attachRefundStats } = require('../helpers/payment_refund_stats');
 const { constants } = require('../config');
 
@@ -21,6 +21,12 @@ const REJECTABLE_STATUSES = constants.APPOINTMENT.REJECTABLE_STATUSES;
 const REFUND = constants.REFUND;
 const CANCELLABLE_STATUSES = REFUND.CANCELLABLE_STATUSES;
 const NO_SHOW_STATUSES = REFUND.NO_SHOW_STATUSES;
+
+// Statuses that actually occupy a doctor's slot. Everything else - cancelled,
+// rejected, missed, completed - has been given up, so that date/time must be
+// bookable again. Every availability check must use this list, otherwise a
+// cancelled appointment keeps blocking its own slot.
+const ACTIVE_STATUSES = ['pending', 'approved'];
 const Razorpay = require('razorpay');
 require('dotenv/config');
 const razorpay = new Razorpay({
@@ -118,7 +124,8 @@ const precheckAndCreateOrder = async (req, res) => {
             where: {
                 doctor_id,
                 appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` },
-                appointment_time
+                appointment_time,
+                status: { [Op.in]: ACTIVE_STATUSES }
             }
         });
 
@@ -409,7 +416,8 @@ const updateAppointmentDateTime = async (req, h) => {
             where: {
                 doctor_id,
                 appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` },
-                appointment_time
+                appointment_time,
+                status: { [Op.in]: ACTIVE_STATUSES }
             }
         });
 
@@ -433,7 +441,7 @@ const updateAppointmentDateTime = async (req, h) => {
 const UpdateAppointmentStatus = async (req, h) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) throw new ClientError('Session expired');
 
         const doctor_id = session_user.doctor_id;
         const { appointmentId } = req.params;
@@ -441,16 +449,16 @@ const UpdateAppointmentStatus = async (req, h) => {
 
         const appointment = await Appointments.findByPk(appointmentId);
         if (!appointment) {
-            throw new Error('Appointment not found');
+            throw new ClientError('Appointment not found');
         }
         if (session_user.role !== 'ADMIN' && appointment.doctor_id !== doctor_id) {
-            throw new Error('Unauthorized: This is not your appointment');
+            throw new ClientError('Unauthorized: This is not your appointment');
         }
         if (!['approved'].includes(appointment.status)) {
-            throw new Error(`Only approved appointments can have status updated. Current status: ${appointment.status}`);
+            throw new ClientError(`Only approved appointments can have status updated. Current status: ${appointment.status}`);
         }
         if (!['completed', 'no_show'].includes(status)) {
-            throw new Error('Invalid status. Allowed values are: completed, no_show');
+            throw new ClientError('Invalid status. Allowed values are: completed, no_show');
         }
 
         if (status === 'no_show') {
@@ -514,7 +522,7 @@ const UpdateAppointmentStatus = async (req, h) => {
         console.error(error);
         return h.response({
             success: false,
-            message: error.message || 'Something went wrong'
+            message: clientMessage(error, 'Unable to update the appointment status. Please try again.')
         }).code(200);
     }
 };
@@ -522,28 +530,28 @@ const UpdateAppointmentStatus = async (req, h) => {
 const doctoreject = async (req, h) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) throw new ClientError('Session expired');
 
         const appointmentId = req.params.id;
         const { cancel_reason } = req.payload;
 
         const appointment = await Appointments.findByPk(appointmentId);
         if (!appointment) {
-            throw new Error('Appointment not found');
+            throw new ClientError('Appointment not found');
         }
 
         let doctor_id = null;
         if (session_user.role !== 'ADMIN') {
             doctor_id = session_user.doctor_id;
             if (appointment.doctor_id !== doctor_id) {
-                throw new Error('Unauthorized: This is not your appointment');
+                throw new ClientError('Unauthorized: This is not your appointment');
             }
         } else {
             doctor_id = appointment.doctor_id;
         }
 
         if (!REJECTABLE_STATUSES.includes(appointment.status)) {
-            throw new Error(`Only ${REJECTABLE_STATUSES.join('/')} appointments can be rejected. Current status: ${appointment.status}`);
+            throw new ClientError(`Only ${REJECTABLE_STATUSES.join('/')} appointments can be rejected. Current status: ${appointment.status}`);
         }
 
         // Shared with the auto-reject sweep and the missed-appointment flow:
@@ -578,7 +586,7 @@ const doctoreject = async (req, h) => {
         console.error(error);
         return h.response({
             success: false,
-            message: error.message || 'Something went wrong'
+            message: clientMessage(error, 'Unable to reject the appointment. Please try again.')
         }).code(200);
     }
 }
@@ -586,14 +594,14 @@ const doctoreject = async (req, h) => {
 const cancelAppointmentByUser = async (req, h) => {
     try {
         const session_user = req.headers.user;
-        if (!session_user) throw new Error('Session expired');
+        if (!session_user) throw new ClientError('Session expired');
 
 
         const appointmentId = req.params.id;
         const { cancel_reason } = req.payload;
         const appointment = await Appointments.findByPk(appointmentId);
         if (!appointment) {
-            throw new Error('Appointment not found');
+            throw new ClientError('Appointment not found');
         }
 
         let user_id = null;
@@ -605,19 +613,19 @@ const cancelAppointmentByUser = async (req, h) => {
         }
 
         if (appointment.patient_id !== user_id) {
-            throw new Error('Unauthorized: This is not your appointment');
+            throw new ClientError('Unauthorized: This is not your appointment');
         }
 
         // Only a still-open appointment can be cancelled. Completed, missed and
         // already-rejected appointments are history and must not be flipped.
         if (!CANCELLABLE_STATUSES.includes(appointment.status)) {
-            throw new Error(`Only ${CANCELLABLE_STATUSES.join('/')} appointments can be cancelled. Current status: ${appointment.status}`);
+            throw new ClientError(`Only ${CANCELLABLE_STATUSES.join('/')} appointments can be cancelled. Current status: ${appointment.status}`);
         }
 
         // Once the appointment slot has passed it can no longer be cancelled.
         const apptDateTime = new Date(`${appointment.appointment_date}T${appointment.appointment_time}`);
         if (apptDateTime.getTime() <= Date.now()) {
-            throw new Error('This appointment slot has already passed and can no longer be cancelled');
+            throw new ClientError('This appointment slot has already passed and can no longer be cancelled');
         }
 
         // Shared with reject / auto-reject / no-show: atomic status claim plus a
@@ -661,7 +669,7 @@ const cancelAppointmentByUser = async (req, h) => {
         console.error(error);
         return h.response({
             success: false,
-            message: error.message || 'Something went wrong'
+            message: clientMessage(error, 'Unable to cancel the appointment. Please try again.')
         }).code(500);
     }
 };
@@ -995,7 +1003,7 @@ const checkDoctorAvailability = async (req, res) => {
 
         // 6️⃣  Collision check
         const existing = await Appointments.findOne({
-            where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }, appointment_time, status: { [Op.in]: ['approved', 'pending'] } }
+            where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }, appointment_time, status: { [Op.in]: ACTIVE_STATUSES } }
         });
         if (existing) throw new Error('Slot already booked');
 
@@ -1083,7 +1091,7 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
             where: {
                 doctor_id,
                 appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` },
-                status: { [Op.in]: ['approved', 'pending'] }
+                status: { [Op.in]: ACTIVE_STATUSES }
             },
             raw: true
         });
@@ -1219,7 +1227,7 @@ const adminCheckDoctorSlot = async (req, res) => {
         if (req24 < start24 || req24 >= end24) throw new Error(`Doctor is available from ${availability.start_time} to ${availability.end_time}. Please select a time within this window.`);
 
         // Check if booked
-        const booked = await Appointments.findOne({ where: { doctor_id, appointment_date: { [Op.like]: `${normalizedDate}%` }, appointment_time } });
+        const booked = await Appointments.findOne({ where: { doctor_id, appointment_date: { [Op.like]: `${normalizedDate}%` }, appointment_time, status: { [Op.in]: ACTIVE_STATUSES } } });
         if (booked) throw new Error('Slot already booked');
 
         return res.response({
@@ -1274,7 +1282,7 @@ const adminGetDoctorAvailableSlots = async (req, res) => {
 
         // Booked slots
         const booked = await Appointments.findAll({
-            where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` } },
+            where: { doctor_id, appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` }, status: { [Op.in]: ACTIVE_STATUSES } },
             raw: true
         });
         const bookedTimes = new Set(booked.map(b => b.appointment_time));
@@ -1390,7 +1398,7 @@ const adminCreateAppointmentWithPaymentLink = async (req, res) => {
 
         // 4️⃣ Check if slot is already booked
         const existing = await Appointments.findOne({
-            where: { doctor_id, appointment_date: { [Op.like]: `${normalizedDate}%` }, appointment_time, status: { [Op.in]: ['approved', 'pending'] } }
+            where: { doctor_id, appointment_date: { [Op.like]: `${normalizedDate}%` }, appointment_time, status: { [Op.in]: ACTIVE_STATUSES } }
         });
         if (existing) throw new Error('Slot already booked for this time');
 

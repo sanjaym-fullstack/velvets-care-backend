@@ -163,6 +163,21 @@ const init = async () => {
     // responded to, AUTO_REJECT_AFTER_MINUTES after their start time)
     const { startAutoRejectCron } = require('./helpers/appointment_auto_reject_cron');
     startAutoRejectCron();
+
+    // Without a shared secret every Razorpay webhook is rejected as unverified,
+    // so refunds would sit at `pending` forever. Fail loudly rather than
+    // silently swallowing events — the reconciler below covers the gap.
+    if (!process.env.RAZORPAY_WEBHOOK_SECRET) {
+        console.warn(
+            '\x1b[33m[Config] RAZORPAY_WEBHOOK_SECRET is EMPTY — webhook signature checks will fail ' +
+            'and refund events will be ignored. Set it in .env to enable the webhook.\x1b[0m'
+        );
+    }
+
+    // Settle refunds that the webhook never reported (secret missing, URL wrong,
+    // event lost). Runs once at boot, then every 5 minutes.
+    const { startRefundReconcileCron } = require('./helpers/refund_reconcile_cron');
+    startRefundReconcileCron();
 };
 
 // Error handling
