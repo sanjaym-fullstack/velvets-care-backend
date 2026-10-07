@@ -14,6 +14,7 @@ const {
     FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, GoogleCalendarHelper, stripSensitive, normalizeFee
 } = require('../helpers');
 const { transitionWithFullRefund, retryAppointmentRefund, refundSummary } = require('../helpers/appointment_refund');
+const { buildPaymentRefundStats, attachRefundStats } = require('../helpers/payment_refund_stats');
 const { constants } = require('../config');
 
 const REJECTABLE_STATUSES = constants.APPOINTMENT.REJECTABLE_STATUSES;
@@ -261,6 +262,8 @@ const getDoctorAppointments = async (req, h) => {
                     } : appt.user?.file
                 }
             };
+
+            enriched.payment_refund = buildPaymentRefundStats(enriched);
 
             const apptDate = new Date(appt.appointment_date);
             apptDate.setHours(0, 0, 0, 0);
@@ -747,6 +750,10 @@ const getadminAppointments = async (req, res) => {
         const appointmentsWithImages = await mapDoctorImages(appointments);
         const allAppointmentsWithImages = await mapDoctorImages(allAppointments);
 
+        // Paid -> Refund progress so the money state reads at a glance.
+        appointmentsWithImages.forEach(appt => { appt.payment_refund = buildPaymentRefundStats(appt); });
+        allAppointmentsWithImages.forEach(appt => { appt.payment_refund = buildPaymentRefundStats(appt); });
+
         const today = new Date();
         today.setHours(0, 0, 0, 0);
 
@@ -893,6 +900,7 @@ const getUserAppointments = async (req, res) => {
         today.setHours(0, 0, 0, 0);
 
         // Categorize appointments
+        appointmentsWithImages.forEach(appt => { appt.payment_refund = buildPaymentRefundStats(appt); });
         const categorized = {
             all: [],
             upcoming: [],
@@ -1161,6 +1169,8 @@ const getTodaysAppointmentsDoctor = async (req, res) => {
             })
         );
 
+        appointments.forEach(appt => { appt.payment_refund = buildPaymentRefundStats(appt); });
+
         return res.response({
             success: true,
             message: 'Appointments fetched successfully',
@@ -1333,7 +1343,7 @@ const adminGetTodaysAppointments = async (req, res) => {
         return res.response({
             success: true,
             message: 'Today’s appointments fetched successfully',
-            data: appointments
+            data: attachRefundStats(appointments)
         }).code(200);
 
     } catch (err) {
