@@ -14,7 +14,7 @@ const {
     FileFunctions, JWTFunctions, RazorpayFunctions, AgoraFunctions, NotificationHelper, GoogleCalendarHelper, stripSensitive, normalizeFee
 } = require('../helpers');
 const { transitionWithFullRefund, retryAppointmentRefund, refundSummary, ClientError, clientMessage } = require('../helpers/appointment_refund');
-const { buildPaymentRefundStats, attachRefundStats } = require('../helpers/payment_refund_stats');
+const { attachRefundStats, applyPaymentState } = require('../helpers/payment_refund_stats');
 const { constants } = require('../config');
 
 const REJECTABLE_STATUSES = constants.APPOINTMENT.REJECTABLE_STATUSES;
@@ -203,7 +203,7 @@ const confirmAppointment = async (req, res) => {
         return res.response({
             success: true,
             message: 'Appointment booked successfully',
-            data: appointment
+            data: applyPaymentState(appointment)
         });
     } catch (error) {
         console.log(error);
@@ -270,7 +270,7 @@ const getDoctorAppointments = async (req, h) => {
                 }
             };
 
-            enriched.payment_refund = buildPaymentRefundStats(enriched);
+            applyPaymentState(enriched);
 
             const apptDate = new Date(appt.appointment_date);
             apptDate.setHours(0, 0, 0, 0);
@@ -427,7 +427,7 @@ const updateAppointmentDateTime = async (req, h) => {
         return h.response({
             success: true,
             message: 'Appointment date and time updated successfully',
-            data: appointment
+            data: applyPaymentState(appointment)
         });
     } catch (error) {
         console.error(error);
@@ -494,7 +494,7 @@ const UpdateAppointmentStatus = async (req, h) => {
                 message: refund.amount > 0 && refund.status === 'processed'
                     ? `Appointment marked as missed. Full refund of ₹${refund.amount} (100%) initiated.`
                     : 'Appointment status updated successfully',
-                data: appointment,
+                data: applyPaymentState(appointment),
                 refund: refundSummary(refund)
             });
         }
@@ -516,7 +516,7 @@ const UpdateAppointmentStatus = async (req, h) => {
         return h.response({
             success: true,
             message: 'Appointment status updated successfully',
-            data: appointment
+            data: applyPaymentState(appointment)
         });
     } catch (error) {
         console.error(error);
@@ -579,7 +579,7 @@ const doctoreject = async (req, h) => {
             message: refund.amount > 0 && refund.status === 'processed'
                 ? `Appointment rejected. Full refund of ₹${refund.amount} (100%) initiated.`
                 : 'Appointment rejected successfully',
-            data: appointment,
+            data: applyPaymentState(appointment),
             refund: refundSummary(refund)
         });
     } catch (error) {
@@ -661,7 +661,7 @@ const cancelAppointmentByUser = async (req, h) => {
             message: refunded
                 ? `Appointment cancelled. Full refund of ₹${refund.amount} (100%) initiated.`
                 : 'Appointment cancelled. No refund applicable.',
-            data: appointment,
+            data: applyPaymentState(appointment),
             refund: refundSummary(refund)
         });
 
@@ -759,8 +759,8 @@ const getadminAppointments = async (req, res) => {
         const allAppointmentsWithImages = await mapDoctorImages(allAppointments);
 
         // Paid -> Refund progress so the money state reads at a glance.
-        appointmentsWithImages.forEach(appt => { appt.payment_refund = buildPaymentRefundStats(appt); });
-        allAppointmentsWithImages.forEach(appt => { appt.payment_refund = buildPaymentRefundStats(appt); });
+        appointmentsWithImages.forEach(appt => applyPaymentState(appt));
+        allAppointmentsWithImages.forEach(appt => applyPaymentState(appt));
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -908,7 +908,7 @@ const getUserAppointments = async (req, res) => {
         today.setHours(0, 0, 0, 0);
 
         // Categorize appointments
-        appointmentsWithImages.forEach(appt => { appt.payment_refund = buildPaymentRefundStats(appt); });
+        appointmentsWithImages.forEach(appt => applyPaymentState(appt));
         const categorized = {
             all: [],
             upcoming: [],
@@ -1177,7 +1177,7 @@ const getTodaysAppointmentsDoctor = async (req, res) => {
             })
         );
 
-        appointments.forEach(appt => { appt.payment_refund = buildPaymentRefundStats(appt); });
+        appointments.forEach(appt => applyPaymentState(appt));
 
         return res.response({
             success: true,
