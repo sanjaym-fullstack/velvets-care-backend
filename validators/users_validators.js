@@ -74,10 +74,17 @@ const logout_user = Joi.object({
     }),
 })
 const user_refresh_token_validator = Joi.object({
-    refresh_token: Joi.string().required().messages({
+    // Optional on purpose: the handler reads the token from `refresh_token`,
+    // `refresh-token`, the query string or the body, and answers with its own
+    // message when none of them carried one. Requiring the header here made the
+    // endpoint unusable behind a proxy that strips underscore-named headers.
+    refresh_token: Joi.string().optional().messages({
         'string.base': 'Refresh token must be a string',
         'string.empty': 'Refresh token is required',
-        'any.required': 'Refresh token is required',
+    }),
+    'refresh-token': Joi.string().optional().messages({
+        'string.base': 'Refresh token must be a string',
+        'string.empty': 'Refresh token is required',
     }),
 }).unknown()
 
