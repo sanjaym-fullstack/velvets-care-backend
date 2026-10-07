@@ -333,7 +333,7 @@ const doctor_update_profile = async (req, res) => {
 };
 const doctor_refresh_token = async (req, res) => {
     try {
-        const { refresh_token } = req.headers;
+        const refresh_token = JWTFunctions.readRefreshToken(req);
         if (!refresh_token) {
             throw new Error('Refresh token required');
         }

@@ -411,12 +411,16 @@ const update_user = async (req, res) => {
 
 const user_refresh_token = async (req, res) => {
     try {
-        const { refresh_token } = req.headers;
+        const refresh_token = JWTFunctions.readRefreshToken(req);
         if (!refresh_token) {
+            // Kept byte-identical to what the header validator used to return,
+            // so clients see the same status and message.
             return res.response({
                 success: false,
-                message: 'Refresh token required',
-            }).code(200);
+                statusCode: 400,
+                error: 'Bad Request',
+                message: 'Refresh token is required',
+            }).code(400);
         }
         const decoded = JWTFunctions.verifyToken(refresh_token);
         const user = await Users.findOne({ where: { id: decoded.user_id } });

@@ -1,11 +1,36 @@
 const { Appointments } = require('../models');
 const { Op } = require('sequelize');
 const { refundFullPayment } = require('./razorpay');
-const { NotificationHelper } = require('./notification_helper');
-const { GoogleCalendarHelper } = require('./google_calendar');
+const NotificationHelper = require('./notification_helper');
 const { constants } = require('../config');
 
 const { REFUND } = constants;
+
+/**
+ * An error whose message is safe to show a user verbatim (validation,
+ * authorization, "not found", ...). Anything else that reaches a catch block is
+ * an internal fault — an ORM error, a gateway failure, a bug — and must be
+ * replaced with a neutral message before it reaches an API response.
+ */
+class ClientError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'ClientError';
+        this.client = true;
+    }
+}
+
+/**
+ * The message to put in an API response: the original text when it was thrown
+ * deliberately, a neutral one otherwise. The real error is expected to have
+ * been logged by the caller.
+ *
+ * @param {Error} error
+ * @param {string} [fallback]
+ * @returns {string}
+ */
+const clientMessage = (error, fallback = 'Something went wrong. Please try again.') =>
+    (error && error.client && error.message) ? error.message : fallback;
 
 /**
  * The single refund flow shared by every appointment refund trigger — patient
@@ -44,7 +69,7 @@ const transitionWithFullRefund = async (appointment, options) => {
     } = options;
 
     if (!appointment || !appointment.id) {
-        throw new Error('Appointment not found');
+        throw new ClientError('Appointment not found');
     }
 
     // Claim the appointment atomically before touching Razorpay. This is the
@@ -125,9 +150,9 @@ const transitionWithFullRefund = async (appointment, options) => {
         await appointment.reload();
     }
 
-    GoogleCalendarHelper.deleteCalendarEvents(appointment.id).catch((e) =>
-        console.error('Google Calendar event deletion failed (non-blocking):', e.message)
-    );
+    // Google Calendar cleanup is deliberately skipped here. Calendar is not in
+    // use, and reaching into it from the cancel path surfaced a hard error in
+    // the response. Re-enable once the integration is actually wired up.
 
     // `id` is handed to the callback rather than read from the caller's
     // binding: the caller is still awaiting this function, so any reference to
@@ -171,7 +196,7 @@ const refundSummary = (refund) => ({
  */
 const retryAppointmentRefund = async (appointment) => {
     if (!appointment || !appointment.id) {
-        throw new Error('Appointment not found');
+        throw new ClientError('Appointment not found');
     }
 
     if (appointment.payment_status !== 'paid' || !appointment.payment_id) {
@@ -254,4 +279,4 @@ const retryAppointmentRefund = async (appointment) => {
     };
 };
 
-module.exports = { transitionWithFullRefund, retryAppointmentRefund, refundSummary, REFUND };
+module.exports = { transitionWithFullRefund, retryAppointmentRefund, refundSummary, REFUND, ClientError, clientMessage };

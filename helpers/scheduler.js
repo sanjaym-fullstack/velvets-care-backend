@@ -1,6 +1,6 @@
 const { Appointments, Users, Doctors } = require('../models');
 const { Op } = require('sequelize');
-const { NotificationHelper } = require('./notification_helper');
+const NotificationHelper = require('./notification_helper');
 
 const normalizeDate = (dateStr) => {
     const d = new Date(dateStr);

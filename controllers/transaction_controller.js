@@ -1,6 +1,7 @@
 'use strict';
 const { Op, fn, col, literal } = require('sequelize');
 const { Appointments, Payments, Orders, Payouts, Users, Doctors } = require('../models');
+const { paymentStateInfo } = require('../helpers/payment_refund_stats');
 
 const parseDate = (dateStr) => {
     if (!dateStr) return null;
@@ -123,6 +124,7 @@ const getAdminTransactions = async (req, res) => {
                     refund_amount: a.refund_amount || 0,
                     net_amount: (a.consultation_fee || 0) - (a.refund_amount || 0),
                     payment_status: a.payment_status,
+                    ...paymentStateInfo(a.payment_status, a.refund_status),
                     payment_id: a.payment_id,
                     refund_status: a.refund_status || null,
                     refund_id: a.refund_id || null,
@@ -198,6 +200,7 @@ const getAdminTransactions = async (req, res) => {
                     refund_amount: o.refund_amount || 0,
                     net_amount: (o.total_amount || 0) - (o.refund_amount || 0),
                     payment_status: o.payment_status,
+                    ...paymentStateInfo(o.payment_status, o.refund_status),
                     payment_id: o.Payments?.[0]?.payment_reference_id || null,
                     refund_status: o.refund_status || null,
                     refund_id: o.refund_id || null,
@@ -371,6 +374,7 @@ const getUserTransactions = async (req, res) => {
                     refund_amount: a.refund_amount || 0,
                     net_amount: (a.consultation_fee || 0) - (a.refund_amount || 0),
                     payment_status: a.payment_status,
+                    ...paymentStateInfo(a.payment_status, a.refund_status),
                     payment_id: a.payment_id,
                     refund_status: a.refund_status || null,
                     refund_id: a.refund_id || null,
@@ -433,6 +437,7 @@ const getUserTransactions = async (req, res) => {
                     refund_amount: o.refund_amount || 0,
                     net_amount: (o.total_amount || 0) - (o.refund_amount || 0),
                     payment_status: o.payment_status,
+                    ...paymentStateInfo(o.payment_status, o.refund_status),
                     payment_id: o.Payments?.[0]?.payment_reference_id || null,
                     refund_status: o.refund_status || null,
                     refund_id: o.refund_id || null,
@@ -541,6 +546,7 @@ const getDoctorTransactions = async (req, res) => {
                     refund_amount: a.refund_amount || 0,
                     net_amount: (a.consultation_fee || 0) - (a.refund_amount || 0),
                     payment_status: a.payment_status,
+                    ...paymentStateInfo(a.payment_status, a.refund_status),
                     payment_id: a.payment_id,
                     refund_status: a.refund_status || null,
                     refund_id: a.refund_id || null,

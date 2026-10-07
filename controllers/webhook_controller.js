@@ -8,11 +8,6 @@ const { verifyWebhookSignature } = require('../helpers/razorpay');
 // route disables payload parsing. That means the signature must be checked
 // against the *raw* bytes before the body is trusted, and the body is only
 // parsed once the signature is known to be genuine.
-//
-// Razorpay delivers `refund.created` before `refund.processed`, but the two are
-// separate deliveries and can arrive out of order. Ranking the states means a
-// late `created` can never walk a settled refund back to pending.
-const REFUND_STATUS_RANK = { failed: 0, pending: 1, processed: 2 };
 
 // The webhook is how a refund raised by hand from the Razorpay dashboard comes
 // back into our tables. Payments are matched to either an appointment
@@ -34,21 +29,27 @@ const resolveTarget = async (paymentId) => {
 };
 
 // Persist the state move. Returns false when the delivery was a duplicate or an
-// out-of-order event that must not regress a settled refund.
+// event that must not disturb a refund that already settled.
+//
+// The only immovable state is `processed`: from `pending` BOTH outcomes are
+// forward moves. Treating `failed` as lower than `pending` (the old rank
+// rule) swallowed every `refund.failed` event and left real failures showing
+// as pending forever.
 const applyRefundState = (record, nextStatus, refundId, refundedRupees) => {
     const isSameRefund = record.refund_id === refundId;
-    const currentRank = REFUND_STATUS_RANK[record.refund_status];
-    const nextRank = REFUND_STATUS_RANK[nextStatus];
+    const current = record.refund_status;
 
     // Same refund, same state — a Razorpay redelivery. Nothing to do, so no
     // second write and no second notification.
-    if (isSameRefund && record.refund_status === nextStatus) {
+    if (isSameRefund && current === nextStatus) {
         return { applied: false, reason: 'duplicate' };
     }
 
-    // A late `refund.created` must not undo a refund that already settled.
-    if (isSameRefund && currentRank !== undefined && nextRank < currentRank) {
-        return { applied: false, reason: 'out_of_order' };
+    // Money already went back to the customer: a late `refund.created` or
+    // `refund.failed` must not walk it back to pending. A *different* refund id
+    // is a separate manual refund and is still allowed through.
+    if (isSameRefund && current === 'processed') {
+        return { applied: false, reason: 'already_settled' };
     }
 
     const updateData = {

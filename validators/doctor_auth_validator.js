@@ -28,12 +28,18 @@ const logout_doctor = Joi.object({
     }),
 })
 const doctor_refresh_token_validator = Joi.object({
-    refresh_token: Joi.string().required().messages({
+    // Optional on purpose: the handler reads the token from `refresh_token`,
+    // `refresh-token`, the query string or the body, so a request that carries
+    // it in a header must not be rejected here before the handler runs.
+    refresh_token: Joi.string().optional().messages({
         'string.base': 'Refresh token must be a string',
         'string.empty': 'Refresh token is required',
-        'any.required': 'Refresh token is required',
     }),
-}).unknown()
+    'refresh-token': Joi.string().optional().messages({
+        'string.base': 'Refresh token must be a string',
+        'string.empty': 'Refresh token is required',
+    }),
+}).unknown().allow(null, '')
 
 const get_doctor_list = Joi.object({
     page: Joi.number().required().messages({
