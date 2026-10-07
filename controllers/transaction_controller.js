@@ -137,36 +137,35 @@ const getAdminTransactions = async (req, res) => {
                 });
             }
 
-            if (type !== 'refund') {
-                const agg = await Appointments.findAll({
-                    where: { ...where, refund_status: null },
-                    attributes: [
-                        [fn('SUM', col('consultation_fee')), 'total'],
-                        [fn('COUNT', col('id')), 'count']
-                    ], raw: true
-                });
-                summary.total_amount += parseFloat(agg[0]?.total || 0);
-                summary.count += parseInt(agg[0]?.count || 0);
-            }
+            // Gross always covers every row in scope - refunded ones included -
+            // so net_revenue = gross - total_refunds never double-subtracts.
+            const agg = await Appointments.findAll({
+                where: { ...where },
+                attributes: [
+                    [fn('SUM', col('consultation_fee')), 'total'],
+                    [fn('COUNT', col('id')), 'count']
+                ], raw: true
+            });
+            summary.total_amount += parseFloat(agg[0]?.total || 0);
+            summary.count += parseInt(agg[0]?.count || 0);
 
-            if (!type || type === 'refund') {
-                const refundAgg = await Appointments.findAll({
-                    where: { ...where, refund_status: { [Op.not]: null } },
-                    attributes: [
-                        [fn('SUM', col('refund_amount')), 'total'],
-                        [fn('COUNT', col('id')), 'count']
-                    ], raw: true
-                });
-                summary.total_refunds += parseFloat(refundAgg[0]?.total || 0);
-            }
+            const refundAgg = await Appointments.findAll({
+                where: { ...where, refund_status: { [Op.not]: null } },
+                attributes: [
+                    [fn('SUM', col('refund_amount')), 'total'],
+                    [fn('COUNT', col('id')), 'count']
+                ], raw: true
+            });
+            summary.total_refunds += parseFloat(refundAgg[0]?.total || 0);
         }
 
         // ── Order Transactions ──
-        if (!type || type === 'order') {
+        if (!type || type === 'order' || type === 'refund') {
             const where = {};
             const dateFilter = buildDateFilter('createdAt', date_from, date_to);
             if (dateFilter) Object.assign(where, dateFilter);
             if (payment_status) where.payment_status = payment_status;
+            if (type === 'refund') where.refund_status = { [Op.not]: null };
 
             if (search) {
                 const userIds = (await Users.findAll({
@@ -193,13 +192,15 @@ const getAdminTransactions = async (req, res) => {
             for (const o of orders) {
                 results.push({
                     id: `ORDER-${o.id}`,
-                    type: 'order',
+                    type: o.refund_status ? 'refund' : 'order',
                     date: o.createdAt?.toISOString?.()?.split('T')[0] || o.createdAt,
                     amount: o.total_amount || 0,
-                    refund_amount: 0,
-                    net_amount: o.total_amount || 0,
+                    refund_amount: o.refund_amount || 0,
+                    net_amount: (o.total_amount || 0) - (o.refund_amount || 0),
                     payment_status: o.payment_status,
                     payment_id: o.Payments?.[0]?.payment_reference_id || null,
+                    refund_status: o.refund_status || null,
+                    refund_id: o.refund_id || null,
                     doctor_name: null,
                     patient_name: o.User?.name || 'N/A',
                     patient_id: o.user_id,
@@ -210,7 +211,7 @@ const getAdminTransactions = async (req, res) => {
             }
 
             const orderAgg = await Orders.findAll({
-                where,
+                where: { ...where },
                 attributes: [
                     [fn('SUM', col('total_amount')), 'total'],
                     [fn('COUNT', col('id')), 'count']
@@ -218,6 +219,15 @@ const getAdminTransactions = async (req, res) => {
             });
             summary.total_amount += parseFloat(orderAgg[0]?.total || 0);
             summary.count += parseInt(orderAgg[0]?.count || 0);
+
+            const orderRefundAgg = await Orders.findAll({
+                where: { ...where, refund_status: { [Op.not]: null } },
+                attributes: [
+                    [fn('SUM', col('refund_amount')), 'total'],
+                    [fn('COUNT', col('id')), 'count']
+                ], raw: true
+            });
+            summary.total_refunds += parseFloat(orderRefundAgg[0]?.total || 0);
         }
 
         // ── Payout Transactions ──
@@ -373,31 +383,30 @@ const getUserTransactions = async (req, res) => {
                 });
             }
 
-            if (type !== 'refund') {
-                const agg = await Appointments.findAll({
-                    where: { ...where, refund_status: null },
-                    attributes: [
-                        [fn('SUM', col('consultation_fee')), 'total'],
-                        [fn('COUNT', col('id')), 'count']
-                    ], raw: true
-                });
-                summary.total_spent += parseFloat(agg[0]?.total || 0);
-                summary.appointment_count += parseInt(agg[0]?.count || 0);
-            }
+            const agg = await Appointments.findAll({
+                where: { ...where },
+                attributes: [
+                    [fn('SUM', col('consultation_fee')), 'total'],
+                    [fn('COUNT', col('id')), 'count']
+                ], raw: true
+            });
+            summary.total_spent += parseFloat(agg[0]?.total || 0);
+            summary.appointment_count += parseInt(agg[0]?.count || 0);
 
             const refundAgg = await Appointments.findAll({
-                where: { patient_id: userId, refund_status: { [Op.not]: null } },
+                where: { ...where, refund_status: { [Op.not]: null } },
                 attributes: [[fn('SUM', col('refund_amount')), 'total']], raw: true
             });
             summary.total_refunds += parseFloat(refundAgg[0]?.total || 0);
         }
 
         // ── User's Order Transactions ──
-        if (!type || type === 'order') {
+        if (!type || type === 'order' || type === 'refund') {
             const where = { user_id: userId };
             const dateFilter = buildDateFilter('createdAt', date_from, date_to);
             if (dateFilter) Object.assign(where, dateFilter);
             if (payment_status) where.payment_status = payment_status;
+            if (type === 'refund') where.refund_status = { [Op.not]: null };
 
             if (search) {
                 where[Op.or] = [
@@ -418,13 +427,15 @@ const getUserTransactions = async (req, res) => {
             for (const o of orders) {
                 results.push({
                     id: `ORDER-${o.id}`,
-                    type: 'order',
+                    type: o.refund_status ? 'refund' : 'order',
                     date: o.createdAt?.toISOString?.()?.split('T')[0] || o.createdAt,
                     amount: o.total_amount || 0,
-                    refund_amount: 0,
-                    net_amount: o.total_amount || 0,
+                    refund_amount: o.refund_amount || 0,
+                    net_amount: (o.total_amount || 0) - (o.refund_amount || 0),
                     payment_status: o.payment_status,
                     payment_id: o.Payments?.[0]?.payment_reference_id || null,
+                    refund_status: o.refund_status || null,
+                    refund_id: o.refund_id || null,
                     status: o.status,
                     discount_code: o.discount_code || null,
                     created_at: o.createdAt
@@ -432,7 +443,7 @@ const getUserTransactions = async (req, res) => {
             }
 
             const orderAgg = await Orders.findAll({
-                where,
+                where: { ...where },
                 attributes: [
                     [fn('SUM', col('total_amount')), 'total'],
                     [fn('COUNT', col('id')), 'count']
@@ -440,6 +451,12 @@ const getUserTransactions = async (req, res) => {
             });
             summary.total_spent += parseFloat(orderAgg[0]?.total || 0);
             summary.order_count += parseInt(orderAgg[0]?.count || 0);
+
+            const orderRefundAgg = await Orders.findAll({
+                where: { ...where, refund_status: { [Op.not]: null } },
+                attributes: [[fn('SUM', col('refund_amount')), 'total']], raw: true
+            });
+            summary.total_refunds += parseFloat(orderRefundAgg[0]?.total || 0);
         }
 
         summary.net_spent = summary.total_spent - summary.total_refunds;
@@ -537,20 +554,18 @@ const getDoctorTransactions = async (req, res) => {
                 });
             }
 
-            if (type !== 'refund') {
-                const agg = await Appointments.findAll({
-                    where: { ...where, refund_status: null },
-                    attributes: [
-                        [fn('SUM', col('consultation_fee')), 'total'],
-                        [fn('COUNT', col('id')), 'count']
-                    ], raw: true
-                });
-                summary.total_earned += parseFloat(agg[0]?.total || 0);
-                summary.consultation_count += parseInt(agg[0]?.count || 0);
-            }
+            const agg = await Appointments.findAll({
+                where: { ...where },
+                attributes: [
+                    [fn('SUM', col('consultation_fee')), 'total'],
+                    [fn('COUNT', col('id')), 'count']
+                ], raw: true
+            });
+            summary.total_earned += parseFloat(agg[0]?.total || 0);
+            summary.consultation_count += parseInt(agg[0]?.count || 0);
 
             const refundAgg = await Appointments.findAll({
-                where: { doctor_id: doctorId, refund_status: { [Op.not]: null } },
+                where: { ...where, refund_status: { [Op.not]: null } },
                 attributes: [[fn('SUM', col('refund_amount')), 'total']], raw: true
             });
             summary.total_refunds += parseFloat(refundAgg[0]?.total || 0);
@@ -650,9 +665,11 @@ const getTransactionSummary = async (req, res) => {
         const orderWhere = orderDateFilter || {};
         const payoutWhere = payoutDateFilter || {};
 
-        const [apptRevenue, orderRevenue, refundTotal, payoutTotal, appointmentStats, orderStats] = await Promise.all([
+        // Gross revenue covers refunded rows too; refunds are summed on their
+        // own so net_revenue = gross - refunds is not subtracted twice.
+        const [apptRevenue, orderRevenue, refundTotal, orderRefundTotal, payoutTotal, appointmentStats, orderStats] = await Promise.all([
             Appointments.findAll({
-                where: { ...apptWhere, payment_status: 'paid', refund_status: null },
+                where: { ...apptWhere, payment_status: 'paid' },
                 attributes: [[fn('SUM', col('consultation_fee')), 'total'], [fn('COUNT', col('id')), 'count']],
                 raw: true
             }),
@@ -663,6 +680,11 @@ const getTransactionSummary = async (req, res) => {
             }),
             Appointments.findAll({
                 where: { ...apptWhere, refund_status: { [Op.not]: null } },
+                attributes: [[fn('SUM', col('refund_amount')), 'total'], [fn('COUNT', col('id')), 'count']],
+                raw: true
+            }),
+            Orders.findAll({
+                where: { ...orderWhere, refund_status: { [Op.not]: null } },
                 attributes: [[fn('SUM', col('refund_amount')), 'total'], [fn('COUNT', col('id')), 'count']],
                 raw: true
             }),
@@ -690,7 +712,8 @@ const getTransactionSummary = async (req, res) => {
 
         const consultationRevenue = parseFloat(apptRevenue[0]?.total || 0);
         const productRevenue = parseFloat(orderRevenue[0]?.total || 0);
-        const totalRefunds = parseFloat(refundTotal[0]?.total || 0);
+        const totalRefunds = parseFloat(refundTotal[0]?.total || 0)
+            + parseFloat(orderRefundTotal[0]?.total || 0);
         const totalPayouts = parseFloat(payoutTotal[0]?.total || 0);
         const platformFees = parseFloat(payoutTotal[0]?.platform_fees || 0);
         const totalGST = parseFloat(payoutTotal[0]?.gst || 0);
@@ -712,7 +735,7 @@ const getTransactionSummary = async (req, res) => {
                     net_platform_income: platformFees + totalGST
                 },
                 counts: {
-                    total_appointments: parseInt(apptRevenue[0]?.count || 0) + parseInt(refundTotal[0]?.count || 0),
+                    total_appointments: parseInt(apptRevenue[0]?.count || 0),
                     total_orders: parseInt(orderRevenue[0]?.count || 0),
                     total_payouts: parseInt(payoutTotal[0]?.count || 0)
                 },
