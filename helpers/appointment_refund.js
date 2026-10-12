@@ -163,6 +163,17 @@ const transitionWithFullRefund = async (appointment, options) => {
         NotificationHelper.sendToUser(appointment.patient_id, copy.title, copy.body, copy.extras);
     }
 
+    // Admins are told about a settled refund here as well. Only the retry
+    // endpoint used to announce it, so a refund that succeeded on the first
+    // attempt never showed up in the admin notification list.
+    if (refundStatus === 'processed' && refundAmount > 0) {
+        NotificationHelper.sendToAllAdmins(
+            'Refund Processed',
+            `Refund of ₹${refundAmount} (${percent}%) for appointment #${appointment.id} has been processed.`,
+            { appointment_id: appointment.id, refund_id: keptRefundId, refund_percent: percent }
+        );
+    }
+
     return {
         transitioned: true,
         refund: { id: keptRefundId, amount: refundAmount, status: refundStatus, percent },

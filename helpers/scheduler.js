@@ -22,6 +22,34 @@ const to24Hour = (timeStr) => {
     return val;
 };
 
+// Minutes since midnight, from "3:00 PM" / "15:00".
+const toMinutesOfDay = (timeStr) => {
+    const hhmm = to24Hour(timeStr);
+    if (Number.isNaN(hhmm)) return null;
+    return Math.floor(hhmm / 100) * 60 + (hhmm % 100);
+};
+
+// One reminder per appointment per kind.
+//
+// These jobs tick every 10-30 minutes while the notification helper only
+// dedups within a 30-second window, so without this guard the same
+// "Appointment Tomorrow" message was pushed on every tick - up to ~48 times
+// a day for a single appointment.
+const reminderSent = new Map();
+
+const alreadyReminded = (key) => {
+    if (reminderSent.has(key)) return true;
+    reminderSent.set(key, Date.now());
+
+    if (reminderSent.size > 5000) {
+        const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+        for (const [k, at] of reminderSent) {
+            if (at < cutoff) reminderSent.delete(k);
+        }
+    }
+    return false;
+};
+
 const send24HourReminders = async () => {
     try {
         const tomorrow = new Date();
@@ -38,6 +66,11 @@ const send24HourReminders = async () => {
 
         for (const appt of appointments) {
             try {
+                // Statuses are already filtered to pending/approved in the
+                // query above, so a cancelled or rejected appointment can
+                // never produce a reminder; this only stops the repeat sends.
+                if (alreadyReminded(`24h:${appt.id}:${appt.appointment_date}`)) continue;
+
                 NotificationHelper.sendToUser(appt.patient_id,
                     'Appointment Tomorrow',
                     `You have an appointment tomorrow at ${appt.appointment_time}. Please be prepared.`,
@@ -64,7 +97,6 @@ const send1HourReminders = async () => {
         const now = new Date();
         const currentHour = now.getHours();
         const currentMinute = now.getMinutes();
-        const currentTime24 = currentHour * 100 + currentMinute;
 
         const appointments = await Appointments.findAll({
             where: {
@@ -76,10 +108,16 @@ const send1HourReminders = async () => {
 
         for (const appt of appointments) {
             try {
-                const apptTime24 = to24Hour(appt.appointment_time);
-                const diffMinutes = apptTime24 - currentTime24;
+                // Real minutes, not HHMM subtraction: "14:55 -> 15:05" gives
+                // 50 in HHMM arithmetic but is 10 minutes.
+                const apptMinutes = toMinutesOfDay(appt.appointment_time);
+                const nowMinutes = currentHour * 60 + currentMinute;
+                const diffMinutes = apptMinutes - nowMinutes;
+
                 // Send reminder if appointment is within 30-90 minutes
                 if (diffMinutes >= 30 && diffMinutes <= 90) {
+                    if (alreadyReminded(`1h:${appt.id}:${appt.appointment_date}`)) continue;
+
                     NotificationHelper.sendToUser(appt.patient_id,
                         'Appointment in 1 Hour',
                         `Your appointment is in about 1 hour at ${appt.appointment_time}. Please be ready.`,

@@ -416,36 +416,56 @@ const updateAvailability = async (req, h) => {
       throw new Error('Doctor not found');
     }
 
+    // Exactly one row per (doctor, day). Every reader looks the schedule up
+    // with findOne({ doctor_id, day }), so a second row for the same day makes
+    // the stale one win and the update looks like it silently did nothing.
+    // The old code matched existing rows on day + start_time + end_time,
+    // which meant any change to the times never matched and just appended a
+    // duplicate row instead of updating.
+    const seenDays = new Set();
+
     for (const slot of availability) {
-      const existingSlot = await Doctorsavailability.findOne({
+      if (seenDays.has(slot.day)) continue; // payload repeated a day
+      seenDays.add(slot.day);
+
+      const rows = await Doctorsavailability.findAll({
         where: {
           doctor_id,
-          day: slot.day,
-          start_time: slot.start_time,
-          end_time: slot.end_time
-        }
+          day: slot.day
+        },
+        order: [['id', 'ASC']]
       });
 
-      if (existingSlot) {
-        // Update slot if needed
-        await existingSlot.update({
-          ...slot
-        },
-          {
-            where: {
-              id: existingSlot.id
-            }
-          });
-      } else {
-        // Create new slot
+      if (rows.length === 0) {
         await Doctorsavailability.create({
           doctor_id,
           day: slot.day,
           start_time: slot.start_time,
           end_time: slot.end_time
         });
+        continue;
+      }
+
+      await rows[0].update({
+        start_time: slot.start_time,
+        end_time: slot.end_time
+      });
+
+      // Remove stale duplicates left behind by the old lookup logic so
+      // findOne cannot pick an outdated row for this day.
+      for (const duplicate of rows.slice(1)) {
+        await duplicate.destroy();
       }
     }
+
+    // Days that are no longer part of the submitted schedule are no longer
+    // available (destroy is a soft delete on this paranoid model).
+    await Doctorsavailability.destroy({
+      where: {
+        doctor_id,
+        day: { [Op.notIn]: [...seenDays] }
+      }
+    });
 
     return h.response({
       success: true,
