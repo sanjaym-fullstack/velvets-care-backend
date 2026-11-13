@@ -4,12 +4,10 @@ const fs = require('fs');
 const {
     OTPFunctions,
     JWTFunctions,
-    TwilioFunctions,
+    WhatsAppFunctions,
     FileFunctions,
     stripSensitive
 } = require('../helpers')
-
-const DEMO_OTP = '1234'
 
 const normalizePhone = (phone) => {
     if (!phone) return phone;
@@ -29,20 +27,6 @@ const doctor_request_otp = async (req, res) => {
 
         const otp = await OTPFunctions.getOTPByLength(4);
         if (!doctor) {
-            // const otpCode = await Otps.create({
-            //     otp: otp,
-            //     otp_time: Date.now()
-            // });
-
-            // const sent = await TwilioFunctions.sendOtpViaTwilio(phone, otpCode.otp);
-            // if (!sent) {
-            //     throw new Error('OTP not sent');
-            // }
-            // await Doctors.create({
-            //     phone: phone,
-            //     otp_id: otpCode.id
-            // });
-
             return res.response({
                 success: false,
                 message: 'Doctor not found. Please register by contacting the velvets care team first.',
@@ -59,10 +43,14 @@ const doctor_request_otp = async (req, res) => {
             otp_time: Date.now()
         });
 
-        // const sent = await TwilioFunctions.sendOtpViaTwilio(phone, otpCode.otp);
-        // if (!sent) {
-        //     throw new Error('OTP not sent');
-        // }
+        const sent = await WhatsAppFunctions.sendOtpViaWhatsApp(phone, otpCode.otp);
+        if (!sent) {
+            await Otps.destroy({ where: { id: otpCode.id } });
+            return res.response({
+                success: false,
+                message: 'Unable to send OTP on WhatsApp. Please check the phone number.',
+            });
+        }
 
         await Doctors.update({
             otp_id: otpCode.id
@@ -102,70 +90,56 @@ const doctor_verify_otp = async (req, res) => {
             });
         }
 
-        let access_token;
-        let refresh_token;
-        let payload = {
+        const payload = {
             doctor_id: doctor.id,
             phone: doctor.phone,
             name: doctor.full_name,
             role: 'DOCTOR'
         };
 
-        if (DEMO_OTP == otp) {
-            refresh_token = await JWTFunctions.generateToken(payload, '30d');
-            access_token = await JWTFunctions.generateToken(payload, '1d');
+        const otpCode = await Otps.findOne({
+            where: { id: doctor.otp_id },
+            raw: true
+        });
 
-            await Doctors.update({
-                access_token,
-                refresh_token
-            }, {
-                where: { id: doctor.id }
-            });
-        } else {
-            const otpCode = await Otps.findOne({
-                where: { id: doctor.otp_id },
-                raw: true
-            });
-
-            if (!otpCode) {
-                return res.response({
-                    success: false,
-                    message: 'OTP already used or expired',
-                });
-            }
-
-            const otpTime = new Date(otpCode.otp_time);
-            const currentTime = new Date();
-            const diffInMinutes = (currentTime - otpTime) / 1000 / 60;
-
-            if (diffInMinutes > 10) {
-                return res.response({
-                    success: false,
-                    message: 'OTP has expired. Please request a new one.',
-                });
-            }
-
-            if (otpCode.otp != otp) {
-                return res.response({
-                    success: false,
-                    message: 'Invalid OTP',
-                });
-            }
-
-            refresh_token = await JWTFunctions.generateToken(payload, '30d');
-            access_token = await JWTFunctions.generateToken(payload, '1d');
-
-            await Doctors.update({
-                access_token,
-                refresh_token
-            }, {
-                where: { id: doctor.id }
-            });
-
-            await Otps.destroy({
-                where: { id: doctor.otp_id }
+        if (!otpCode) {
+            return res.response({
+                success: false,
+                message: 'OTP already used or expired',
             });
         }
+
+        const otpTime = new Date(otpCode.otp_time);
+        const currentTime = new Date();
+        const diffInMinutes = (currentTime - otpTime) / 1000 / 60;
+
+        if (diffInMinutes > 10) {
+            return res.response({
+                success: false,
+                message: 'OTP has expired. Please request a new one.',
+            });
+        }
+
+        if (otpCode.otp != otp) {
+            return res.response({
+                success: false,
+                message: 'Invalid OTP',
+            });
+        }
+
+        const refresh_token = await JWTFunctions.generateToken(payload, '30d');
+        const access_token = await JWTFunctions.generateToken(payload, '1d');
+
+        await Doctors.update({
+            access_token,
+            refresh_token
+        }, {
+            where: { id: doctor.id }
+        });
+
+        await Otps.destroy({
+            where: { id: doctor.otp_id }
+        });
 
         return res.response({
             success: true,

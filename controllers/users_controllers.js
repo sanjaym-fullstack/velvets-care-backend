@@ -11,8 +11,7 @@ const {
 } = require('../helpers')
 const fs = require('fs')
 
-const { TwilioFunctions, FileFunctions } = require('../helpers')
-const DEMO_OTP = '1234'
+const { WhatsAppFunctions, FileFunctions } = require('../helpers')
 
 const normalizePhone = (phone) => {
     if (!phone) return phone;
@@ -55,15 +54,18 @@ const request_otp_login = async (req, res) => {
             }).code(200);
         }
         const otp = await OTPFunctions.getOTPByLength(4);
-        console.log("login otp:", otp);
         const otpCode = await Otps.create({
             otp: otp,
             otp_time: Date.now()
         })
-        // const sent = await TwilioFunctions.sendOtpViaTwilio(phone, otpCode.otp);
-        // if (!sent) {
-        //     throw new Error('OTP not sent');
-        // }
+        const sent = await WhatsAppFunctions.sendOtpViaWhatsApp(phone, otpCode.otp);
+        if (!sent) {
+            await Otps.destroy({ where: { id: otpCode.id } });
+            return res.response({
+                success: false,
+                message: 'Unable to send OTP on WhatsApp. Please check the phone number.',
+            });
+        }
         await Users.update({
             otp_id: otpCode.id
         }, {
@@ -73,7 +75,6 @@ const request_otp_login = async (req, res) => {
         })
         return res.response({
             success: true,
-            otp: otpCode.otp,
             message: 'OTP sent successfully',
         })
     }
@@ -98,7 +99,6 @@ const request_otp_register = async (req, res) => {
             raw: true
         })
         const otp = await OTPFunctions.getOTPByLength(4);
-        console.log("register otp:", otp);
         if (user) {
             return res.response({
                 success: false,
@@ -109,10 +109,14 @@ const request_otp_register = async (req, res) => {
             otp: otp,
             otp_time: Date.now()
         })
-        // const sent = await TwilioFunctions.sendOtpViaTwilio(phone, otpCode.otp);
-        // if (!sent) {
-        //     throw new Error('OTP not sent');
-        // }
+        const sent = await WhatsAppFunctions.sendOtpViaWhatsApp(phone, otpCode.otp);
+        if (!sent) {
+            await Otps.destroy({ where: { id: otpCode.id } });
+            return res.response({
+                success: false,
+                message: 'Unable to send OTP on WhatsApp. Please check the phone number.',
+            });
+        }
         await Users.create({
             phone: phone,
             name: name,
@@ -128,7 +132,6 @@ const request_otp_register = async (req, res) => {
 
         return res.response({
             success: true,
-            otp: otpCode.otp,
             message: 'OTP sent successfully',
         })
     }
@@ -152,29 +155,6 @@ const verify_otp = async (req, res) => {
                 success: false,
                 message: 'User not found',
             });
-        }
-
-        // If DEMO_OTP is used
-        if (otp == DEMO_OTP) {
-            const payload = {
-                user_id: user.id,
-                phone: user.phone,
-                name: user.name,
-                role: 'USER'
-            };
-            const refresh_token = await JWTFunctions.generateToken(payload, '30d');
-            const access_token = await JWTFunctions.generateToken(payload, '1d');
-
-            await Users.update(
-                { access_token, refresh_token },
-                { where: { id: user.id } }
-            );
-
-            return res.response({
-                success: true,
-                message: 'OTP verified successfully (demo)',
-                data: { access_token, refresh_token, user: payload },
-            }).code(200);
         }
 
         // Real OTP verification
