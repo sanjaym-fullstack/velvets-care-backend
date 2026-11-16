@@ -11,13 +11,29 @@ const {
 
 const normalizePhone = (phone) => {
     if (!phone) return phone;
-    return phone.replace(/^(\+91|\+1|\+44|\+81|\+86|\+49|\+33|\+61|\+82|\+7|\+55|\+91)\s*/, '').trim();
+    // Strip a leading +country code, then keep digits only so storage and
+    // lookups always agree: "+91 98765 43210", "919876543210",
+    // "09876543210" and "98765 43210" all become "9876543210".
+    let digits = String(phone)
+        .replace(/^(\+91|\+1|\+44|\+81|\+86|\+49|\+33|\+61|\+82|\+7|\+55)\s*/, '')
+        .replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
+    if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
+    return digits;
 };
+
+const isValidPhone = (phone) => /^[6-9]\d{9}$/.test(phone);
 
 const doctor_request_otp = async (req, res) => {
     try {
         const { phone: rawPhone } = req.payload;
         const phone = normalizePhone(rawPhone);
+        if (!isValidPhone(phone)) {
+            return res.response({
+                success: false,
+                message: 'Invalid phone number',
+            });
+        }
         const doctor = await Doctors.findOne({
             where: {
                 phone: phone
@@ -78,6 +94,12 @@ const doctor_verify_otp = async (req, res) => {
     try {
         const { phone: rawPhone, otp } = req.payload;
         const phone = normalizePhone(rawPhone);
+        if (!isValidPhone(phone)) {
+            return res.response({
+                success: false,
+                message: 'Invalid phone number',
+            });
+        }
         const doctor = await Doctors.findOne({
             where: { phone },
             raw: true
