@@ -19,7 +19,7 @@ const {
 } = require('../helpers')
 const fs = require('fs')
 
-const { TwilioFunctions, FileFunctions } = require('../helpers');
+const { FileFunctions } = require('../helpers');
 const { ComplianceInquiriesContextImpl } = require('twilio/lib/rest/trusthub/v1/complianceInquiries');
 const { default: ClientCapability } = require('twilio/lib/jwt/ClientCapability');
 const { off } = require('../config/mailer');

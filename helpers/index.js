@@ -29,7 +29,7 @@ module.exports = {
     EncryptFunction: require('./encryption'),
     FileFunctions: require('./file_functions'),
     OTPFunctions: require('./otp'),
-    TwilioFunctions: require('./twilio'),
+    WhatsAppFunctions: require('./msg91'),
     GoogleAuthFunctions: require('./google_auth'),
     RazorpayFunctions: require('./razorpay'),
     AgoraFunctions: require('./agora'),
