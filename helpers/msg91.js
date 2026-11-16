@@ -14,7 +14,12 @@ const getConfig = () => {
     sender,
     template,
     language: process.env.MSG91_WHATSAPP_TEMPLATE_LANG || 'en',
-    otpComponent: process.env.MSG91_WHATSAPP_OTP_COMPONENT || 'body_1',
+    // Comma-separated template placeholders that all receive the OTP value,
+    // e.g. "body_1,button_1" for templates whose URL button also carries {{1}}.
+    otpComponents: (process.env.MSG91_WHATSAPP_OTP_COMPONENT || 'body_1')
+      .split(',')
+      .map((key) => key.trim())
+      .filter(Boolean),
   };
 };
 
@@ -86,9 +91,12 @@ const sendOtpViaWhatsApp = async (phone, otp) => {
             to_and_components: [
               {
                 to: [to],
-                components: {
-                  [cfg.otpComponent]: { type: 'text', value: String(otp) },
-                },
+                components: cfg.otpComponents.reduce((acc, key) => {
+                  acc[key] = key.startsWith('button')
+                    ? { subtype: 'url', type: 'text', value: String(otp) }
+                    : { type: 'text', value: String(otp) };
+                  return acc;
+                }, {}),
               },
             ],
           },
