@@ -1095,11 +1095,11 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
         const bookedTimes = new Set(allAppointments.map(a => a.appointment_time));
 
         // 9️⃣ Generate slots
-        let current = new Date(start);
         const slots = await Promise.all(availability_list.map(availability => {
             const startTimeStr = availability.start_time;
             const endTimeStr = availability.end_time;
             const start = timeToDate(startTimeStr);
+            let current = new Date(start);
             const end = timeToDate(endTimeStr);
             while (current < end) {
                 const next = new Date(current.getTime() + 30 * 60000);
