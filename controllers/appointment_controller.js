@@ -1095,7 +1095,8 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
         const bookedTimes = new Set(allAppointments.map(a => a.appointment_time));
 
         // 9️⃣ Generate slots
-        const slots = await Promise.all(availability_list.map(availability => {
+        const slots = []
+        availability_list.forEach(availability => {
             const startTimeStr = availability.start_time;
             const endTimeStr = availability.end_time;
             const start = timeToDate(startTimeStr);
@@ -1114,7 +1115,7 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
 
                 current = next;
             }
-        }))
+        })
 
         // 🔟 Final response
         return res.response({
