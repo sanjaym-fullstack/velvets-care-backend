@@ -740,22 +740,24 @@ const fetch_single_doctor = async (req, h) => {
     // Wrap the doctor object in an array to use banner-style Promise mapping
     const doctor_mapped = {
       ...doctor,
-      profile_image: doctor.profile_image?.files_url
-        ? await FileFunctions.getFromS3(doctor.profile_image.files_url)
+      profile_image: doctor?.profile_image?.files_url
+        ? await FileFunctions.getFromS3(doctor?.profile_image.files_url)
         : null,
-      registration_certificate: doctor.registration_certificate?.files_url
-        ? await FileFunctions.getFromS3(doctor.registration_certificate.files_url)
+      registration_certificate: doctor?.registration_certificate?.files_url
+        ? await FileFunctions.getFromS3(doctor?.registration_certificate.files_url)
         : null,
-      medical_degree_certificate: doctor.medical_degree_certificate?.files_url
-        ? await FileFunctions.getFromS3(doctor.medical_degree_certificate.files_url)
+      medical_degree_certificate: doctor?.medical_degree_certificate?.files_url
+        ? await FileFunctions.getFromS3(doctor?.medical_degree_certificate.files_url)
         : null,
-      government_id: doctor.government_id_file?.files_url
-        ? await FileFunctions.getFromS3(doctor.government_id_file.files_url)
+      government_id: doctor?.government_id_file?.files_url
+        ? await FileFunctions.getFromS3(doctor?.government_id_file.files_url)
         : null,
-      pan_card: doctor.pan_card_file?.files_url
-        ? await FileFunctions.getFromS3(doctor.pan_card_file.files_url)
+      pan_card: doctor?.pan_card_file?.files_url
+        ? await FileFunctions.getFromS3(doctor?.pan_card_file.files_url)
         : null
     }
+
+    console.log('doctors_controller.js:760', doctor_mapped);
 
     return h.response({
       success: true,
