@@ -1054,7 +1054,8 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
 
         // 6️⃣ Get doctor availability
         const availability_list = await Doctorsavailability.findAll({
-            where: { doctor_id, day: appointmentDay }
+            where: { doctor_id, day: appointmentDay },
+            raw: true
         });
         if (!availability_list) throw new Error('Doctor is not available on this day');
 
@@ -1096,6 +1097,36 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
 
         // 9️⃣ Generate slots
         const slots = []
+        const getDayAvailability = (availabilities, day) => {
+            const daySlots = availabilities.filter(
+                item => item.day.toLowerCase() === day.toLowerCase()
+            );
+
+            if (!daySlots.length) {
+                return null;
+            }
+
+            const sortedStartTimes = daySlots
+                .map(item => item.start_time)
+                .sort();
+
+            const sortedEndTimes = daySlots
+                .map(item => item.end_time)
+                .sort();
+
+            return {
+                day,
+                start_time: sortedStartTimes[0],
+                end_time: sortedEndTimes[sortedEndTimes.length - 1]
+            };
+        };
+        const result = getDayAvailability(
+            availability_list,
+            appointmentDay
+        );
+
+        console.log('appointment_controller.js:1128', result);
+
         availability_list.forEach(availability => {
             const startTimeStr = availability.start_time;
             const endTimeStr = availability.end_time;
