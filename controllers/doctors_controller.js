@@ -739,7 +739,7 @@ const fetch_single_doctor = async (req, h) => {
 
     // Wrap the doctor object in an array to use banner-style Promise mapping
     const doctor_mapped = await Promise.all(
-      doctor.dataValues.map(async (d) => ({
+      doctor.map(async (d) => ({
         ...d,
         profile_image: d.profile_image?.files_url
           ? await FileFunctions.getFromS3(d.profile_image.files_url)
