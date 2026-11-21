@@ -1022,21 +1022,19 @@ const checkDoctorAvailability = async (req, res) => {
     }
 };
 
-
 const getDoctorAvailableTimeSlots = async (req, res) => {
     try {
-        // 1. Auth
+        // 1️⃣ Auth
         const session_user = req.headers.user;
         if (!session_user) throw new Error('Session expired');
 
-        // 2. Payload validation
+        // 2️⃣ Payload validation
         const { doctor_id, appointment_date } = req.payload;
-
         if (!doctor_id || !appointment_date) {
             throw new Error('doctor_id and appointment_date are required');
         }
 
-        // 3. Parse date
+        // 3️⃣ Parse date safely
         const appointmentDate = parseAnyDate(appointment_date);
         const normalizedDate = normalizeDate(appointment_date);
         const todayNormalized = normalizeDate(new Date().toISOString());
@@ -1045,137 +1043,91 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
             throw new Error('Past date not allowed');
         }
 
-        // 4. Lookups
+        // 4️⃣ Lookups
         const user = await Users.findByPk(session_user.user_id);
-
-        if (session_user.role != 'ADMIN' && !user) {
-            throw new Error('Invalid user');
-        }
-
-        const doctor = await Doctors.findByPk(doctor_id, {
-            raw: true
-        });
-
+        if (session_user.role != 'ADMIN' && !user) throw new Error('Invalid user')
+        const doctor = await Doctors.findByPk(doctor_id, { raw: true });
         if (!doctor) throw new Error('Invalid doctor');
 
-        // 5. Get weekday
-        const appointmentDay = appointmentDate.toLocaleDateString(
-            'en-IN',
-            { weekday: 'long' }
-        );
+        // 5️⃣ Translate weekday
+        const appointmentDay = appointmentDate.toLocaleDateString('en-IN', { weekday: 'long' });
 
-        // 6. Get all availability records
-        const availability = await Doctorsavailability.findAll({
-            where: {
-                doctor_id,
-                day: appointmentDay
-            },
-            raw: true
+        // 6️⃣ Get doctor availability
+        const availability_list = await Doctorsavailability.findAll({
+            where: { doctor_id, day: appointmentDay }
         });
+        if (!availability_list) throw new Error('Doctor is not available on this day');
 
-        if (!availability || availability.length === 0) {
-            throw new Error('Doctor is not available on this day');
-        }
 
-        // Convert HH:mm into minutes
-        const timeToMinutes = (timeStr) => {
-            const [hours, minutes] = timeStr.split(':').map(Number);
-
-            return (hours * 60) + minutes;
+        // 7️⃣ Convert time string to date
+        const timeToDate = (timeStr) => {
+            const [time, modifier] = timeStr.split(' ');
+            let [hours, minutes] = time.split(':').map(Number);
+            if (modifier === 'PM' && hours !== 12) hours += 12;
+            if (modifier === 'AM' && hours === 12) hours = 0;
+            const date = new Date(appointmentDate);
+            date.setHours(hours);
+            date.setMinutes(minutes);
+            date.setSeconds(0);
+            return date;
         };
 
-        // Convert minutes into AM/PM
-        const formatAMPM = (minutes) => {
-            const hours = Math.floor(minutes / 60) % 24;
-            const mins = minutes % 60;
-
+        const formatAMPM = (date) => {
+            let hours = date.getHours();
+            const minutes = date.getMinutes();
             const ampm = hours >= 12 ? 'PM' : 'AM';
-            const formattedHours = hours % 12 || 12;
-
-            return `${formattedHours}:${String(mins).padStart(2, '0')} ${ampm}`;
+            hours = hours % 12 || 12;
+            const paddedMinutes = minutes.toString().padStart(2, '0');
+            return `${hours}:${paddedMinutes} ${ampm}`;
         };
 
-        // 7. Preload booked appointments
+
+
+        // 8️⃣ Preload all booked appointments
         const allAppointments = await Appointments.findAll({
             where: {
                 doctor_id,
-                appointment_date: {
-                    [Op.like]: `${normalizedDate}%`
-                },
-                status: {
-                    [Op.in]: ACTIVE_STATUSES
-                }
+                appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` },
+                status: { [Op.in]: ACTIVE_STATUSES }
             },
             raw: true
         });
+        const bookedTimes = new Set(allAppointments.map(a => a.appointment_time));
 
-        const bookedTimes = new Set(
-            allAppointments.map(a => a.appointment_time)
-        );
-
-        // 8. Generate slots
-        const slotsMap = new Map();
-
-        const SLOT_DURATION = 30;
-
-        for (const availabilityItem of availability) {
-
-            const start = timeToMinutes(availabilityItem.start_time);
-            const end = timeToMinutes(availabilityItem.end_time);
-
-            // Ignore invalid availability
-            if (start >= end) continue;
-
-            let current = start;
-
-            while (current + SLOT_DURATION <= end) {
-
-                const next = current + SLOT_DURATION;
-
+        // 9️⃣ Generate slots
+        let current = new Date(start);
+        const slots = await Promise.all(availability_list.map(availability => {
+            const startTimeStr = availability.start_time;
+            const endTimeStr = availability.end_time;
+            const start = timeToDate(startTimeStr);
+            const end = timeToDate(endTimeStr);
+            while (current < end) {
+                const next = new Date(current.getTime() + 30 * 60000);
                 const slotStart = formatAMPM(current);
                 const slotEnd = formatAMPM(next);
 
-                // Prevent duplicate slots
-                if (!slotsMap.has(slotStart)) {
-                    slotsMap.set(slotStart, {
-                        start: slotStart,
-                        end: slotEnd,
-                        is_available: !bookedTimes.has(slotStart)
-                    });
-                }
+                slots.push({
+                    start: slotStart,
+                    end: slotEnd,
+                    is_available: !bookedTimes.has(slotStart)
+                });
 
                 current = next;
             }
-        }
+        }))
 
-        // 9. Sort slots chronologically
-        const slots = Array.from(slotsMap.values()).sort((a, b) => {
-            return timeToMinutes(
-                a.start.replace(' AM', '').replace(' PM', '')
-                    .split(':')
-                    .map(Number)
-                    .reduce((h, m) => h * 60 + m)
-            ) - timeToMinutes(
-                b.start.replace(' AM', '').replace(' PM', '')
-                    .split(':')
-                    .map(Number)
-                    .reduce((h, m) => h * 60 + m)
-            );
-        });
-
-        // 10. Final response (unchanged structure)
+        // 🔟 Final response
         return res.response({
             success: true,
-            date: normalizedDate,
+            date: normalizeDate(appointment_date),
             day: appointmentDay,
-            start_time: availability[0].start_time,
-            end_time: availability[0].end_time,
+            start_time: startTimeStr,
+            end_time: endTimeStr,
             slots
         });
 
     } catch (err) {
         console.error(err);
-
         return res.response({
             success: false,
             message: err.message || 'Something went wrong'
