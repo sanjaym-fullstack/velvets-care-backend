@@ -26,7 +26,19 @@ const fetchNotifications = async (req, res) => {
                 raw: true,
                 where: {
                     id: session_user.role == "USER" ? session_user.user_id : session_user.doctor_id,
-                }
+                },
+                attributes: session_user.role == "USER" ? [
+                    "id",
+                    "name",
+                    "phone",
+                    "email",
+                ] : [
+                    "id",
+                    "full_name",
+                    "gender",
+                    "phone",
+                    "email",
+                ]
             })
             return {
                 ...e,
