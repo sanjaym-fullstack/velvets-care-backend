@@ -1120,12 +1120,14 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
                 end_time: sortedEndTimes[sortedEndTimes.length - 1]
             };
         };
-        const result = getDayAvailability(
+        const {
+            start_time,
+            end_time
+        } = getDayAvailability(
             availability_list,
             appointmentDay
         );
 
-        console.log('appointment_controller.js:1128', result);
 
         availability_list.forEach(availability => {
             const startTimeStr = availability.start_time;
@@ -1153,8 +1155,8 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
             success: true,
             date: normalizeDate(appointment_date),
             day: appointmentDay,
-            start_time: startTimeStr,
-            end_time: endTimeStr,
+            start_time: start_time,
+            end_time: end_time,
             slots
         });
 
