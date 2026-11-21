@@ -738,26 +738,24 @@ const fetch_single_doctor = async (req, h) => {
     }
 
     // Wrap the doctor object in an array to use banner-style Promise mapping
-    const doctor_mapped = await Promise.all(
-      [doctor].map(async (d) => ({
-        ...d,
-        profile_image: d.profile_image?.files_url
-          ? await FileFunctions.getFromS3(d.profile_image.files_url)
-          : null,
-        registration_certificate: d.registration_certificate?.files_url
-          ? await FileFunctions.getFromS3(d.registration_certificate.files_url)
-          : null,
-        medical_degree_certificate: d.medical_degree_certificate?.files_url
-          ? await FileFunctions.getFromS3(d.medical_degree_certificate.files_url)
-          : null,
-        government_id: d.government_id_file?.files_url
-          ? await FileFunctions.getFromS3(d.government_id_file.files_url)
-          : null,
-        pan_card: d.pan_card_file?.files_url
-          ? await FileFunctions.getFromS3(d.pan_card_file.files_url)
-          : null
-      }))
-    );
+    const doctor_mapped = {
+      ...doctor,
+      profile_image: doctor.profile_image?.files_url
+        ? await FileFunctions.getFromS3(doctor.profile_image.files_url)
+        : null,
+      registration_certificate: doctor.registration_certificate?.files_url
+        ? await FileFunctions.getFromS3(doctor.registration_certificate.files_url)
+        : null,
+      medical_degree_certificate: doctor.medical_degree_certificate?.files_url
+        ? await FileFunctions.getFromS3(doctor.medical_degree_certificate.files_url)
+        : null,
+      government_id: doctor.government_id_file?.files_url
+        ? await FileFunctions.getFromS3(doctor.government_id_file.files_url)
+        : null,
+      pan_card: doctor.pan_card_file?.files_url
+        ? await FileFunctions.getFromS3(doctor.pan_card_file.files_url)
+        : null
+    }
 
     return h.response({
       success: true,
