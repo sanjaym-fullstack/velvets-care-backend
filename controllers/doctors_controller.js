@@ -723,7 +723,6 @@ const fetch_single_doctor = async (req, h) => {
       where: { id: doctor_id },
       include: [
         { model: Adresses },
-        { model: Doctorsavailability },
         { model: Files, as: 'profile_image', required: false },
         { model: Files, as: 'registration_certificate', required: false },
         { model: Files, as: 'medical_degree_certificate', required: false },
@@ -744,6 +743,11 @@ const fetch_single_doctor = async (req, h) => {
     const doctor_mapped = await Promise.all(
       [doctor].map(async (d) => ({
         ...d,
+        doctorsavailabilities: await Doctorsavailability.findAll({
+          where: {
+            doctor_id: d.id
+          }
+        }),
         profile_image: d.profile_image?.files_url
           ? await FileFunctions.getFromS3(d.profile_image.files_url)
           : null,
