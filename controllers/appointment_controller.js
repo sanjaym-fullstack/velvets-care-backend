@@ -1022,19 +1022,21 @@ const checkDoctorAvailability = async (req, res) => {
     }
 };
 
+
 const getDoctorAvailableTimeSlots = async (req, res) => {
     try {
-        // 1️⃣ Auth
+        // 1. Auth
         const session_user = req.headers.user;
         if (!session_user) throw new Error('Session expired');
 
-        // 2️⃣ Payload validation
+        // 2. Payload validation
         const { doctor_id, appointment_date } = req.payload;
+
         if (!doctor_id || !appointment_date) {
             throw new Error('doctor_id and appointment_date are required');
         }
 
-        // 3️⃣ Parse date safely
+        // 3. Parse date
         const appointmentDate = parseAnyDate(appointment_date);
         const normalizedDate = normalizeDate(appointment_date);
         const todayNormalized = normalizeDate(new Date().toISOString());
@@ -1043,120 +1045,137 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
             throw new Error('Past date not allowed');
         }
 
-        // 4️⃣ Lookups
+        // 4. Lookups
         const user = await Users.findByPk(session_user.user_id);
-        if (session_user.role != 'ADMIN' && !user) throw new Error('Invalid user')
-        const doctor = await Doctors.findByPk(doctor_id, { raw: true });
-        if (!doctor) throw new Error('Invalid doctor');
 
-        // 5️⃣ Translate weekday
-        const appointmentDay = appointmentDate.toLocaleDateString('en-IN', { weekday: 'long' });
+        if (session_user.role != 'ADMIN' && !user) {
+            throw new Error('Invalid user');
+        }
 
-        // 6️⃣ Get doctor availability
-        const availability = await Doctorsavailability.findAll({
-            where: { doctor_id, day: appointmentDay },
+        const doctor = await Doctors.findByPk(doctor_id, {
             raw: true
         });
 
-        if (!availability.length) {
-            throw new Error('Doctor is not available on this day');
-        }
-        const startTimeStr = availability.start_time;
-        const endTimeStr = availability.end_time;
+        if (!doctor) throw new Error('Invalid doctor');
 
-        // 7️⃣ Convert time string to date
-        const timeToDate = (timeStr) => {
-            const [time, modifier] = timeStr.split(' ');
-            let [hours, minutes] = time.split(':').map(Number);
-            if (modifier === 'PM' && hours !== 12) hours += 12;
-            if (modifier === 'AM' && hours === 12) hours = 0;
-            const date = new Date(appointmentDate);
-            date.setHours(hours);
-            date.setMinutes(minutes);
-            date.setSeconds(0);
-            return date;
-        };
+        // 5. Get weekday
+        const appointmentDay = appointmentDate.toLocaleDateString(
+            'en-IN',
+            { weekday: 'long' }
+        );
 
-        const formatAMPM = (date) => {
-            let hours = date.getHours();
-            const minutes = date.getMinutes();
-            const ampm = hours >= 12 ? 'PM' : 'AM';
-            hours = hours % 12 || 12;
-            const paddedMinutes = minutes.toString().padStart(2, '0');
-            return `${hours}:${paddedMinutes} ${ampm}`;
-        };
-
-        const start = timeToDate(startTimeStr);
-        const end = timeToDate(endTimeStr);
-
-        // 8️⃣ Preload all booked appointments
-        const allAppointments = await Appointments.findAll({
+        // 6. Get all availability records
+        const availability = await Doctorsavailability.findAll({
             where: {
                 doctor_id,
-                appointment_date: { [Op.like]: `${normalizeDate(appointment_date)}%` },
-                status: { [Op.in]: ACTIVE_STATUSES }
+                day: appointmentDay
             },
             raw: true
         });
-        const bookedTimes = new Set(allAppointments.map(a => a.appointment_time));
 
-        // 9️⃣ Generate slots
-        const slots = [];
+        if (!availability || availability.length === 0) {
+            throw new Error('Doctor is not available on this day');
+        }
 
-        availability.forEach((schedule) => {
+        // Convert HH:mm into minutes
+        const timeToMinutes = (timeStr) => {
+            const [hours, minutes] = timeStr.split(':').map(Number);
 
-            const start = timeToDate(schedule.start_time);
-            const end = timeToDate(schedule.end_time);
+            return (hours * 60) + minutes;
+        };
 
-            // Ignore invalid or zero-duration availability
-            if (start >= end) return;
+        // Convert minutes into AM/PM
+        const formatAMPM = (minutes) => {
+            const hours = Math.floor(minutes / 60) % 24;
+            const mins = minutes % 60;
 
-            let current = new Date(start);
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const formattedHours = hours % 12 || 12;
 
-            while (current.getTime() + 30 * 60000 <= end.getTime()) {
+            return `${formattedHours}:${String(mins).padStart(2, '0')} ${ampm}`;
+        };
 
-                const next = new Date(current.getTime() + 30 * 60000);
+        // 7. Preload booked appointments
+        const allAppointments = await Appointments.findAll({
+            where: {
+                doctor_id,
+                appointment_date: {
+                    [Op.like]: `${normalizedDate}%`
+                },
+                status: {
+                    [Op.in]: ACTIVE_STATUSES
+                }
+            },
+            raw: true
+        });
+
+        const bookedTimes = new Set(
+            allAppointments.map(a => a.appointment_time)
+        );
+
+        // 8. Generate slots
+        const slotsMap = new Map();
+
+        const SLOT_DURATION = 30;
+
+        for (const availabilityItem of availability) {
+
+            const start = timeToMinutes(availabilityItem.start_time);
+            const end = timeToMinutes(availabilityItem.end_time);
+
+            // Ignore invalid availability
+            if (start >= end) continue;
+
+            let current = start;
+
+            while (current + SLOT_DURATION <= end) {
+
+                const next = current + SLOT_DURATION;
 
                 const slotStart = formatAMPM(current);
                 const slotEnd = formatAMPM(next);
 
-                slots.push({
-                    start: slotStart,
-                    end: slotEnd,
-                    is_available: !bookedTimes.has(slotStart)
-                });
+                // Prevent duplicate slots
+                if (!slotsMap.has(slotStart)) {
+                    slotsMap.set(slotStart, {
+                        start: slotStart,
+                        end: slotEnd,
+                        is_available: !bookedTimes.has(slotStart)
+                    });
+                }
 
                 current = next;
             }
+        }
+
+        // 9. Sort slots chronologically
+        const slots = Array.from(slotsMap.values()).sort((a, b) => {
+            return timeToMinutes(
+                a.start.replace(' AM', '').replace(' PM', '')
+                    .split(':')
+                    .map(Number)
+                    .reduce((h, m) => h * 60 + m)
+            ) - timeToMinutes(
+                b.start.replace(' AM', '').replace(' PM', '')
+                    .split(':')
+                    .map(Number)
+                    .reduce((h, m) => h * 60 + m)
+            );
         });
 
-        // Sort slots chronologically
-        slots.sort((a, b) => {
-            const toMinutes = (time) => {
-                let [hours, minutes] = time.split(' ')[0].split(':').map(Number);
-                const period = time.split(' ')[1];
-
-                if (period === 'PM' && hours !== 12) hours += 12;
-                if (period === 'AM' && hours === 12) hours = 0;
-
-                return hours * 60 + minutes;
-            };
-
-            return toMinutes(a.start) - toMinutes(b.start);
-        });
-
-        // 🔟 Final response
+        // 10. Final response (unchanged structure)
         return res.response({
             success: true,
-            date: normalizeDate(appointment_date),
+            date: normalizedDate,
             day: appointmentDay,
-            start_time: startTimeStr,
-            end_time: endTimeStr,
+            start_time: availability[0].start_time,
+            end_time: availability[0].end_time,
             slots
         });
 
     } catch (err) {
         console.error(err);
+
         return res.response({
             success: false,
             message: err.message || 'Something went wrong'
