@@ -760,7 +760,7 @@ const fetch_single_doctor = async (req, h) => {
     return h.response({
       success: true,
       message: 'Doctor fetched successfully',
-      data: stripSensitive(doctor_mapped[0])  // return single doctor object
+      data: stripSensitive(doctor_mapped)  // return single doctor object
     }).code(200);
 
   } catch (err) {
