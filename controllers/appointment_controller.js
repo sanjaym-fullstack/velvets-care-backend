@@ -1053,34 +1053,35 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
         const appointmentDay = appointmentDate.toLocaleDateString('en-IN', { weekday: 'long' });
 
         // 6️⃣ Get doctor availability
-        const availability = await Doctorsavailability.findOne({
-            where: { doctor_id, day: appointmentDay }
+        const availability = await Doctorsavailability.findAll({
+            where: { doctor_id, day: appointmentDay },
+            raw: true
         });
-        if (!availability) throw new Error('Doctor is not available on this day');
 
+        if (!availability.length) {
+            throw new Error('Doctor is not available on this day');
+        }
         const startTimeStr = availability.start_time;
         const endTimeStr = availability.end_time;
 
         // 7️⃣ Convert time string to date
         const timeToDate = (timeStr) => {
-            const [time, modifier] = timeStr.split(' ');
-            let [hours, minutes] = time.split(':').map(Number);
-            if (modifier === 'PM' && hours !== 12) hours += 12;
-            if (modifier === 'AM' && hours === 12) hours = 0;
+            const [hours, minutes] = timeStr.split(':').map(Number);
+
             const date = new Date(appointmentDate);
-            date.setHours(hours);
-            date.setMinutes(minutes);
-            date.setSeconds(0);
+            date.setHours(hours, minutes, 0, 0);
+
             return date;
         };
 
         const formatAMPM = (date) => {
             let hours = date.getHours();
             const minutes = date.getMinutes();
+
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12 || 12;
-            const paddedMinutes = minutes.toString().padStart(2, '0');
-            return `${hours}:${paddedMinutes} ${ampm}`;
+
+            return `${hours}:${String(minutes).padStart(2, '0')} ${ampm}`;
         };
 
         const start = timeToDate(startTimeStr);
@@ -1099,20 +1100,48 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
 
         // 9️⃣ Generate slots
         const slots = [];
-        let current = new Date(start);
-        while (current < end) {
-            const next = new Date(current.getTime() + 30 * 60000);
-            const slotStart = formatAMPM(current);
-            const slotEnd = formatAMPM(next);
 
-            slots.push({
-                start: slotStart,
-                end: slotEnd,
-                is_available: !bookedTimes.has(slotStart)
-            });
+        availability.forEach((schedule) => {
 
-            current = next;
-        }
+            const start = timeToDate(schedule.start_time);
+            const end = timeToDate(schedule.end_time);
+
+            // Ignore invalid or zero-duration availability
+            if (start >= end) return;
+
+            let current = new Date(start);
+
+            while (current.getTime() + 30 * 60000 <= end.getTime()) {
+
+                const next = new Date(current.getTime() + 30 * 60000);
+
+                const slotStart = formatAMPM(current);
+                const slotEnd = formatAMPM(next);
+
+                slots.push({
+                    start: slotStart,
+                    end: slotEnd,
+                    is_available: !bookedTimes.has(slotStart)
+                });
+
+                current = next;
+            }
+        });
+
+        // Sort slots chronologically
+        slots.sort((a, b) => {
+            const toMinutes = (time) => {
+                let [hours, minutes] = time.split(' ')[0].split(':').map(Number);
+                const period = time.split(' ')[1];
+
+                if (period === 'PM' && hours !== 12) hours += 12;
+                if (period === 'AM' && hours === 12) hours = 0;
+
+                return hours * 60 + minutes;
+            };
+
+            return toMinutes(a.start) - toMinutes(b.start);
+        });
 
         // 🔟 Final response
         return res.response({
