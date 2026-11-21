@@ -731,8 +731,6 @@ const fetch_single_doctor = async (req, h) => {
         { model: Files, as: 'pan_card_file', required: false },
         { model: Specialization }
       ],
-      raw: true,
-      nest: true
     });
 
     if (!doctor) {
@@ -741,7 +739,7 @@ const fetch_single_doctor = async (req, h) => {
 
     // Wrap the doctor object in an array to use banner-style Promise mapping
     const doctor_mapped = await Promise.all(
-      [doctor].map(async (d) => ({
+      doctor.dataValues.map(async (d) => ({
         ...d,
         profile_image: d.profile_image?.files_url
           ? await FileFunctions.getFromS3(d.profile_image.files_url)
