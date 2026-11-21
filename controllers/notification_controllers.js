@@ -18,15 +18,25 @@ const fetchNotifications = async (req, res) => {
             order: [['createdAt', 'DESC']],
             limit: limit ? parseInt(limit) : 10,
             offset: offset ? parseInt(offset) : 0,
-            include: [{
-                model: session_user.role === 'USER' ? Users : Doctors,
-                attributes: ['id', 'name', 'email']
-            }]
+            raw: true,
         });
+        const notifications_list = await Promise.all(notifications.map(async (e) => {
+            const userModel = session_user.role == "USER" ? Users : Doctors
+            const user = await userModel.findOne({
+                raw: true,
+                where: {
+                    id: session_user.role == "USER" ? session_user.user_id : session_user.doctor_id,
+                }
+            })
+            return {
+                ...e,
+                user
+            }
+        }))
         return res.response({
             success: true,
             message: "Notifications fetched",
-            data: notifications
+            data: notifications_list
         }).code(200);
     } catch (err) {
         console.error(err);
