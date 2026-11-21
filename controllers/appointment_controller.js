@@ -1066,22 +1066,24 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
 
         // 7️⃣ Convert time string to date
         const timeToDate = (timeStr) => {
-            const [hours, minutes] = timeStr.split(':').map(Number);
-
+            const [time, modifier] = timeStr.split(' ');
+            let [hours, minutes] = time.split(':').map(Number);
+            if (modifier === 'PM' && hours !== 12) hours += 12;
+            if (modifier === 'AM' && hours === 12) hours = 0;
             const date = new Date(appointmentDate);
-            date.setHours(hours, minutes, 0, 0);
-
+            date.setHours(hours);
+            date.setMinutes(minutes);
+            date.setSeconds(0);
             return date;
         };
 
         const formatAMPM = (date) => {
             let hours = date.getHours();
             const minutes = date.getMinutes();
-
             const ampm = hours >= 12 ? 'PM' : 'AM';
             hours = hours % 12 || 12;
-
-            return `${hours}:${String(minutes).padStart(2, '0')} ${ampm}`;
+            const paddedMinutes = minutes.toString().padStart(2, '0');
+            return `${hours}:${paddedMinutes} ${ampm}`;
         };
 
         const start = timeToDate(startTimeStr);
