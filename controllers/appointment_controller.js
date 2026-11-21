@@ -1057,7 +1057,8 @@ const getDoctorAvailableTimeSlots = async (req, res) => {
             where: { doctor_id, day: appointmentDay },
             raw: true
         });
-        if (!availability_list) throw new Error('Doctor is not available on this day');
+
+        if (!availability_list.length) throw new Error('Doctor is not available on this day');
 
 
         // 7️⃣ Convert time string to date
