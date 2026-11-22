@@ -18,6 +18,20 @@ const isValidPhone = (phone) => /^[6-9]\d{9}$/.test(phone);
 const MSG_ALREADY_DOCTOR = 'This phone number is already registered as a doctor';
 const MSG_ALREADY_USER = 'This phone number is already registered as a user';
 
+// Store-review numbers listed in DEFAULT_OTP_NUMBERS (.env, comma
+// separated) — applies to BOTH user and doctor logins. Their OTP is always
+// 1234 and WhatsApp delivery is skipped so Play Store / App Store reviewers
+// can log in deterministically.
+const DEFAULT_OTP = '1234';
+
+const isDefaultOtpNumber = (phone) => {
+    const configured = String(process.env.DEFAULT_OTP_NUMBERS || '')
+        .split(',')
+        .map((entry) => normalizePhone(entry.trim()))
+        .filter(Boolean);
+    return configured.includes(String(phone));
+};
+
 // Cross-role blockers: does this phone already belong to the other role?
 const isDoctorPhone = async (phone) => {
     const doctor = await Doctors.findOne({ where: { phone }, attributes: ['id'], raw: true });
@@ -55,6 +69,8 @@ module.exports = {
     isDoctorPhone,
     isUserPhone,
     ensureAccount,
+    isDefaultOtpNumber,
+    DEFAULT_OTP,
     MSG_ALREADY_DOCTOR,
     MSG_ALREADY_USER,
 };
