@@ -16,6 +16,7 @@ class UsersModel extends Model { }
 UsersModel.init({
   name: DataTypes.STRING,
   phone: DataTypes.STRING,
+  account_id: DataTypes.INTEGER,
   email: DataTypes.STRING,
   dob: DataTypes.STRING,
   gender: DataTypes.STRING,

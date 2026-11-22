@@ -12,21 +12,13 @@ const {
 const fs = require('fs')
 
 const { WhatsAppFunctions, FileFunctions } = require('../helpers')
-
-const normalizePhone = (phone) => {
-    if (!phone) return phone;
-    // Strip a leading +country code, then keep digits only so storage and
-    // lookups always agree: "+91 98765 43210", "919876543210",
-    // "09876543210" and "98765 43210" all become "9876543210".
-    let digits = String(phone)
-        .replace(/^(\+91|\+1|\+44|\+81|\+86|\+49|\+33|\+61|\+82|\+7|\+55)\s*/, '')
-        .replace(/\D/g, '');
-    if (digits.length === 11 && digits.startsWith('0')) digits = digits.slice(1);
-    if (digits.length === 12 && digits.startsWith('91')) digits = digits.slice(2);
-    return digits;
-};
-
-const isValidPhone = (phone) => /^[6-9]\d{9}$/.test(phone);
+const {
+    normalizePhone,
+    isValidPhone,
+    isDoctorPhone,
+    ensureAccount,
+    MSG_ALREADY_DOCTOR,
+} = require('../helpers/phone_helper')
 
 const request_otp_login = async (req, res) => {
     try {
@@ -46,6 +38,12 @@ const request_otp_login = async (req, res) => {
             raw: true
         })
         if (!user) {
+            if (await isDoctorPhone(phone)) {
+                return res.response({
+                    success: false,
+                    message: MSG_ALREADY_DOCTOR,
+                });
+            }
             return res.response({
                 success: false,
                 message: 'User not found, please register',
@@ -127,6 +125,13 @@ const request_otp_register = async (req, res) => {
                 message: 'User already exists',
             });
         }
+        if (await isDoctorPhone(phone)) {
+            return res.response({
+                success: false,
+                message: MSG_ALREADY_DOCTOR,
+            });
+        }
+        const account = await ensureAccount(phone);
         const otpCode = await Otps.create({
             otp: otp,
             otp_time: Date.now()
@@ -142,7 +147,8 @@ const request_otp_register = async (req, res) => {
         await Users.create({
             phone: phone,
             name: name,
-            otp_id: otpCode.id
+            otp_id: otpCode.id,
+            account_id: account ? account.id : null
         })
 
         // Notify admin about new user registration
@@ -179,6 +185,12 @@ const verify_otp = async (req, res) => {
 
         const user = await Users.findOne({ where: { phone }, raw: true });
         if (!user) {
+            if (await isDoctorPhone(phone)) {
+                return res.response({
+                    success: false,
+                    message: MSG_ALREADY_DOCTOR,
+                });
+            }
             return res.response({
                 success: false,
                 message: 'User not found',
@@ -220,6 +232,7 @@ const verify_otp = async (req, res) => {
             user_id: user.id,
             phone: user.phone,
             name: user.name,
+            role: 'USER',
         };
         const refresh_token = await JWTFunctions.generateToken(payload, '30d');
         const access_token = await JWTFunctions.generateToken(payload, '1d');
@@ -351,6 +364,15 @@ const update_user = async (req, res) => {
             }).code(200);
         }
 
+        // A number registered as a doctor can never become a user number.
+        if (await isDoctorPhone(phone)) {
+            return res.response({
+                success: false,
+                message: MSG_ALREADY_DOCTOR,
+            }).code(200);
+        }
+        const account = await ensureAccount(phone);
+
         let profileFileId = user.profile_image_id;
 
         if (profile_image) {
@@ -379,7 +401,8 @@ const update_user = async (req, res) => {
             gender,
             dob,
             email,
-            profile_image_id: profileFileId
+            profile_image_id: profileFileId,
+            account_id: account ? account.id : (user.account_id || null)
         }, { where: { id: session_user.user_id } });
 
         // Fetch updated user with profile image
@@ -441,7 +464,8 @@ const user_refresh_token = async (req, res) => {
         const payload = {
             user_id: user.id,
             phone: user.phone,
-            name: user.name
+            name: user.name,
+            role: 'USER',
         }
         const access_token = await JWTFunctions.generateToken(payload, '1d');
         const new_refresh_token = await JWTFunctions.generateToken(payload, '30d');
@@ -663,6 +687,13 @@ const CreateUserByAdmin = async (req, res) => {
                 message: 'User already exists',
             }).code(200);
         }
+        if (await isDoctorPhone(phone)) {
+            return res.response({
+                success: false,
+                message: MSG_ALREADY_DOCTOR,
+            }).code(200);
+        }
+        const account = await ensureAccount(phone);
 
         let profileFileId = null;
 
@@ -691,7 +722,8 @@ const CreateUserByAdmin = async (req, res) => {
             phone,
             gender,
             dob,
-            profile_image_id: profileFileId
+            profile_image_id: profileFileId,
+            account_id: account ? account.id : null
         });
 
         // Map profile image to URL
