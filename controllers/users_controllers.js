@@ -260,7 +260,7 @@ const verify_otp = async (req, res) => {
         }
 
         if (!usingDefaultOtp) {
-            const otpTime = new Date(otpCode.otp_time);
+            const otpTime = new Date(Number(otpCode.otp_time));
             const currentTime = new Date();
             const diffInMinutes = (currentTime - otpTime) / 1000 / 60;
 
