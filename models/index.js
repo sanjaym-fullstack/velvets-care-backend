@@ -2,6 +2,7 @@ const Product = require('./product');
 
 module.exports = {
   Users: require('./users'),
+  Accounts: require('./account'),
   Otps: require('./otp'),
   Files: require('./files'),
   Admins: require('./admins'),

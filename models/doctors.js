@@ -19,6 +19,7 @@ const Specialization = require('./specialization');
     gender: DataTypes.STRING,
     date_of_birth: DataTypes.STRING,
     phone: DataTypes.BIGINT,
+    account_id: DataTypes.INTEGER,
     email: DataTypes.STRING,
     specialization: DataTypes.STRING,
     specialization_id: DataTypes.INTEGER,

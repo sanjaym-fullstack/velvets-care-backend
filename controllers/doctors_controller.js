@@ -20,6 +20,7 @@ const {
 const fs = require('fs')
 
 const { FileFunctions } = require('../helpers');
+const { normalizePhone, isUserPhone, ensureAccount, MSG_ALREADY_USER } = require('../helpers/phone_helper');
 const { ComplianceInquiriesContextImpl } = require('twilio/lib/rest/trusthub/v1/complianceInquiries');
 const { default: ClientCapability } = require('twilio/lib/jwt/ClientCapability');
 const { off } = require('../config/mailer');
@@ -32,11 +33,12 @@ const createDoctor = async (req, h) => {
       throw new Error('Session expired');
     }
     const {
-      full_name, gender, date_of_birth, phone, email,
+      full_name, gender, date_of_birth, phone: rawPhone, email,
       specialization, years_of_experience, registration_number,
       registration_certificate, medical_degree_certificate,
       consultation_fee, consultation_modes, languages_spoken, profile_image, government_id, pan_card
     } = req.payload;
+    const phone = normalizePhone(rawPhone);
     const existing_doctor = await Doctors.findOne({
       where: {
         [Op.or]: [
@@ -49,6 +51,10 @@ const createDoctor = async (req, h) => {
     if (existing_doctor) {
       throw new Error('Doctor already exists');
     }
+    if (await isUserPhone(phone)) {
+      throw new Error(MSG_ALREADY_USER);
+    }
+    const account = await ensureAccount(phone);
     // File Uploads
     let regCertFileId = null;
     let degreeCertFileId = null;
@@ -127,7 +133,8 @@ const createDoctor = async (req, h) => {
       languages_spoken: languages_spoken,
       profile_image_id: profileFileId,
       government_id: govFileId,
-      pan_card_id: panFileId
+      pan_card_id: panFileId,
+      account_id: account ? account.id : null
     });
     await transaction.commit();
 
@@ -184,11 +191,12 @@ const updateBasicDetails = async (req, h) => {
     }
     const { doctor_id } = req.params;
     const {
-      full_name, gender, date_of_birth, phone, email,
+      full_name, gender, date_of_birth, phone: rawPhone, email,
       specialization, years_of_experience, registration_number,
       registration_certificate, medical_degree_certificate,
       consultation_fee, consultation_modes, languages_spoken, profile_image, government_id, pan_card
     } = req.payload;
+    const phone = normalizePhone(rawPhone);
     const available_doctor = await Doctors.findOne({
       where: { id: doctor_id }
     });
@@ -208,6 +216,10 @@ const updateBasicDetails = async (req, h) => {
     if (existing_doctor) {
       throw new Error('Doctor already exists');
     }
+    if (await isUserPhone(phone)) {
+      throw new Error(MSG_ALREADY_USER);
+    }
+    const account = await ensureAccount(phone);
     // File Uploads
     let regCertFileId = null;
     let degreeCertFileId = null;
@@ -286,7 +298,8 @@ const updateBasicDetails = async (req, h) => {
       languages_spoken: JSON.stringify(specialization.split(',')),
       profile_image_id: profileFileId,
       government_id: govFileId,
-      pan_card_id: panFileId
+      pan_card_id: panFileId,
+      account_id: account ? account.id : (available_doctor.account_id || null)
     }, {
       where: { id: doctor_id },
     });
@@ -991,15 +1004,20 @@ const updateDoctoreDetailsByAdmin = async (req, h) => {
 
     const { doctor_id } = req.params;
     const {
-      full_name, gender, date_of_birth, phone, email,
+      full_name, gender, date_of_birth, phone: rawPhone, email,
       specialization, years_of_experience, registration_number,
       registration_certificate, medical_degree_certificate,
       consultation_fee, consultation_modes, languages_spoken,
       profile_image, government_id, pan_card
     } = req.payload;
+    const phone = normalizePhone(rawPhone);
 
     const doctor = await Doctors.findOne({ where: { id: doctor_id } });
     if (!doctor) throw new Error('Doctor not found');
+    if (await isUserPhone(phone)) {
+      throw new Error(MSG_ALREADY_USER);
+    }
+    const account = await ensureAccount(phone);
 
     // declare IDs
     let profileFileId = null, govFileId = null, panFileId = null;
@@ -1078,7 +1096,8 @@ const updateDoctoreDetailsByAdmin = async (req, h) => {
       languages_spoken: JSON.stringify(languages_spoken),
       profile_image_id: profileFileId,
       government_id: govFileId,
-      pan_card_id: panFileId
+      pan_card_id: panFileId,
+      account_id: account ? account.id : (doctor.account_id || null)
     }, { where: { id: doctor_id } });
 
     // Refetch updated doctor with all images

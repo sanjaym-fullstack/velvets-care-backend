@@ -2,6 +2,7 @@
 module.exports = {
     Otps: 'otps',
     Users: 'users',
+    Accounts: 'accounts',
     Files: 'files',
     Admins: 'admins',
     Banners: 'banners',
