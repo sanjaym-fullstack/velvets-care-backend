@@ -20,7 +20,7 @@ const send_otp_admin = async (req, res) => {
         if (!admin) {
             throw new Error('Admin not found');
         }
-        const otp = '123456' // await OTPFunctions.getOTPByLength(6);
+        const otp = await OTPFunctions.getOTPByLength(6);
         console.log("login otp:", otp);
         const otpCode = await Otps.create({
             otp: otp,
@@ -38,7 +38,7 @@ const send_otp_admin = async (req, res) => {
 
                     <h2 style="color: #2e6c80;">${otp}</h2>
 
-                    <p>Please enter this OTP to complete your login. This code is valid for 5 minutes.</p>
+                    <p>Please enter this OTP to complete your login. This code is valid for 10 minutes.</p>
 
                     <p>If you did not request this OTP, please ignore this email.</p>
 
@@ -87,7 +87,13 @@ const verify_otp_admin = async (req, res) => {
             },
             raw: true
         })
-        const otpTime = new Date(otpCode.otp_time);
+        if (!otpCode) {
+            return res.response({
+                success: false,
+                message: 'OTP not found',
+            })
+        }
+        const otpTime = new Date(Number(otpCode.otp_time));
         const currentTime = new Date();
         // Check if OTP is older than 10 minutes        
         const diffInMinutes = (currentTime - otpTime) / 1000 / 60;
@@ -113,6 +119,7 @@ const verify_otp_admin = async (req, res) => {
                 email: email
             }
         })
+        await Otps.destroy({ where: { id: admin.otp_id } })
         return res.response({
             success: true,
             message: 'OTP verified successfully',

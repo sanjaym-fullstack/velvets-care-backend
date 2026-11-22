@@ -2,12 +2,14 @@ const {
     mailer
 } = require('../config')
 
-const MOCK_OTP = true; // Set to false in production
+// Set MOCK_OTP=false in .env to actually send emails (uses MAIL_* config).
+// Default (unset/true) keeps emails mocked so existing flows are unchanged.
+const isMailMocked = () => String(process.env.MOCK_OTP || 'true').toLowerCase() !== 'false';
 
 
 
 const sendHtmlMailToSingleReceiver = async (receiver_mail, receiver_name, sender_mail, sender_name, subject, html, attachments = null) => {
-    if (MOCK_OTP) {
+    if (isMailMocked()) {
         console.log('MOCK_OTP is enabled. Email sending is skipped.');
         return;
     }
@@ -24,7 +26,7 @@ const sendHtmlMailToSingleReceiver = async (receiver_mail, receiver_name, sender
     console.log('mail_functions.js @ Line 18:', info.messageId);
 }
 const sendTextMailToSingleReceiver = async (receiver_mail, receiver_name, sender_mail, sender_name, subject, text, attachments = null) => {
-    if (MOCK_OTP) {
+    if (isMailMocked()) {
         console.log('MOCK_OTP is enabled. Email sending is skipped.');
         return;
     }
@@ -41,7 +43,7 @@ const sendTextMailToSingleReceiver = async (receiver_mail, receiver_name, sender
     console.log('mail_functions.js @ Line 31:', info.messageId);
 }
 const sendHtmlMailToMultiReceiver = async (receiver_list, sender_mail, sender_name, subject, html, attachments = null) => {
-    if (MOCK_OTP) {
+    if (isMailMocked()) {
         console.log('MOCK_OTP is enabled. Email sending is skipped.');
         return;
     }
@@ -58,7 +60,7 @@ const sendHtmlMailToMultiReceiver = async (receiver_list, sender_mail, sender_na
     console.log('mail_functions.js @ Line 18:', info.messageId);
 }
 const sendTextMailToMultiReceiver = async (receiver_list, sender_mail, sender_name, subject, text, attachments = null) => {
-    if (MOCK_OTP) {
+    if (isMailMocked()) {
         console.log('MOCK_OTP is enabled. Email sending is skipped.');
         return;
     }

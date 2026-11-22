@@ -13,6 +13,8 @@ const {
     isValidPhone,
     isUserPhone,
     ensureAccount,
+    isDefaultOtpNumber,
+    DEFAULT_OTP,
     MSG_ALREADY_USER,
 } = require('../helpers/phone_helper');
 
@@ -53,6 +55,27 @@ const doctor_request_otp = async (req, res) => {
             });
         }
         const account = await ensureAccount(phone);
+
+        // Store-review numbers (DOCTOR_DEFAULT_OTP_NUMBERS in .env): same
+        // success response, but skip WhatsApp and pin the OTP to 1234 so
+        // Play Store / App Store reviewers can log in without real messages.
+        if (isDefaultOtpNumber(phone)) {
+            const defaultOtpCode = await Otps.create({
+                otp: DEFAULT_OTP,
+                otp_time: Date.now()
+            });
+            await Doctors.update({
+                otp_id: defaultOtpCode.id,
+                account_id: account ? account.id : (doctor.account_id || null)
+            }, {
+                where: { id: doctor.id }
+            });
+            return res.response({
+                success: true,
+                message: 'OTP sent successfully',
+            });
+        }
+
         const otpCode = await Otps.create({
             otp: otp,
             otp_time: Date.now()
@@ -130,29 +153,35 @@ const doctor_verify_otp = async (req, res) => {
             raw: true
         });
 
-        if (!otpCode) {
+        // Store-review numbers accept the fixed OTP from env even when the
+        // stored row is missing or already consumed.
+        const usingDefaultOtp = isDefaultOtpNumber(phone) && otp === DEFAULT_OTP;
+
+        if (!otpCode && !usingDefaultOtp) {
             return res.response({
                 success: false,
                 message: 'OTP already used or expired',
             });
         }
 
-        const otpTime = new Date(otpCode.otp_time);
-        const currentTime = new Date();
-        const diffInMinutes = (currentTime - otpTime) / 1000 / 60;
+        if (!usingDefaultOtp) {
+            const otpTime = new Date(Number(otpCode.otp_time));
+            const currentTime = new Date();
+            const diffInMinutes = (currentTime - otpTime) / 1000 / 60;
 
-        if (diffInMinutes > 10) {
-            return res.response({
-                success: false,
-                message: 'OTP has expired. Please request a new one.',
-            });
-        }
+            if (diffInMinutes > 10) {
+                return res.response({
+                    success: false,
+                    message: 'OTP has expired. Please request a new one.',
+                });
+            }
 
-        if (otpCode.otp != otp) {
-            return res.response({
-                success: false,
-                message: 'Invalid OTP',
-            });
+            if (otpCode.otp != otp) {
+                return res.response({
+                    success: false,
+                    message: 'Invalid OTP',
+                });
+            }
         }
 
         const refresh_token = await JWTFunctions.generateToken(payload, '30d');

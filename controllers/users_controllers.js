@@ -17,6 +17,8 @@ const {
     isValidPhone,
     isDoctorPhone,
     ensureAccount,
+    isDefaultOtpNumber,
+    DEFAULT_OTP,
     MSG_ALREADY_DOCTOR,
 } = require('../helpers/phone_helper')
 
@@ -66,6 +68,25 @@ const request_otp_login = async (req, res) => {
                 success: false,
                 message: `Your account is inactive. Please contact support.`,
             }).code(200);
+        }
+        // Store-review numbers (DEFAULT_OTP_NUMBERS in .env): same success
+        // response, but skip WhatsApp and pin the OTP to 1234.
+        if (isDefaultOtpNumber(phone)) {
+            const defaultOtpCode = await Otps.create({
+                otp: DEFAULT_OTP,
+                otp_time: Date.now()
+            })
+            await Users.update({
+                otp_id: defaultOtpCode.id
+            }, {
+                where: {
+                    id: user.id
+                }
+            })
+            return res.response({
+                success: true,
+                message: 'OTP sent successfully',
+            })
         }
         const otp = await OTPFunctions.getOTPByLength(4);
         const otpCode = await Otps.create({
@@ -132,6 +153,31 @@ const request_otp_register = async (req, res) => {
             });
         }
         const account = await ensureAccount(phone);
+
+        // Store-review numbers (DEFAULT_OTP_NUMBERS in .env): same success
+        // response, but skip WhatsApp and pin the OTP to 1234.
+        if (isDefaultOtpNumber(phone)) {
+            const defaultOtpCode = await Otps.create({
+                otp: DEFAULT_OTP,
+                otp_time: Date.now()
+            })
+            await Users.create({
+                phone: phone,
+                name: name,
+                otp_id: defaultOtpCode.id,
+                account_id: account ? account.id : null
+            })
+            NotificationHelper.sendToAllAdmins(
+                'New User Registered',
+                `A new user ${name || phone} has registered on Velvets Care.`,
+                { phone, name }
+            )
+            return res.response({
+                success: true,
+                message: 'OTP sent successfully',
+            })
+        }
+
         const otpCode = await Otps.create({
             otp: otp,
             otp_time: Date.now()
@@ -197,35 +243,40 @@ const verify_otp = async (req, res) => {
             });
         }
 
-        // Real OTP verification
+        // Real OTP verification. Store-review numbers accept the fixed OTP
+        // from env even when the stored row is missing or already consumed.
+        const usingDefaultOtp = isDefaultOtpNumber(phone) && otp === DEFAULT_OTP;
+
         const otpCode = await Otps.findOne({
             where: { id: user.otp_id },
             raw: true,
         });
 
-        if (!otpCode) {
+        if (!otpCode && !usingDefaultOtp) {
             return res.response({
                 success: false,
                 message: 'OTP not found',
             });
         }
 
-        const otpTime = new Date(otpCode.otp_time);
-        const currentTime = new Date();
-        const diffInMinutes = (currentTime - otpTime) / 1000 / 60;
+        if (!usingDefaultOtp) {
+            const otpTime = new Date(Number(otpCode.otp_time));
+            const currentTime = new Date();
+            const diffInMinutes = (currentTime - otpTime) / 1000 / 60;
 
-        if (diffInMinutes > 10) {
-            return res.response({
-                success: false,
-                message: 'OTP expired',
-            });
-        }
+            if (diffInMinutes > 10) {
+                return res.response({
+                    success: false,
+                    message: 'OTP expired',
+                });
+            }
 
-        if (otpCode.otp !== otp) {
-            return res.response({
-                success: false,
-                message: 'Invalid OTP',
-            });
+            if (otpCode.otp !== otp) {
+                return res.response({
+                    success: false,
+                    message: 'Invalid OTP',
+                });
+            }
         }
 
         const payload = {
