@@ -102,8 +102,7 @@ const getSummaryStats = async (doctor_id) => {
     const completionRate = totalAppointments > 0
         ? Math.round((completedAppointments / totalAppointments) * 1000) / 10
         : 0;
-    const doctorEarnings = doctorRecord?.total_earnings || 0;
-    const pendingPayout = Math.max(0, doctorEarnings - totalPaidOut);
+    const pendingPayout = Math.max(0, totalEarnings - totalPaidOut);
 
     return {
         total_appointments: totalAppointments,
