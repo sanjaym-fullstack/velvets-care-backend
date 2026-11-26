@@ -561,7 +561,7 @@ const getDoctorTransactions = async (req, res) => {
             }
 
             const agg = await Appointments.findAll({
-                where: { ...where },
+                where: { ...where, status: 'completed', payment_status: 'paid' },
                 attributes: [
                     [fn('SUM', col('consultation_fee')), 'total'],
                     [fn('COUNT', col('id')), 'count']
@@ -623,15 +623,21 @@ const getDoctorTransactions = async (req, res) => {
                 attributes: [[fn('SUM', col('net_payout')), 'total']], raw: true
             });
             summary.total_payouts += parseFloat(paidPayoutAgg[0]?.total || 0);
-
-            const pendingPayoutAgg = await Payouts.findAll({
-                where: { ...where, status: 'pending' },
-                attributes: [[fn('SUM', col('net_payout')), 'total']], raw: true
-            });
-            summary.pending_payout += parseFloat(pendingPayoutAgg[0]?.total || 0);
         }
 
-        summary.net_earned = summary.total_earned - summary.total_refunds;
+        const pendingGross = await Appointments.findAll({
+            where: { doctor_id: doctorId, status: 'completed', payment_status: 'paid' },
+            attributes: [[fn('SUM', col('consultation_fee')), 'total']], raw: true
+        });
+        const processedNet = await Payouts.findAll({
+            where: { doctor_id: doctorId, status: 'processed' },
+            attributes: [[fn('SUM', col('net_payout')), 'total']], raw: true
+        });
+        summary.pending_payout = Math.max(0,
+            (parseFloat(pendingGross[0]?.total) || 0) - (parseFloat(processedNet[0]?.total) || 0)
+        );
+
+        summary.net_earned = summary.total_earned;
 
         const sortField = sort_by === 'amount' ? 'amount' : sort_by === 'date' ? 'date' : 'created_at';
         results.sort((a, b) => {
